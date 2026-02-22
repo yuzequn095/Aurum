@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Prisma v7: connection URL is configured in prisma.config.ts
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts     Account[]
+  categories   Category[]
+  transactions Transaction[]
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id])
+  parent   Category? @relation("CategoryToParent", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryToParent")
+
+  transactions Transaction[]
+
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  currency  String   @default("USD")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+
+  @@index([userId])
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  userId      String
+  accountId   String
+  type        TransactionType
+  amountCents Int
+  currency    String          @default("USD")
+  occurredAt  DateTime
+  merchant    String?
+  note        String?
+  categoryId  String?
+  transferId  String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id])
+  account  Account   @relation(fields: [accountId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([userId, occurredAt])
+  @@index([accountId, occurredAt])
+  @@index([categoryId])
+  @@index([transferId])
+}
