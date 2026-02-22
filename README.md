@@ -22,6 +22,10 @@ Aurum is a privacy-first, AI-powered personal finance assistant (Web-first MVP).
 ### Run with Docker Compose
 - `docker compose -f infra/docker/docker-compose.yml up -d`
 
+### Prisma
+- `pnpm --filter api exec prisma db seed`
+- `pnpm --filter api exec prisma studio`
+
 ### Ports
 - Web: http://localhost:3000
 - API: http://localhost:3001
