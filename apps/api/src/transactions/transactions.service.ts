@@ -1,9 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
-import { CreateTransactionDto } from "./dto/create-transaction.dto";
-import { TransactionType } from "@prisma/client";
-import { GetTransactionsQueryDto } from "./dto/get-transactions-query.dto";
-import { UpdateTransactionDto } from "./dto/update-transaction.dto";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { TransactionType } from '@prisma/client';
+import { GetTransactionsQueryDto } from './dto/get-transactions-query.dto';
+import { UpdateTransactionDto } from './dto/update-transaction.dto';
 
 @Injectable()
 export class TransactionsService {
@@ -12,10 +16,13 @@ export class TransactionsService {
   // Phase 1：先用 demo 用户；后续 Milestone（Auth）再替换成真实登录用户
   private async getDemoUserId() {
     const user = await this.prisma.user.findUnique({
-      where: { email: "demo@aurum.local" },
+      where: { email: 'demo@aurum.local' },
       select: { id: true },
     });
-    if (!user) throw new NotFoundException("Demo user not found. Did you run prisma db seed?");
+    if (!user)
+      throw new NotFoundException(
+        'Demo user not found. Did you run prisma db seed?',
+      );
     return user.id;
   }
 
@@ -27,7 +34,7 @@ export class TransactionsService {
       where: { id: dto.accountId, userId },
       select: { id: true },
     });
-    if (!account) throw new NotFoundException("Account not found");
+    if (!account) throw new NotFoundException('Account not found');
 
     // 可选：category 也验证归属
     if (dto.categoryId) {
@@ -35,7 +42,7 @@ export class TransactionsService {
         where: { id: dto.categoryId, userId },
         select: { id: true },
       });
-      if (!category) throw new NotFoundException("Category not found");
+      if (!category) throw new NotFoundException('Category not found');
     }
 
     // TRANSFER 的最小规则（先不做复杂双录；Milestone 3.2+ 再增强）
@@ -50,7 +57,7 @@ export class TransactionsService {
         accountId: dto.accountId,
         type: dto.type,
         amountCents: dto.amountCents,
-        currency: dto.currency ?? "USD",
+        currency: dto.currency ?? 'USD',
         occurredAt: new Date(dto.occurredAt),
         categoryId: dto.categoryId,
         merchant: dto.merchant,
@@ -76,7 +83,8 @@ export class TransactionsService {
 
     // 基础防御：如果 occurredAt 无法 parse，会变成 Invalid Date，Prisma 可能抛错
     // DTO 的 IsDateString 已经拦截大部分情况，这里一般不会触发
-    if (!created.id) throw new BadRequestException("Failed to create transaction");
+    if (!created.id)
+      throw new BadRequestException('Failed to create transaction');
 
     return created;
   }
@@ -98,7 +106,7 @@ export class TransactionsService {
         ...(query.categoryId ? { categoryId: query.categoryId } : {}),
         ...(query.from || query.to ? { occurredAt } : {}),
       },
-      orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+      orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
       skip: offset,
       take: limit,
       select: {

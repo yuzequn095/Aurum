@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from "@nestjs/common";
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,9 +12,9 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,            // 只保留 DTO 里声明过的字段
+      whitelist: true, // 只保留 DTO 里声明过的字段
       forbidNonWhitelisted: true, // 出现未声明字段直接 400
-      transform: true,            // 把 payload 转成 DTO class 实例
+      transform: true, // 把 payload 转成 DTO class 实例
     }),
   );
 
