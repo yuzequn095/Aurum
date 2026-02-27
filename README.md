@@ -1,167 +1,189 @@
 # Aurum
 
-Aurum is a privacy-first, AI-powered personal finance assistant
-(Web-first MVP).
+![Node.js](https://img.shields.io/badge/Node.js-20.x-339933?logo=node.js&logoColor=white)
+![pnpm](https://img.shields.io/badge/pnpm-9.x-F69220?logo=pnpm&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)
+![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white)
 
-The goal of this project is to build a production-grade personal finance
-system while exploring:
+---
 
--   Modern TypeScript monorepo architecture
--   NestJS backend (REST API)
--   Next.js frontend (App Router)
--   Prisma ORM v7 with PostgreSQL adapter
--   Docker-based local infrastructure
--   Future AI-driven financial insights
+## Project Description
 
-------------------------------------------------------------------------
+Aurum is a privacy-first, AI-powered personal finance assistant (Web-first MVP).
 
-# 🏗 Architecture Overview
+The project focuses on building a production-grade personal finance system with:
 
-Browser (localhost:3000) │ ▼ Next.js (apps/web) │ REST ▼ NestJS API
-(apps/api) │ ├── Prisma ORM v7 (Postgres adapter) ├── PostgreSQL
-(Docker) └── Redis (Docker)
+- Modern TypeScript monorepo architecture
+- NestJS REST API backend
+- Next.js App Router frontend
+- Prisma ORM v7 + PostgreSQL
+- Docker-based local infrastructure
+- A future path toward AI-driven financial insights
 
-------------------------------------------------------------------------
+---
 
-# 📦 Monorepo Structure
+## What Works Today
 
-Aurum/ ├── apps/ │ ├── web/ \# Next.js frontend │ └── api/ \# NestJS
-backend ├── packages/ │ └── core/ \# Shared types / utilities (future)
-├── infra/ │ └── docker/ \# docker-compose.yml
+- Docker local infra (PostgreSQL + Redis)
+- Prisma v7 configured with `@prisma/adapter-pg`
+- Core schema and migrations
+- Seed data (demo user + sample ledger data)
+- Categories API: `GET /v1/categories`
+- Accounts API: `GET /v1/accounts`
+- Transactions CRUD + list filtering/pagination
+- Transactions list supports `include=refs` for account/category refs
+- Web transactions page supports create/edit/delete/filter/pagination
 
-Monorepo managed with:
+---
 
--   pnpm workspaces
--   Turborepo
+## Architecture
 
-------------------------------------------------------------------------
+```text
+System Architecture
 
-# 🚀 Current Progress (Milestone 2 Complete)
+User (Browser)
+    |
+    v
+Next.js Web (apps/web)  -- http://localhost:3000
+    |  REST
+    v
+NestJS API (apps/api)   -- http://localhost:3001
+    |
+    |-- Prisma ORM v7 (adapter-pg)
+    |       |
+    |       v
+    |   PostgreSQL (Docker) -- localhost:5432
+    |
+    |-- Redis (Docker) -- localhost:6379
+```
 
-✅ Docker infrastructure (Postgres + Redis)\
-✅ Prisma v7 configured with adapter-pg\
-✅ Database schema (User, Account, Category, Transaction)\
-✅ Initial migration applied\
-✅ Seed script (demo user + sample data)\
-✅ First DB-backed endpoint: GET /v1/categories
+---
 
-------------------------------------------------------------------------
+## Monorepo Structure
 
-# 🧱 Tech Stack
+```text
+Aurum/
+|
+|-- apps/
+|   |-- web/          # Next.js frontend
+|   `-- api/          # NestJS backend
+|
+|-- packages/
+|   `-- core/         # shared types / utilities
+|
+|-- infra/
+|   `-- docker/       # docker-compose.yml
+|
+|-- pnpm-workspace.yaml
+|-- turbo.json
+`-- package.json
+```
 
-## Frontend
+Top-level folders:
 
--   Next.js 16 (App Router)
--   TypeScript
--   ESLint
+- `apps/`: runnable applications (`web`, `api`)
+- `packages/`: shared code across apps
+- `infra/`: infrastructure and local Docker setup
 
-## Backend
+---
 
--   NestJS
--   Prisma ORM v7
--   PostgreSQL
--   Redis (reserved for caching / queue)
+## Quickstart
 
-## Dev Infrastructure
+Prerequisites:
 
--   Docker Desktop
--   pnpm
--   Turborepo
+- Node.js 20.x
+- pnpm 9.x
+- Docker Desktop
 
-------------------------------------------------------------------------
+Start local infrastructure:
 
-# 🛠 Local Development
-
-## Prerequisites
-
--   Node.js v20 (LTS)
--   pnpm v9
--   Docker Desktop (WSL2 enabled)
-
-------------------------------------------------------------------------
-
-## Install dependencies
-
-pnpm install
-
-------------------------------------------------------------------------
-
-## Start Docker services
-
+```bash
 docker compose -f infra/docker/docker-compose.yml up -d
+```
 
-This starts:
+Install and run:
 
--   PostgreSQL → localhost:5432
--   Redis → localhost:6379
-
-------------------------------------------------------------------------
-
-## Run Web + API
-
+```bash
+pnpm install
 pnpm dev
+```
 
-------------------------------------------------------------------------
+Quality checks:
 
-# 🔌 Ports
+```bash
+pnpm lint
+pnpm typecheck
+```
 
-  Service         URL
-  --------------- ---------------------------------
-  Web             http://localhost:3000
-  API             http://localhost:3001
-  Health          http://localhost:3001/v1/health
-  Prisma Studio   http://localhost:5555
+---
 
-------------------------------------------------------------------------
+## Database
 
-# 🗄 Database (Prisma v7)
+Run migrations:
 
-## Run migration
+```bash
+pnpm --filter api exec prisma migrate dev --name <migration-name>
+```
 
-pnpm --filter api exec prisma migrate dev --name
-`<migration-name>`{=html}
+Seed data:
 
-## Seed database
-
+```bash
 pnpm --filter api exec prisma db seed
+```
 
-## Open Prisma Studio
+Open Prisma Studio:
 
+```bash
 pnpm --filter api exec prisma studio
+```
 
-------------------------------------------------------------------------
+---
 
-# 🌱 Environment Variables
+## API Reference
 
-## Web (apps/web/.env.local)
+Base URL: `http://localhost:3001`
 
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+| Endpoint | Method | Description |
+| --- | --- | --- |
+| `/v1/health` | GET | Health check |
+| `/v1/categories` | GET | List categories for demo user |
+| `/v1/accounts` | GET | List accounts for demo user |
+| `/v1/transactions` | GET | List transactions with filters/pagination |
+| `/v1/transactions/:id` | GET | Get transaction detail |
+| `/v1/transactions` | POST | Create transaction |
+| `/v1/transactions/:id` | PATCH | Update transaction |
+| `/v1/transactions/:id` | DELETE | Delete transaction |
 
-## API (apps/api/.env)
+`GET /v1/transactions` query params:
 
-PORT=3001 CORS_ORIGIN=http://localhost:3000
-DATABASE_URL=postgresql://aurum:aurum@localhost:5432/aurum_dev?schema=public
-REDIS_URL=redis://localhost:6379
+- `limit`, `offset`
+- `accountId`, `categoryId`
+- `from`, `to`
+- `include=refs` (optional; includes account/category refs)
 
-------------------------------------------------------------------------
+---
 
-# 🧪 Useful Commands
+## Phase & Milestone Plan
 
-pnpm dev \# start web + api pnpm lint \# lint all packages pnpm
-typecheck \# type check all packages pnpm build \# production build
+- [x] Milestone 1: Monorepo & baseline
+- [x] Milestone 2: Database & infrastructure
+- [x] Milestone 3: Core ledger features (in progress)
+- [ ] Milestone 4: Analytics & AI
 
-------------------------------------------------------------------------
+---
 
-# 🧠 Roadmap
+## Conventions
 
-Milestone 1 --- Monorepo & Baseline\
-Milestone 2 --- Database & Infrastructure (Completed)\
-Milestone 3 --- Core Ledger Features (Next)\
-Milestone 4 --- Analytics & AI
+- Package manager: `pnpm`
+- Monorepo task runner: `turbo`
+- API prefix: `/v1`
+- Use `.env` / `.env.local` for runtime configuration
+- Keep shared cross-app logic under `packages/`
 
-------------------------------------------------------------------------
+---
 
-# 👤 Author
+## Author
 
-Zequn Yu\
+Zequn Yu  
 Seattle, WA
