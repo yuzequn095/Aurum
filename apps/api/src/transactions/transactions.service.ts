@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 import { TransactionType } from "@prisma/client";
+import { GetTransactionsQueryDto } from "./dto/get-transactions-query.dto";
 
 @Injectable()
 export class TransactionsService {
@@ -77,5 +78,42 @@ export class TransactionsService {
     if (!created.id) throw new BadRequestException("Failed to create transaction");
 
     return created;
+  }
+
+  async list(query: GetTransactionsQueryDto) {
+    const userId = await this.getDemoUserId();
+
+    const limit = query.limit ?? 50;
+    const offset = query.offset ?? 0;
+
+    const occurredAt: { gte?: Date; lte?: Date } = {};
+    if (query.from) occurredAt.gte = new Date(query.from);
+    if (query.to) occurredAt.lte = new Date(query.to);
+
+    return this.prisma.transaction.findMany({
+      where: {
+        userId,
+        ...(query.accountId ? { accountId: query.accountId } : {}),
+        ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+        ...(query.from || query.to ? { occurredAt } : {}),
+      },
+      orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+      skip: offset,
+      take: limit,
+      select: {
+        id: true,
+        accountId: true,
+        type: true,
+        amountCents: true,
+        currency: true,
+        occurredAt: true,
+        categoryId: true,
+        merchant: true,
+        note: true,
+        transferId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
   }
 }
