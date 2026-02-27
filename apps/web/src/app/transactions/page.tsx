@@ -14,7 +14,7 @@ type Tx = {
   categoryId: string | null;
   accountId: string;
   type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
-  account?: { id: string; name: string; currency: string } | null;
+  account?: { id: string; name: string; currency: string };
   category?: { id: string; name: string; parentId: string | null } | null;
 };
 
@@ -101,9 +101,6 @@ export default function TransactionsPage() {
   const [editOccurredAtLocal, setEditOccurredAtLocal] = useState(toLocalDatetimeInputValue());
   const [editErr, setEditErr] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
-
-  const accountNameById = new Map(accounts.map((a) => [a.id, a.name]));
-  const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
 
   const buildTransactionsPath = (nextOffset: number, filters: Filters) => {
     const qs = new URLSearchParams();
@@ -506,13 +503,10 @@ export default function TransactionsPage() {
                 </div>
                 <div style={{ opacity: 0.75, marginTop: 4 }}>{new Date(tx.occurredAt).toLocaleString()}</div>
                 <div style={{ opacity: 0.75, marginTop: 4 }}>
-                  Account: {tx.account?.name ?? accountNameById.get(tx.accountId) ?? tx.accountId}
+                  Account: {tx.account?.name ?? tx.accountId}
                 </div>
                 <div style={{ opacity: 0.75, marginTop: 4 }}>
-                  Category:{' '}
-                  {tx.categoryId
-                    ? (tx.category?.name ?? categoryNameById.get(tx.categoryId) ?? tx.categoryId)
-                    : '-'}
+                  Category: {tx.category?.name ?? (tx.categoryId ?? '-')}
                 </div>
                 {tx.note && <div style={{ marginTop: 6 }}>{tx.note}</div>}
               </div>
