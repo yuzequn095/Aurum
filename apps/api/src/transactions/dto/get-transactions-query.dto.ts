@@ -11,6 +11,10 @@ import {
 export class GetTransactionsQueryDto {
   @IsOptional()
   @IsString()
+  include?: string;
+
+  @IsOptional()
+  @IsString()
   accountId?: string;
 
   @IsOptional()

@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
-import { TransactionType } from '@prisma/client';
+import { Prisma, TransactionType } from '@prisma/client';
 import { GetTransactionsQueryDto } from './dto/get-transactions-query.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 
@@ -94,10 +94,46 @@ export class TransactionsService {
 
     const limit = query.limit ?? 50;
     const offset = query.offset ?? 0;
+    const includeRefs = query.include === 'refs';
 
     const occurredAt: { gte?: Date; lte?: Date } = {};
     if (query.from) occurredAt.gte = new Date(query.from);
     if (query.to) occurredAt.lte = new Date(query.to);
+
+    const baseSelect: Prisma.TransactionSelect = {
+      id: true,
+      accountId: true,
+      type: true,
+      amountCents: true,
+      currency: true,
+      occurredAt: true,
+      categoryId: true,
+      merchant: true,
+      note: true,
+      transferId: true,
+      createdAt: true,
+      updatedAt: true,
+    };
+
+    const select: Prisma.TransactionSelect = includeRefs
+      ? {
+          ...baseSelect,
+          account: {
+            select: {
+              id: true,
+              name: true,
+              currency: true,
+            },
+          },
+          category: {
+            select: {
+              id: true,
+              name: true,
+              parentId: true,
+            },
+          },
+        }
+      : baseSelect;
 
     return this.prisma.transaction.findMany({
       where: {
@@ -109,20 +145,7 @@ export class TransactionsService {
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
       skip: offset,
       take: limit,
-      select: {
-        id: true,
-        accountId: true,
-        type: true,
-        amountCents: true,
-        currency: true,
-        occurredAt: true,
-        categoryId: true,
-        merchant: true,
-        note: true,
-        transferId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select,
     });
   }
 
