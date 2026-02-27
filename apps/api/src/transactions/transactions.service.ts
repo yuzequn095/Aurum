@@ -3,6 +3,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 import { TransactionType } from "@prisma/client";
 import { GetTransactionsQueryDto } from "./dto/get-transactions-query.dto";
+import { UpdateTransactionDto } from "./dto/update-transaction.dto";
 
 @Injectable()
 export class TransactionsService {
@@ -115,5 +116,99 @@ export class TransactionsService {
         updatedAt: true,
       },
     });
+  }
+
+  async getById(id: string) {
+    const userId = await this.getDemoUserId();
+
+    const tx = await this.prisma.transaction.findFirst({
+      where: { id, userId },
+      select: {
+        id: true,
+        accountId: true,
+        type: true,
+        amountCents: true,
+        currency: true,
+        occurredAt: true,
+        categoryId: true,
+        merchant: true,
+        note: true,
+        transferId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return tx;
+  }
+
+  async update(id: string, dto: UpdateTransactionDto) {
+    const userId = await this.getDemoUserId();
+
+    const existing = await this.prisma.transaction.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+    if (!existing) return null;
+
+    if (dto.accountId) {
+      const account = await this.prisma.account.findFirst({
+        where: { id: dto.accountId, userId },
+        select: { id: true },
+      });
+      if (!account) return null;
+    }
+
+    if (dto.categoryId) {
+      const category = await this.prisma.category.findFirst({
+        where: { id: dto.categoryId, userId },
+        select: { id: true },
+      });
+      if (!category) return null;
+    }
+
+    const updated = await this.prisma.transaction.update({
+      where: { id },
+      data: {
+        accountId: dto.accountId,
+        type: dto.type,
+        amountCents: dto.amountCents,
+        currency: dto.currency,
+        occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : undefined,
+        categoryId: dto.categoryId,
+        merchant: dto.merchant,
+        note: dto.note,
+        transferId: dto.transferId,
+      },
+      select: {
+        id: true,
+        accountId: true,
+        type: true,
+        amountCents: true,
+        currency: true,
+        occurredAt: true,
+        categoryId: true,
+        merchant: true,
+        note: true,
+        transferId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return updated;
+  }
+
+  async remove(id: string) {
+    const userId = await this.getDemoUserId();
+
+    const existing = await this.prisma.transaction.findFirst({
+      where: { id, userId },
+      select: { id: true },
+    });
+    if (!existing) return false;
+
+    await this.prisma.transaction.delete({ where: { id } });
+    return true;
   }
 }
