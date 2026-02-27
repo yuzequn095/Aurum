@@ -14,6 +14,8 @@ type Tx = {
   categoryId: string | null;
   accountId: string;
   type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
+  account?: { id: string; name: string; currency: string } | null;
+  category?: { id: string; name: string; parentId: string | null } | null;
 };
 
 type Account = { id: string; name: string; currency: string };
@@ -107,6 +109,7 @@ export default function TransactionsPage() {
     const qs = new URLSearchParams();
     qs.set('limit', String(LIMIT));
     qs.set('offset', String(nextOffset));
+    qs.set('include', 'refs');
     if (filters.accountId) qs.set('accountId', filters.accountId);
     if (filters.categoryId) qs.set('categoryId', filters.categoryId);
     if (filters.from) qs.set('from', new Date(filters.from).toISOString());
@@ -503,10 +506,13 @@ export default function TransactionsPage() {
                 </div>
                 <div style={{ opacity: 0.75, marginTop: 4 }}>{new Date(tx.occurredAt).toLocaleString()}</div>
                 <div style={{ opacity: 0.75, marginTop: 4 }}>
-                  Account: {accountNameById.get(tx.accountId) ?? tx.accountId}
+                  Account: {tx.account?.name ?? accountNameById.get(tx.accountId) ?? tx.accountId}
                 </div>
                 <div style={{ opacity: 0.75, marginTop: 4 }}>
-                  Category: {tx.categoryId ? (categoryNameById.get(tx.categoryId) ?? tx.categoryId) : '-'}
+                  Category:{' '}
+                  {tx.categoryId
+                    ? (tx.category?.name ?? categoryNameById.get(tx.categoryId) ?? tx.categoryId)
+                    : '-'}
                 </div>
                 {tx.note && <div style={{ marginTop: 6 }}>{tx.note}</div>}
               </div>
