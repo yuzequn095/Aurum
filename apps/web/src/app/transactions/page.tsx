@@ -2,6 +2,9 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { Modal } from '@/components/Modal';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Container } from '@/components/ui/layout';
 import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api';
 
 type Tx = {
@@ -306,7 +309,8 @@ export default function TransactionsPage() {
   };
 
   return (
-    <main style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
+    <Container>
+      <main style={{ padding: 24 }}>
       <h1 style={{ fontSize: 24, fontWeight: 600 }}>Transactions</h1>
 
       <div
@@ -374,9 +378,9 @@ export default function TransactionsPage() {
         </label>
 
         <div style={{ display: 'flex', gap: 8 }}>
-          <button type='button' onClick={onApplyFilters} style={{ width: 120 }} disabled={refreshing}>
+          <Button type='button' onClick={onApplyFilters} className='w-[120px]' disabled={refreshing}>
             {refreshing ? 'Applying...' : 'Apply'}
-          </button>
+          </Button>
           <button type='button' onClick={onResetFilters} style={{ width: 120 }} disabled={refreshing}>
             Reset
           </button>
@@ -477,9 +481,9 @@ export default function TransactionsPage() {
 
         {submitErr && <p style={{ color: 'crimson', margin: 0 }}>Error: {submitErr}</p>}
 
-        <button type='submit' disabled={submitting || accounts.length === 0} style={{ width: 160 }}>
+        <Button type='submit' disabled={submitting || accounts.length === 0} className='w-[160px]'>
           {submitting ? 'Creating...' : 'Create Transaction'}
-        </button>
+        </Button>
       </form>
 
       {loadErr && <p style={{ marginTop: 12, color: 'crimson' }}>Error: {loadErr}</p>}
@@ -488,14 +492,11 @@ export default function TransactionsPage() {
 
       <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
         {items.map((tx) => (
-          <div
+          <Card
             key={tx.id}
-            style={{
-              border: '1px solid #e5e7eb',
-              borderRadius: 12,
-              padding: 12,
-            }}
+            style={{ padding: 12 }}
           >
+            <CardContent className='p-0'>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
               <div>
                 <div style={{ fontWeight: 600 }}>
@@ -531,14 +532,20 @@ export default function TransactionsPage() {
                 </div>
               </div>
             </div>
-          </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       {items.length > 0 && hasMore && (
-        <button type='button' onClick={loadMoreTransactions} disabled={loadingMore || refreshing} style={{ marginTop: 12 }}>
+        <Button
+          type='button'
+          onClick={loadMoreTransactions}
+          disabled={loadingMore || refreshing}
+          className='mt-3'
+        >
           {loadingMore ? 'Loading more...' : 'Load more'}
-        </button>
+        </Button>
       )}
 
       <Modal open={editOpen} onClose={closeEditModal} title='Edit Transaction'>
@@ -595,12 +602,13 @@ export default function TransactionsPage() {
             <button type='button' onClick={closeEditModal} disabled={editSubmitting}>
               Cancel
             </button>
-            <button type='submit' disabled={editSubmitting || !selectedTx}>
+            <Button type='submit' disabled={editSubmitting || !selectedTx}>
               {editSubmitting ? 'Saving...' : 'Save'}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
-    </main>
+      </main>
+    </Container>
   );
 }
