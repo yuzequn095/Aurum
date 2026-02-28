@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Modal } from '@/components/Modal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Container } from '@/components/ui/layout';
+import { Container, Section } from '@/components/ui/layout';
 import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api';
 
 type Tx = {
@@ -309,305 +309,289 @@ export default function TransactionsPage() {
   };
 
   return (
-    <Container>
-      <main style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 600 }}>Transactions</h1>
+    <Container className='min-h-screen bg-aurum-bg text-aurum-text py-8 space-y-10'>
+      <main className='space-y-10'>
+        <h1 style={{ fontSize: 24, fontWeight: 600 }}>Transactions</h1>
 
-      <div
-        style={{
-          marginTop: 12,
-          border: '1px solid #e5e7eb',
-          borderRadius: 12,
-          padding: 12,
-          display: 'grid',
-          gap: 10,
-        }}
-      >
-        <div style={{ fontWeight: 600 }}>Filters</div>
-
-        <label>
-          Account
-          <select
-            value={filterAccountId}
-            onChange={(e) => setFilterAccountId(e.target.value)}
-            style={{ width: '100%', marginTop: 4 }}
-          >
-            <option value=''>All accounts</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Category
-          <select
-            value={filterCategoryId}
-            onChange={(e) => setFilterCategoryId(e.target.value)}
-            style={{ width: '100%', marginTop: 4 }}
-          >
-            <option value=''>All categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          From
-          <input
-            type='date'
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            style={{ width: '100%', marginTop: 4 }}
-          />
-        </label>
-
-        <label>
-          To
-          <input
-            type='date'
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            style={{ width: '100%', marginTop: 4 }}
-          />
-        </label>
-
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button type='button' onClick={onApplyFilters} className='w-[120px]' disabled={refreshing}>
-            {refreshing ? 'Applying...' : 'Apply'}
-          </Button>
-          <button type='button' onClick={onResetFilters} style={{ width: 120 }} disabled={refreshing}>
-            Reset
-          </button>
-        </div>
-      </div>
-
-      <form
-        onSubmit={onSubmit}
-        style={{
-          marginTop: 16,
-          border: '1px solid #e5e7eb',
-          borderRadius: 12,
-          padding: 12,
-          display: 'grid',
-          gap: 10,
-        }}
-      >
-        <div style={{ fontWeight: 600 }}>Create Expense</div>
-
-        <label>
-          Account
-          <select
-            value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
-            style={{ width: '100%', marginTop: 4 }}
-            required
-          >
-            {accounts.length === 0 && <option value=''>No accounts</option>}
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({a.currency})
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Category
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            style={{ width: '100%', marginTop: 4 }}
-          >
-            <option value=''>(none)</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Amount (cents)
-          <input
-            type='number'
-            min={1}
-            step={1}
-            value={amountCents}
-            onChange={(e) => setAmountCents(e.target.value)}
-            style={{ width: '100%', marginTop: 4 }}
-            required
-          />
-        </label>
-
-        <label>
-          Occurred At
-          <input
-            type='datetime-local'
-            value={occurredAtLocal}
-            onChange={(e) => setOccurredAtLocal(e.target.value)}
-            style={{ width: '100%', marginTop: 4 }}
-            required
-          />
-        </label>
-
-        <label>
-          Merchant
-          <input
-            type='text'
-            value={merchant}
-            onChange={(e) => setMerchant(e.target.value)}
-            style={{ width: '100%', marginTop: 4 }}
-            placeholder='Starbucks'
-          />
-        </label>
-
-        <label>
-          Note
-          <input
-            type='text'
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            style={{ width: '100%', marginTop: 4 }}
-            placeholder='optional'
-          />
-        </label>
-
-        {submitErr && <p style={{ color: 'crimson', margin: 0 }}>Error: {submitErr}</p>}
-
-        <Button type='submit' disabled={submitting || accounts.length === 0} className='w-[160px]'>
-          {submitting ? 'Creating...' : 'Create Transaction'}
-        </Button>
-      </form>
-
-      {loadErr && <p style={{ marginTop: 12, color: 'crimson' }}>Error: {loadErr}</p>}
-
-      {!loadErr && refreshing && items.length === 0 && <p style={{ marginTop: 12 }}>Loading...</p>}
-
-      <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
-        {items.map((tx) => (
-          <Card
-            key={tx.id}
-            style={{ padding: 12 }}
-          >
-            <CardContent className='p-0'>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-              <div>
-                <div style={{ fontWeight: 600 }}>
-                  {tx.merchant ?? '(no merchant)'} <span style={{ opacity: 0.6, fontWeight: 400 }}>- {tx.type}</span>
-                </div>
-                <div style={{ opacity: 0.75, marginTop: 4 }}>{new Date(tx.occurredAt).toLocaleString()}</div>
-                <div style={{ opacity: 0.75, marginTop: 4 }}>
-                  Account: {tx.account?.name ?? tx.accountId}
-                </div>
-                <div style={{ opacity: 0.75, marginTop: 4 }}>
-                  Category: {tx.category?.name ?? (tx.categoryId ?? '-')}
-                </div>
-                {tx.note && <div style={{ marginTop: 6 }}>{tx.note}</div>}
-              </div>
-
-              <div style={{ display: 'grid', justifyItems: 'end', gap: 8 }}>
-                <div style={{ fontWeight: 600 }}>{formatMoneyForType(tx.type, tx.amountCents, tx.currency)}</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type='button'
-                    onClick={() => openEditModal(tx)}
-                    style={{ border: '1px solid #e5e7eb', background: '#fff', borderRadius: 8, padding: '4px 8px' }}
+        <Section title='Filters'>
+          <Card>
+            <CardContent className='pt-4'>
+              <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
+                <label>
+                  Account
+                  <select
+                    value={filterAccountId}
+                    onChange={(e) => setFilterAccountId(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
                   >
-                    Edit
-                  </button>
-                  <button
-                    type='button'
-                    onClick={() => onDeleteTx(tx)}
-                    style={{ border: '1px solid #fecaca', color: '#b91c1c', background: '#fff', borderRadius: 8, padding: '4px 8px' }}
+                    <option value=''>All accounts</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  Category
+                  <select
+                    value={filterCategoryId}
+                    onChange={(e) => setFilterCategoryId(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
                   >
-                    Delete
-                  </button>
+                    <option value=''>All categories</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  From
+                  <input
+                    type='date'
+                    value={from}
+                    onChange={(e) => setFrom(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
+                  />
+                </label>
+
+                <label>
+                  To
+                  <input
+                    type='date'
+                    value={to}
+                    onChange={(e) => setTo(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
+                  />
+                </label>
+
+                <div className='flex justify-end gap-3 pt-4 md:col-span-2'>
+                  <Button type='button' variant='primary' onClick={onApplyFilters} className='w-[120px]' disabled={refreshing}>
+                    {refreshing ? 'Applying...' : 'Apply'}
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='secondary'
+                    onClick={onResetFilters}
+                    className='w-[120px]'
+                    disabled={refreshing}
+                  >
+                    Reset
+                  </Button>
                 </div>
               </div>
-            </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+        </Section>
 
-      {items.length > 0 && hasMore && (
-        <Button
-          type='button'
-          onClick={loadMoreTransactions}
-          disabled={loadingMore || refreshing}
-          className='mt-3'
-        >
-          {loadingMore ? 'Loading more...' : 'Load more'}
-        </Button>
-      )}
+        <Section title='Create Expense'>
+          <Card>
+            <CardContent className='pt-4'>
+              <form onSubmit={onSubmit} className='grid grid-cols-1 gap-6 md:grid-cols-2'>
+                <label>
+                  Account
+                  <select
+                    value={accountId}
+                    onChange={(e) => setAccountId(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
+                    required
+                  >
+                    {accounts.length === 0 && <option value=''>No accounts</option>}
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({a.currency})
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-      <Modal open={editOpen} onClose={closeEditModal} title='Edit Transaction'>
-        <form onSubmit={onSaveEdit} style={{ display: 'grid', gap: 10 }}>
-          <label>
-            Merchant
-            <input
-              type='text'
-              value={editMerchant}
-              onChange={(e) => setEditMerchant(e.target.value)}
-              style={{ width: '100%', marginTop: 4 }}
-              placeholder='merchant'
-            />
-          </label>
+                <label>
+                  Category
+                  <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
+                  >
+                    <option value=''>(none)</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-          <label>
-            Note
-            <input
-              type='text'
-              value={editNote}
-              onChange={(e) => setEditNote(e.target.value)}
-              style={{ width: '100%', marginTop: 4 }}
-              placeholder='optional'
-            />
-          </label>
+                <label>
+                  Amount (cents)
+                  <input
+                    type='number'
+                    min={1}
+                    step={1}
+                    value={amountCents}
+                    onChange={(e) => setAmountCents(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
+                    required
+                  />
+                </label>
 
-          <label>
-            Amount (USD)
-            <input
-              type='number'
-              min={0.01}
-              step={0.01}
-              value={editAmountDollars}
-              onChange={(e) => setEditAmountDollars(e.target.value)}
-              style={{ width: '100%', marginTop: 4 }}
-              required
-            />
-          </label>
+                <label>
+                  Occurred At
+                  <input
+                    type='datetime-local'
+                    value={occurredAtLocal}
+                    onChange={(e) => setOccurredAtLocal(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
+                    required
+                  />
+                </label>
 
-          <label>
-            Occurred At
-            <input
-              type='datetime-local'
-              value={editOccurredAtLocal}
-              onChange={(e) => setEditOccurredAtLocal(e.target.value)}
-              style={{ width: '100%', marginTop: 4 }}
-              required
-            />
-          </label>
+                <label>
+                  Merchant
+                  <input
+                    type='text'
+                    value={merchant}
+                    onChange={(e) => setMerchant(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
+                    placeholder='Starbucks'
+                  />
+                </label>
 
-          {editErr && <p style={{ color: 'crimson', margin: 0 }}>Error: {editErr}</p>}
+                <label>
+                  Note
+                  <input
+                    type='text'
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
+                    placeholder='optional'
+                  />
+                </label>
 
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type='button' onClick={closeEditModal} disabled={editSubmitting}>
-              Cancel
-            </button>
-            <Button type='submit' disabled={editSubmitting || !selectedTx}>
-              {editSubmitting ? 'Saving...' : 'Save'}
-            </Button>
+                {submitErr && (
+                  <p className='m-0 text-red-600 md:col-span-2'>
+                    Error: {submitErr}
+                  </p>
+                )}
+
+                <div className='flex justify-end gap-3 pt-4 md:col-span-2'>
+                  <Button type='submit' variant='primary' disabled={submitting || accounts.length === 0} className='w-[160px]'>
+                    {submitting ? 'Creating...' : 'Create Transaction'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </Section>
+
+        {loadErr && <p style={{ color: 'crimson' }}>Error: {loadErr}</p>}
+        {!loadErr && refreshing && items.length === 0 && <p>Loading...</p>}
+
+        <Section>
+          <div>
+            {items.map((tx) => (
+              <Card key={tx.id} className='mb-4 transition-shadow hover:shadow-aurum'>
+                <CardContent className='pt-4'>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>
+                        {tx.merchant ?? '(no merchant)'} <span style={{ opacity: 0.6, fontWeight: 400 }}>- {tx.type}</span>
+                      </div>
+                      <div style={{ opacity: 0.75, marginTop: 4 }}>{new Date(tx.occurredAt).toLocaleString()}</div>
+                      <div style={{ opacity: 0.75, marginTop: 4 }}>Account: {tx.account?.name ?? tx.accountId}</div>
+                      <div style={{ opacity: 0.75, marginTop: 4 }}>
+                        Category: {tx.category?.name ?? (tx.categoryId ?? '-')}
+                      </div>
+                      {tx.note && <div style={{ marginTop: 6 }}>{tx.note}</div>}
+                    </div>
+
+                    <div style={{ display: 'grid', justifyItems: 'end', gap: 8 }}>
+                      <div style={{ fontWeight: 600 }}>{formatMoneyForType(tx.type, tx.amountCents, tx.currency)}</div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Button type='button' variant='secondary' onClick={() => openEditModal(tx)} className='px-2 py-1'>
+                          Edit
+                        </Button>
+                        <Button type='button' variant='destructive' onClick={() => onDeleteTx(tx)} className='px-2 py-1'>
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </form>
-      </Modal>
+
+          {items.length > 0 && hasMore && (
+            <Button type='button' onClick={loadMoreTransactions} disabled={loadingMore || refreshing}>
+              {loadingMore ? 'Loading more...' : 'Load more'}
+            </Button>
+          )}
+        </Section>
+
+        <Modal open={editOpen} onClose={closeEditModal} title='Edit Transaction'>
+          <form onSubmit={onSaveEdit} style={{ display: 'grid', gap: 10 }}>
+            <label>
+              Merchant
+              <input
+                type='text'
+                value={editMerchant}
+                onChange={(e) => setEditMerchant(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+                placeholder='merchant'
+              />
+            </label>
+
+            <label>
+              Note
+              <input
+                type='text'
+                value={editNote}
+                onChange={(e) => setEditNote(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+                placeholder='optional'
+              />
+            </label>
+
+            <label>
+              Amount (USD)
+              <input
+                type='number'
+                min={0.01}
+                step={0.01}
+                value={editAmountDollars}
+                onChange={(e) => setEditAmountDollars(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+                required
+              />
+            </label>
+
+            <label>
+              Occurred At
+              <input
+                type='datetime-local'
+                value={editOccurredAtLocal}
+                onChange={(e) => setEditOccurredAtLocal(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+                required
+              />
+            </label>
+
+            {editErr && <p style={{ color: 'crimson', margin: 0 }}>Error: {editErr}</p>}
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button type='button' variant='secondary' onClick={closeEditModal} disabled={editSubmitting}>
+                Cancel
+              </Button>
+              <Button type='submit' disabled={editSubmitting || !selectedTx}>
+                {editSubmitting ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
       </main>
     </Container>
   );

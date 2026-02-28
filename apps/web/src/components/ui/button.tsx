@@ -8,7 +8,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-aurum-primary text-white hover:bg-aurum-primaryHover',
+  primary: 'border border-aurum-primaryHover bg-aurum-primary text-black hover:bg-aurum-primaryHover',
   secondary: 'border border-aurum-border bg-aurum-card text-aurum-text hover:bg-aurum-bg',
   ghost: 'bg-transparent text-aurum-muted hover:bg-aurum-bg',
   destructive: 'bg-aurum-danger text-white hover:opacity-95',
@@ -19,7 +19,7 @@ export function Button({ className, variant = 'primary', type = 'button', ...pro
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center rounded-aurum px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex items-center justify-center rounded-aurum px-3 py-2 text-sm font-medium shadow-aurumSm transition disabled:cursor-not-allowed disabled:opacity-60',
         variantClasses[variant],
         className,
       )}
