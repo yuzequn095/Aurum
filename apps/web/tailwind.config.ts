@@ -1,7 +1,11 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-  content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
+  content: [
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/lib/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
   theme: {
     extend: {
       colors: {
@@ -11,9 +15,9 @@ const config: Config = {
           border: '#E2E8F0',
           text: '#0F172A',
           muted: '#64748B',
-          primary: '#0F766E',
-          primaryHover: '#115E59',
-          primarySoft: '#CCFBF1',
+          primary: '#F5C542',
+          primaryHover: '#E3B233',
+          primarySoft: '#FDF3D1',
           success: '#16A34A',
           danger: '#DC2626',
         },
