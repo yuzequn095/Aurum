@@ -5,6 +5,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { AccountsModule } from './accounts/accounts.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     TransactionsModule,
     AccountsModule,
     AnalyticsModule,
+    AiModule,
   ],
   controllers: [AppController],
 })

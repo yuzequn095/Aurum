@@ -8,55 +8,70 @@
 
 ---
 
-## Project Description
+## Product Vision
 
-Aurum is a privacy-first, AI-powered personal finance assistant (Web-first MVP).
-
-The project focuses on building a production-grade personal finance system with:
-
-- Modern TypeScript monorepo architecture
-- NestJS REST API backend
-- Next.js App Router frontend
-- Prisma ORM v7 + PostgreSQL
-- Docker-based local infrastructure
-- A future path toward AI-driven financial insights
-
----
-
-## What Works Today
-
-- Docker local infra (PostgreSQL + Redis)
-- Prisma v7 configured with `@prisma/adapter-pg`
-- Core schema and migrations
-- Seed data (demo user + sample ledger data)
-- Categories API: `GET /v1/categories`
-- Accounts API: `GET /v1/accounts`
-- Transactions CRUD + list filtering/pagination
-- Transactions list supports `include=refs` for account/category refs
-- Web transactions page supports create/edit/delete/filter/pagination
+Aurum is a privacy-first AI-powered personal finance assistant designed for intelligent monthly insights and long-term financial awareness.
+It combines a modern ledger experience with analytics that make spending patterns understandable and actionable.
+The product is web-first, with API-driven architecture and a clear path to AI-generated monthly reporting.
+The long-term goal is to help users build consistent financial clarity without sacrificing data ownership.
 
 ---
 
 ## Architecture
 
-```text
-System Architecture
-
-User (Browser)
-    |
-    v
-Next.js Web (apps/web)  -- http://localhost:3000
-    |  REST
-    v
-NestJS API (apps/api)   -- http://localhost:3001
-    |
-    |-- Prisma ORM v7 (adapter-pg)
-    |       |
-    |       v
-    |   PostgreSQL (Docker) -- localhost:5432
-    |
-    |-- Redis (Docker) -- localhost:6379
+```mermaid
+flowchart LR
+  U[User / Browser] -->|HTTP| WEB[Next.js Web (apps/web)]
+  WEB -->|REST /v1| API[NestJS API (apps/api)]
+  API -->|Prisma ORM v7| DB[(PostgreSQL)]
 ```
+
+---
+
+## Progress & Roadmap
+
+| Phase | Focus | Milestones | Status |
+|------|-------|------------|--------|
+| Phase 1 | Core Ledger & Analytics | M1–M4 | ✅ Completed |
+| Phase 2 | AI Reports & Insights | M5–M6 | 🚧 In Progress |
+| Phase 3 | Hardening & Scale | M7–M9 | ⏳ Planned |
+
+### Phase 1 – Core Ledger (Completed)
+- M1: Monorepo bootstrap
+- M2: Database schema & migrations
+- M3: Transactions CRUD
+- M4: Analytics Dashboard (monthly summary + charts)
+
+### Phase 2 – AI Layer (In Progress)
+- M5.1: AI Monthly Report aggregation endpoint
+- M5.2: AI Report UI page
+- M6: LLM-powered insight generation (planned)
+
+### Phase 3 – Engineering Hardening (Planned)
+- Authentication & user isolation
+- Caching layer for analytics
+- Test coverage (unit + e2e)
+- Observability & logging
+
+---
+
+## Current Capabilities
+
+- Track transactions
+- Categorize expenses
+- View monthly cashflow
+- View income vs expense charts
+- View category breakdown
+- Generate rule-based monthly AI report (if implemented)
+
+---
+
+## Upcoming Work
+
+- LLM-based insight generation
+- PDF export of monthly report
+- Multi-month trend analysis
+- User authentication
 
 ---
 
@@ -79,12 +94,6 @@ Aurum/
 |-- turbo.json
 `-- package.json
 ```
-
-Top-level folders:
-
-- `apps/`: runnable applications (`web`, `api`)
-- `packages/`: shared code across apps
-- `infra/`: infrastructure and local Docker setup
 
 ---
 
@@ -154,6 +163,9 @@ Base URL: `http://localhost:3001`
 | `/v1/transactions` | POST | Create transaction |
 | `/v1/transactions/:id` | PATCH | Update transaction |
 | `/v1/transactions/:id` | DELETE | Delete transaction |
+| `/v1/analytics/monthly-summary` | GET | Monthly summary analytics |
+| `/v1/analytics/category-breakdown` | GET | Expense by category for month |
+| `/v1/ai/monthly-report` | GET | Rule-based AI monthly report payload |
 
 `GET /v1/transactions` query params:
 
@@ -164,12 +176,14 @@ Base URL: `http://localhost:3001`
 
 ---
 
-## Phase & Milestone Plan
+## PowerShell curl Examples
 
-- [x] Milestone 1: Monorepo & baseline
-- [x] Milestone 2: Database & infrastructure
-- [x] Milestone 3: Core ledger features (in progress)
-- [ ] Milestone 4: Analytics & AI
+```powershell
+curl.exe "http://localhost:3001/v1/health"
+curl.exe "http://localhost:3001/v1/analytics/monthly-summary?year=2026&month=2"
+curl.exe "http://localhost:3001/v1/analytics/category-breakdown?year=2026&month=2"
+curl.exe "http://localhost:3001/v1/ai/monthly-report?year=2026&month=2"
+```
 
 ---
 
@@ -180,10 +194,3 @@ Base URL: `http://localhost:3001`
 - API prefix: `/v1`
 - Use `.env` / `.env.local` for runtime configuration
 - Keep shared cross-app logic under `packages/`
-
----
-
-## Author
-
-Zequn Yu  
-Seattle, WA
