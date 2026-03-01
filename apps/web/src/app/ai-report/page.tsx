@@ -1,8 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container, Section } from '@/components/ui/layout';
+import {
+  AiInsight,
+  AiMonthlyReportResponse,
+  fetchAiMonthlyReport,
+} from '@/lib/api';
 
 const monthNames = [
   'January',
@@ -19,11 +24,63 @@ const monthNames = [
   'December',
 ];
 
+function formatCents(cents: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(cents / 100);
+}
+
+function insightClasses(severity: AiInsight['severity']) {
+  if (severity === 'warn') {
+    return 'border-aurum-danger/30 bg-aurum-card text-aurum-danger';
+  }
+  if (severity === 'good') {
+    return 'border-aurum-success/30 bg-aurum-card text-aurum-success';
+  }
+  return 'border-aurum-primaryHover/30 bg-aurum-card text-aurum-text';
+}
+
 export default function AiReportPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [report, setReport] = useState<AiMonthlyReportResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const yearOptions = useMemo(() => [year, year - 1, year - 2], [year]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchAiMonthlyReport(year, month);
+        if (!cancelled) setReport(data);
+      } catch (e) {
+        if (!cancelled) {
+          setReport(null);
+          setError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [year, month]);
+
+  const totals = report?.summary.totals ?? {
+    incomeCents: 0,
+    expenseCents: 0,
+    netCents: 0,
+  };
+  const categoryTotals = report?.categoryBreakdown.totals ?? [];
+  const insights = report?.insights ?? [];
 
   return (
     <Container className='py-8 space-y-10'>
@@ -31,6 +88,12 @@ export default function AiReportPage() {
         <h1 className='text-3xl font-semibold tracking-tight text-aurum-text'>AI Report</h1>
         <p className='text-sm text-aurum-muted'>Monthly insights generated from your transactions.</p>
       </header>
+
+      {error ? (
+        <div className='rounded-[14px] border border-aurum-danger/30 bg-aurum-card px-3 py-2 text-xs text-aurum-danger'>
+          Failed to load AI report: {error}
+        </div>
+      ) : null}
 
       <Section title='Period'>
         <Card className='rounded-[14px] shadow-aurumSm'>
@@ -73,9 +136,48 @@ export default function AiReportPage() {
       <Section title='Overview'>
         <Card className='rounded-[14px] shadow-aurumSm'>
           <CardContent className='pt-6'>
-            <div className='rounded-[12px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 p-4 text-sm text-aurum-muted'>
-              Overview placeholder: monthly AI summary will appear here.
-            </div>
+            {loading ? (
+              <div className='space-y-4'>
+                <div className='h-12 w-56 animate-pulse rounded bg-aurum-primarySoft/50' />
+                <div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
+                  <div className='h-16 animate-pulse rounded bg-aurum-primarySoft/50' />
+                  <div className='h-16 animate-pulse rounded bg-aurum-primarySoft/50' />
+                  <div className='h-16 animate-pulse rounded bg-aurum-primarySoft/50' />
+                </div>
+              </div>
+            ) : (
+              <div className='space-y-5'>
+                <div>
+                  <p className='text-sm text-aurum-muted'>Net Cashflow</p>
+                  <p
+                    className={`text-4xl font-semibold ${
+                      totals.netCents > 0
+                        ? 'text-aurum-success'
+                        : totals.netCents < 0
+                          ? 'text-aurum-danger/80'
+                          : 'text-aurum-muted'
+                    }`}
+                  >
+                    {formatCents(totals.netCents)}
+                  </p>
+                </div>
+
+                <div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
+                  <div className='rounded-[12px] border border-aurum-border bg-aurum-card p-4'>
+                    <p className='text-xs text-aurum-muted'>Income</p>
+                    <p className='text-lg font-semibold text-aurum-success'>{formatCents(totals.incomeCents)}</p>
+                  </div>
+                  <div className='rounded-[12px] border border-aurum-border bg-aurum-card p-4'>
+                    <p className='text-xs text-aurum-muted'>Expense</p>
+                    <p className='text-lg font-semibold text-aurum-danger/80'>{formatCents(totals.expenseCents)}</p>
+                  </div>
+                  <div className='rounded-[12px] border border-aurum-border bg-aurum-card p-4'>
+                    <p className='text-xs text-aurum-muted'>Net</p>
+                    <p className='text-lg font-semibold text-aurum-text'>{formatCents(totals.netCents)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </Section>
@@ -83,14 +185,25 @@ export default function AiReportPage() {
       <Section title='Insights'>
         <Card className='rounded-[14px] shadow-aurumSm'>
           <CardContent className='pt-6'>
-            <div className='space-y-3'>
-              <div className='rounded-[12px] border border-aurum-border bg-aurum-card p-4 text-sm text-aurum-muted'>
-                Insight placeholder #1
+            {loading ? (
+              <div className='space-y-3'>
+                <div className='h-20 animate-pulse rounded bg-aurum-primarySoft/50' />
+                <div className='h-20 animate-pulse rounded bg-aurum-primarySoft/50' />
               </div>
+            ) : insights.length === 0 ? (
               <div className='rounded-[12px] border border-aurum-border bg-aurum-card p-4 text-sm text-aurum-muted'>
-                Insight placeholder #2
+                No insights available for this month.
               </div>
-            </div>
+            ) : (
+              <div className='space-y-3'>
+                {insights.map((insight) => (
+                  <div key={insight.id} className={`rounded-[12px] border p-4 ${insightClasses(insight.severity)}`}>
+                    <p className='text-sm font-semibold'>{insight.title}</p>
+                    <p className='mt-1 text-sm'>{insight.body}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </Section>
@@ -101,7 +214,24 @@ export default function AiReportPage() {
             <CardTitle>Category Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className='h-[220px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner' />
+            {loading ? (
+              <div className='h-[220px] animate-pulse rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner' />
+            ) : categoryTotals.length === 0 ? (
+              <div className='h-[220px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner text-sm text-aurum-muted flex items-center justify-center'>
+                No category data this month
+              </div>
+            ) : (
+              <div className='h-[220px] overflow-auto rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner p-4'>
+                <div className='space-y-2'>
+                  {categoryTotals.map((item) => (
+                    <div key={item.categoryId ?? item.categoryName ?? 'uncategorized'} className='flex items-center justify-between rounded-[10px] bg-aurum-card/80 px-3 py-2'>
+                      <span className='text-sm text-aurum-text'>{item.categoryName || 'Uncategorized'}</span>
+                      <span className='text-sm font-medium text-aurum-text'>{formatCents(item.expenseCents)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </Section>
