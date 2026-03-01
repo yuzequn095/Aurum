@@ -37,12 +37,12 @@ export default function DashboardPage() {
       </Section>
 
       <Card className='relative overflow-hidden rounded-[14px] border-0 shadow-aurumSm'>
-        <div className='absolute inset-0 bg-gradient-to-br from-aurum-primarySoft to-white' />
+        <div className='absolute inset-0 bg-gradient-to-r from-aurum-primarySoft via-white to-white' />
         <CardContent className='relative py-14'>
           <div className='flex flex-col gap-6 md:flex-row md:items-end md:justify-between'>
             <div className='space-y-2'>
               <p className='text-sm font-medium text-aurum-muted'>Total Balance</p>
-              <p className='text-5xl font-semibold text-aurum-text'>$42,860.00</p>
+              <p className='text-[52px] leading-tight font-semibold text-aurum-text'>$42,860.00</p>
               <p className='text-sm font-medium text-aurum-success'>+8.6% from previous month</p>
             </div>
             <p className='max-w-xs text-xs text-aurum-muted'>
