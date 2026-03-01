@@ -32,8 +32,7 @@ export function buildLlmPrompt(context: LlmMonthlyContext): LlmPromptMessages {
       'You are Aurum Insights Engine. Output only strict JSON with shape: {"insights":[{"id":"...","title":"...","body":"...","severity":"info|warn|good|error","meta":{}}]}. No markdown. No code fences. No extra text.',
     user: JSON.stringify(
       {
-        instruction:
-          'Generate concise monthly finance insights. Keep each body <= 240 characters.',
+        instruction: `Generate concise monthly finance insights. Keep each body <= ${MAX_BODY_LENGTH} characters.`,
         summary: {
           totals: summary.totals,
           deltaPercent: summary.deltaPercent,
@@ -98,8 +97,13 @@ function normalizeOneInsight(raw: unknown, index: number): LlmInsight {
     );
   }
 
+  const normalizedId = id.trim();
+  const llmId = normalizedId.startsWith('llm:')
+    ? normalizedId
+    : `llm:${normalizedId}`;
+
   return {
-    id: id.trim(),
+    id: llmId,
     title: title.trim(),
     body: normalizeBody(body),
     severity,
@@ -127,6 +131,13 @@ export function parseAndValidateLlmOutput(rawContent: string): LlmInsight[] {
   const normalized = insightsRaw
     .slice(0, MAX_INSIGHTS)
     .map((insight, index) => normalizeOneInsight(insight, index));
+  const deduped: LlmInsight[] = [];
+  const seen = new Set<string>();
+  for (const insight of normalized) {
+    if (seen.has(insight.id)) continue;
+    seen.add(insight.id);
+    deduped.push(insight);
+  }
 
-  return normalized;
+  return deduped;
 }
