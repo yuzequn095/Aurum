@@ -1,4 +1,4 @@
-# Aurum
+﻿# Aurum
 
 ![Node.js](https://img.shields.io/badge/Node.js-20.x-339933?logo=node.js&logoColor=white)
 ![pnpm](https://img.shields.io/badge/pnpm-9.x-F69220?logo=pnpm&logoColor=white)
@@ -11,9 +11,9 @@
 ## Product Vision
 
 Aurum is a privacy-first AI-powered personal finance assistant designed for intelligent monthly insights and long-term financial awareness.
-It combines a modern ledger experience with analytics that make spending patterns understandable and actionable.
-The product is web-first, with API-driven architecture and a clear path to AI-generated monthly reporting.
-The long-term goal is to help users build consistent financial clarity without sacrificing data ownership.
+It combines ledger operations, analytics, and explainable monthly reporting in a web-first architecture.
+The system is built around API-owned business logic and typed frontend clients.
+The near-term focus is to evolve from deterministic insights to a pluggable AI insight pipeline.
 
 ---
 
@@ -28,67 +28,92 @@ flowchart LR
 
 ---
 
-## Progress & Roadmap
+## Current Status
 
-| Phase | Focus | Milestones | Status |
-|------|-------|------------|--------|
-| Phase 1 | Core Ledger & Analytics | M1–M4 | ✅ Completed |
-| Phase 2 | AI Reports & Insights | M5–M6 | 🚧 In Progress |
-| Phase 3 | Hardening & Scale | M7–M9 | ⏳ Planned |
-
-### Phase 1 – Core Ledger (Completed)
-- M1: Monorepo bootstrap
-- M2: Database schema & migrations
-- M3: Transactions CRUD
-- M4: Analytics Dashboard (monthly summary + charts)
-
-### Phase 2 – AI Layer (In Progress)
-- M5.1: AI Monthly Report aggregation endpoint
-- M5.2: AI Report UI page
-- M6: LLM-powered insight generation (planned)
-
-### Phase 3 – Engineering Hardening (Planned)
-- Authentication & user isolation
-- Caching layer for analytics
-- Test coverage (unit + e2e)
-- Observability & logging
+Aurum is currently in Phase 3.
+Core ledger, analytics dashboard, and AI report (rule-based insights) are complete.
+The current focus is extensible insight-engine architecture and staged LLM integration.
 
 ---
 
+## Roadmap
+
+### Phase 1 - Foundation
+- M1: Monorepo setup
+- M2: Database schema (Prisma v7)
+- M3: Transactions CRUD
+- M4: Analytics Dashboard  
+Status: ✅ Completed
+
+### Phase 2 - AI Report (Rule-Based)
+- M5.1: AI Monthly Report API
+- M5.2: AI Report UI
+- M5.3: Loading / Error / Empty states
+- Rule-based insights engine (baseline deterministic insights)  
+Status: ✅ Completed
+
+> Insights are currently generated via rule-based logic. LLM integration will be introduced in Phase 3.
+
+### Phase 3 - Intelligent Insight Engine
+- M6.1: Pluggable Insight Engine abstraction (completed)
+- M6.2: LLM-based insight generator scaffold (in progress)
+- M6.3: Hybrid (rules + LLM) merge strategy
+- M6.4: Insight explanation + confidence scoring  
+Status: 🚧 In Progress
+
+### Phase 4 - Hardening & Productization
+- Authentication
+- Multi-user isolation
+- Caching layer
+- PDF export of monthly reports
+- Observability & logging  
+Status: ⏳ Planned
+
+---
 ## Current Capabilities
 
-- Track transactions
-- Categorize expenses
-- View monthly cashflow
-- View income vs expense charts
-- View category breakdown
-- Generate rule-based monthly AI report (if implemented)
+- Add transactions with categories
+- Monthly summary analytics
+- Income vs Expense visualization
+- Category breakdown visualization
+- AI Report page with rule-based insights
+- Pluggable architecture prepared for future LLM integration
 
 ---
 
-## Upcoming Work
+## AI Insight Architecture (Current)
 
-- LLM-based insight generation
-- PDF export of monthly report
-- Multi-month trend analysis
-- User authentication
+Currently:  
+Analytics -> Rule Engine -> Insights -> Web UI
+
+Future:  
+Analytics -> Rule Engine + LLM Engine -> Merge Layer -> Insights
+
+Current implementation is deterministic and auditable.
+Phase 3 introduces pluggable generation and merge logic without changing existing analytics contracts.
 
 ---
 
 ## Monorepo Structure
 
 ```text
+apps/
+  api/   (NestJS + Prisma v7)
+  web/   (Next.js 14 App Router)
+```
+
+```text
 Aurum/
 |
 |-- apps/
-|   |-- web/          # Next.js frontend
-|   `-- api/          # NestJS backend
+|   |-- web/
+|   `-- api/
 |
 |-- packages/
-|   `-- core/         # shared types / utilities
+|   `-- core/
 |
 |-- infra/
-|   `-- docker/       # docker-compose.yml
+|   `-- docker/
 |
 |-- pnpm-workspace.yaml
 |-- turbo.json
@@ -194,3 +219,4 @@ curl.exe "http://localhost:3001/v1/ai/monthly-report?year=2026&month=2"
 - API prefix: `/v1`
 - Use `.env` / `.env.local` for runtime configuration
 - Keep shared cross-app logic under `packages/`
+

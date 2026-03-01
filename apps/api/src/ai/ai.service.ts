@@ -1,103 +1,39 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { AnalyticsService } from '../analytics/analytics.service';
-
-type InsightSeverity = 'info' | 'warn' | 'good';
-
-type Insight = {
-  id: string;
-  title: string;
-  body: string;
-  severity: InsightSeverity;
-  meta?: Record<string, unknown>;
-};
+import type { InsightEngine } from './insights/insight-engine.interface';
+import { INSIGHT_ENGINE } from './insights/insight-engine.token';
+import type {
+  MonthlyReportContext,
+  MonthlyReportResponse,
+} from './insights/types';
 
 @Injectable()
 export class AiService {
-  constructor(private readonly analyticsService: AnalyticsService) {}
+  constructor(
+    private readonly analyticsService: AnalyticsService,
+    @Inject(INSIGHT_ENGINE) private readonly insightEngine: InsightEngine,
+  ) {}
 
-  private formatDollars(cents: number) {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(cents / 100);
-  }
-
-  private buildInsights(
-    summary: Awaited<ReturnType<AnalyticsService['getMonthlySummary']>>,
-    categoryBreakdown: Awaited<
-      ReturnType<AnalyticsService['getCategoryBreakdown']>
-    >,
-  ): Insight[] {
-    const insights: Insight[] = [];
-    const { incomeCents, expenseCents, netCents } = summary.totals;
-
-    if (expenseCents > incomeCents) {
-      insights.push({
-        id: 'spending-exceeded-income',
-        title: 'Spending Alert',
-        body: 'Spending exceeded income this month.',
-        severity: 'warn',
-        meta: { incomeCents, expenseCents },
-      });
-    }
-
-    if (netCents > 0) {
-      insights.push({
-        id: 'saved-this-month',
-        title: 'Savings',
-        body: `You saved ${this.formatDollars(netCents)} this month.`,
-        severity: 'good',
-        meta: { netCents },
-      });
-    }
-
-    const topCategory = categoryBreakdown.totals[0];
-    if (topCategory) {
-      insights.push({
-        id: 'top-spending-category',
-        title: 'Top Spending Category',
-        body: `Top spending category: ${topCategory.categoryName} (${this.formatDollars(topCategory.expenseCents)}).`,
-        severity: 'info',
-        meta: {
-          categoryId: topCategory.categoryId,
-          expenseCents: topCategory.expenseCents,
-        },
-      });
-    }
-
-    const netDelta = summary.deltaPercent?.net;
-    if (summary.previousMonth?.totals && netDelta != null) {
-      const sign = netDelta > 0 ? '+' : '';
-      insights.push({
-        id: 'mom-net-change',
-        title: 'Month-over-Month',
-        body: `Net cashflow changed ${sign}${netDelta.toFixed(2)}% vs last month.`,
-        severity: 'info',
-        meta: {
-          netDeltaPercent: netDelta,
-          previousNetCents: summary.previousMonth.totals.netCents,
-          currentNetCents: netCents,
-        },
-      });
-    }
-
-    return insights;
-  }
-
-  async getMonthlyReport(year: number, month: number) {
+  async getMonthlyReport(
+    year: number,
+    month: number,
+  ): Promise<MonthlyReportResponse> {
     const [summary, categoryBreakdown] = await Promise.all([
       this.analyticsService.getMonthlySummary(year, month),
       this.analyticsService.getCategoryBreakdown(year, month),
     ]);
+    const context: MonthlyReportContext = {
+      summary,
+      categoryBreakdown,
+    };
+    const insights = await this.insightEngine.generate(context);
 
     return {
       year,
       month,
       summary,
       categoryBreakdown,
-      insights: this.buildInsights(summary, categoryBreakdown),
+      insights,
     };
   }
 }

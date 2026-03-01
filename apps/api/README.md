@@ -62,6 +62,9 @@ pnpm --filter api exec prisma db seed
 - `GET /v1/analytics/monthly-summary?year=YYYY&month=M`
 - `GET /v1/analytics/category-breakdown?year=YYYY&month=M`
 
+### AI
+- `GET /v1/ai/monthly-report?year=YYYY&month=M`
+
 ## Quick curl
 
 PowerShell-friendly examples:
@@ -70,6 +73,7 @@ PowerShell-friendly examples:
 curl.exe "http://localhost:3001/v1/health"
 curl.exe "http://localhost:3001/v1/analytics/monthly-summary?year=2026&month=2"
 curl.exe "http://localhost:3001/v1/analytics/category-breakdown?year=2026&month=2"
+curl.exe "http://localhost:3001/v1/ai/monthly-report?year=2026&month=2"
 ```
 
 ## Checks
