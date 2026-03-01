@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InsightEngine } from './insight-engine.interface';
-import { MonthlyReportContext } from './types';
+import type { Insight, MonthlyReportContext } from './types';
 import { LLMInsightEngine } from './llm-insight.engine';
 import { RuleInsightEngine } from './rule-insight.engine';
 
@@ -13,20 +13,19 @@ export class HybridInsightEngine implements InsightEngine {
     private readonly config: ConfigService,
   ) {}
 
-  async generate(context: MonthlyReportContext) {
-    const llmEnabled =
-      this.config.get<string>('AURUM_INSIGHTS_MODE') === 'hybrid';
-    const maxInsights = Number(
+  async generate(context: MonthlyReportContext): Promise<Insight[]> {
+    const maxInsightsRaw = Number(
       this.config.get<string>('AURUM_INSIGHTS_MAX') ?? '10',
     );
+    const maxInsights = Number.isFinite(maxInsightsRaw)
+      ? Math.max(1, maxInsightsRaw)
+      : 10;
 
     const ruleInsights = await this.ruleEngine.generate(context);
-    const llmInsights = llmEnabled
-      ? await this.llmEngine.generate(context)
-      : [];
+    const llmInsights = await this.llmEngine.generate(context);
 
     const merged = [...ruleInsights, ...llmInsights];
-    const deduped: typeof merged = [];
+    const deduped: Insight[] = [];
     const seen = new Set<string>();
 
     for (const insight of merged) {

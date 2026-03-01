@@ -6,6 +6,7 @@ import { AiService } from './ai.service';
 import { HybridInsightEngine } from './insights/hybrid-insight.engine';
 import type { InsightEngine } from './insights/insight-engine.interface';
 import { INSIGHT_ENGINE } from './insights/insight-engine.token';
+import { OpenAiCompatibleLlmClient } from './insights/llm/llm-client';
 import { LLMInsightEngine } from './insights/llm-insight.engine';
 import { RuleInsightEngine } from './insights/rule-insight.engine';
 
@@ -14,6 +15,7 @@ import { RuleInsightEngine } from './insights/rule-insight.engine';
   controllers: [AiController],
   providers: [
     RuleInsightEngine,
+    OpenAiCompatibleLlmClient,
     LLMInsightEngine,
     HybridInsightEngine,
     {

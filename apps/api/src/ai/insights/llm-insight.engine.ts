@@ -1,26 +1,34 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InsightEngine } from './insight-engine.interface';
-import { MonthlyReportContext } from './types';
+import type { Insight, MonthlyReportContext } from './types';
+import { OpenAiCompatibleLlmClient } from './llm/llm-client';
 
 @Injectable()
 export class LLMInsightEngine implements InsightEngine {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly llmClient: OpenAiCompatibleLlmClient,
+  ) {}
 
-  generate(context: MonthlyReportContext) {
-    void context;
-    const placeholderEnabled =
-      this.config.get<string>('AURUM_LLM_PLACEHOLDER') === 'true';
-    if (!placeholderEnabled) return Promise.resolve([]);
+  async generate(context: MonthlyReportContext): Promise<Insight[]> {
+    const enabled =
+      (this.config.get<string>('AURUM_LLM_ENABLED') ?? 'false') === 'true';
+    if (!enabled) {
+      return [];
+    }
 
-    return Promise.resolve([
-      {
-        id: 'llm-placeholder',
-        title: 'LLM Insight Placeholder',
-        body: 'LLM insight generation scaffold is in place but not enabled yet.',
-        severity: 'info' as const,
-        meta: { source: 'llm-placeholder' },
-      },
-    ]);
+    try {
+      return await this.llmClient.generateInsights(context);
+    } catch {
+      return [
+        {
+          id: 'llm-unavailable',
+          title: 'AI Insights unavailable',
+          body: 'Falling back to rule-based insights.',
+          severity: 'warn' as const,
+        },
+      ];
+    }
   }
 }
