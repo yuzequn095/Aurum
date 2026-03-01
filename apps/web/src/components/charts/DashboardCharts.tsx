@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 
 type IncomeExpensePoint = {
-  name: string;
+  label: string;
   income: number;
   expense: number;
 };
@@ -24,13 +24,13 @@ type CategoryPoint = {
   value: number;
 };
 
-function formatCents(cents: number) {
+function formatDollars(dollars: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(cents / 100);
+  }).format(dollars);
 }
 
 function asNumber(value: unknown) {
@@ -38,20 +38,26 @@ function asNumber(value: unknown) {
 }
 
 export function IncomeExpenseBarChart({ data }: { data: IncomeExpensePoint[] }) {
+  const chartData = data.map((item) => ({
+    label: item.label,
+    income: item.income / 100,
+    expense: item.expense / 100,
+  }));
+
   return (
     <ResponsiveContainer width='100%' height='100%'>
-      <BarChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+      <BarChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
         <CartesianGrid stroke='#E2E8F0' strokeDasharray='3 3' />
-        <XAxis dataKey='name' stroke='#64748B' tickLine={false} axisLine={false} />
+        <XAxis dataKey='label' stroke='#64748B' tickLine={false} axisLine={false} />
         <YAxis
           stroke='#64748B'
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value: number) => `$${Math.round(value / 100)}`}
+          tickFormatter={(value: number) => `$${Math.round(value)}`}
         />
         <Tooltip
           formatter={(value: unknown, name: unknown) => [
-            formatCents(asNumber(value)),
+            formatDollars(asNumber(value)),
             typeof name === 'string' ? name : '',
           ]}
           contentStyle={{

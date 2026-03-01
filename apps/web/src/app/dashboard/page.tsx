@@ -82,8 +82,6 @@ const monthNames = [
   'December',
 ];
 
-const incomeExpenseMock = [{ name: 'Jan', income: 824000, expense: 512000 }];
-
 const categoryBreakdownMock = [
   { name: 'Food', value: 40 },
   { name: 'Dining', value: 25 },
@@ -140,6 +138,17 @@ export default function DashboardPage() {
       : netCents < 0
         ? 'Spending exceeded income this month.'
         : 'Balanced month.';
+  const selectedMonthName = monthNames[month - 1] ?? '';
+  const incomeExpenseData = useMemo(
+    () => [
+      {
+        label: `${selectedMonthName} ${year}`,
+        income: incomeCents,
+        expense: expenseCents,
+      },
+    ],
+    [selectedMonthName, year, incomeCents, expenseCents],
+  );
 
   return (
     <Container className='py-8 space-y-10'>
@@ -299,7 +308,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className='h-[200px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner'>
-              <IncomeExpenseBarChart data={incomeExpenseMock} />
+              <IncomeExpenseBarChart data={incomeExpenseData} />
             </div>
           </CardContent>
         </Card>
