@@ -18,6 +18,13 @@ type MonthlySummaryResponse = {
     expenseCents: number;
     netCents: number;
   };
+  previousMonth?: {
+    totals?: {
+      incomeCents: number;
+      expenseCents: number;
+      netCents: number;
+    };
+  };
   deltaPercent?: DeltaMap;
   delta?: DeltaMap;
 };
@@ -38,6 +45,20 @@ function formatPct(value: number | null | undefined) {
 function toneFromPct(value: number | null | undefined): 'positive' | 'negative' | 'neutral' {
   if (value == null || Number.isNaN(value) || value === 0) return 'neutral';
   return value > 0 ? 'positive' : 'negative';
+}
+
+function getDeltaLabel(
+  deltaPercent: number | null | undefined,
+  currentCents: number,
+  previousCents: number | null | undefined,
+) {
+  if ((previousCents ?? null) === 0 && currentCents > 0) {
+    return 'New this month';
+  }
+  if (deltaPercent == null || Number.isNaN(deltaPercent)) {
+    return '— vs last month';
+  }
+  return `${formatPct(deltaPercent)} vs last month`;
 }
 
 const monthNames = [
@@ -92,6 +113,9 @@ export default function DashboardPage() {
   const incomeCents = summary?.totals.incomeCents ?? 0;
   const expenseCents = summary?.totals.expenseCents ?? 0;
   const netCents = summary?.totals.netCents ?? 0;
+  const prevIncomeCents = summary?.previousMonth?.totals?.incomeCents;
+  const prevExpenseCents = summary?.previousMonth?.totals?.expenseCents;
+  const prevNetCents = summary?.previousMonth?.totals?.netCents;
 
   return (
     <Container className='py-8 space-y-10'>
@@ -149,11 +173,21 @@ export default function DashboardPage() {
         <CardContent className='relative py-14'>
           <div className='flex flex-col gap-6 md:flex-row md:items-end md:justify-between'>
             <div className='space-y-2'>
-              <p className='text-sm font-medium text-aurum-muted'>Total Balance</p>
+              <p className='text-sm font-medium text-aurum-muted'>Monthly Net Cashflow</p>
               {loading ? (
                 <div className='h-14 w-64 animate-pulse rounded-[12px] bg-aurum-primarySoft/60' />
               ) : (
-                <p className='text-[52px] leading-tight font-semibold text-aurum-text'>{formatCents(netCents)}</p>
+                <p
+                  className={`text-[52px] leading-tight font-semibold ${
+                    netCents > 0
+                      ? 'text-aurum-success'
+                      : netCents < 0
+                        ? 'text-aurum-danger'
+                        : 'text-aurum-muted'
+                  }`}
+                >
+                  {formatCents(netCents)}
+                </p>
               )}
               <p
                 className={`text-sm font-medium ${
@@ -164,7 +198,7 @@ export default function DashboardPage() {
                       : 'text-aurum-muted'
                 }`}
               >
-                {loading ? 'Loading...' : `${formatPct(delta.net)} from previous month`}
+                {loading ? 'Loading...' : getDeltaLabel(delta.net, netCents, prevNetCents)}
               </p>
             </div>
             <p className='max-w-xs text-xs text-aurum-muted'>
@@ -210,19 +244,19 @@ export default function DashboardPage() {
             <KpiCard
               title='Income'
               value={formatCents(incomeCents)}
-              deltaText={`${formatPct(delta.income)} vs last month`}
+              deltaText={getDeltaLabel(delta.income, incomeCents, prevIncomeCents)}
               tone={toneFromPct(delta.income)}
             />
             <KpiCard
               title='Expense'
               value={formatCents(expenseCents)}
-              deltaText={`${formatPct(delta.expense)} vs last month`}
+              deltaText={getDeltaLabel(delta.expense, expenseCents, prevExpenseCents)}
               tone={toneFromPct(delta.expense)}
             />
             <KpiCard
               title='Net Cashflow'
               value={formatCents(netCents)}
-              deltaText={`${formatPct(delta.net)} vs last month`}
+              deltaText={getDeltaLabel(delta.net, netCents, prevNetCents)}
               tone={toneFromPct(delta.net)}
               emphasized
             />
