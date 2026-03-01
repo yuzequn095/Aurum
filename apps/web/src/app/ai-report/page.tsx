@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { CategoryBreakdownPieChart } from '@/components/charts/DashboardCharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container, Section } from '@/components/ui/layout';
 import {
@@ -79,8 +80,28 @@ export default function AiReportPage() {
     expenseCents: 0,
     netCents: 0,
   };
-  const categoryTotals = report?.categoryBreakdown.totals ?? [];
+  const categoryTotals = useMemo(
+    () =>
+      [...(report?.categoryBreakdown.totals ?? [])].sort(
+        (a, b) => b.expenseCents - a.expenseCents,
+      ),
+    [report],
+  );
+  const categoryChartData = useMemo(
+    () =>
+      categoryTotals.map((item) => ({
+        name: item.categoryName || 'Uncategorized',
+        value: item.expenseCents / 100,
+      })),
+    [categoryTotals],
+  );
   const insights = report?.insights ?? [];
+  const isCategoryEmptyState =
+    !loading &&
+    totals.incomeCents === 0 &&
+    totals.expenseCents === 0 &&
+    totals.netCents === 0 &&
+    categoryTotals.length === 0;
 
   return (
     <Container className='py-8 space-y-10'>
@@ -216,17 +237,27 @@ export default function AiReportPage() {
           <CardContent>
             {loading ? (
               <div className='h-[220px] animate-pulse rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner' />
-            ) : categoryTotals.length === 0 ? (
+            ) : isCategoryEmptyState ? (
               <div className='h-[220px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner text-sm text-aurum-muted flex items-center justify-center'>
-                No category data this month
+                No expenses this month
               </div>
             ) : (
-              <div className='h-[220px] overflow-auto rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner p-4'>
-                <div className='space-y-2'>
+              <div className='rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner p-4 space-y-4'>
+                <div className='h-[220px]'>
+                  <CategoryBreakdownPieChart data={categoryChartData} />
+                </div>
+                <div className='max-h-[220px] space-y-2 overflow-auto'>
                   {categoryTotals.map((item) => (
-                    <div key={item.categoryId ?? item.categoryName ?? 'uncategorized'} className='flex items-center justify-between rounded-[10px] bg-aurum-card/80 px-3 py-2'>
-                      <span className='text-sm text-aurum-text'>{item.categoryName || 'Uncategorized'}</span>
-                      <span className='text-sm font-medium text-aurum-text'>{formatCents(item.expenseCents)}</span>
+                    <div
+                      key={item.categoryId ?? item.categoryName ?? 'uncategorized'}
+                      className='flex items-center justify-between rounded-[10px] bg-aurum-card/80 px-3 py-2'
+                    >
+                      <span className='text-sm text-aurum-text'>
+                        {item.categoryName || 'Uncategorized'}
+                      </span>
+                      <span className='text-sm font-medium text-aurum-text'>
+                        {formatCents(item.expenseCents)}
+                      </span>
                     </div>
                   ))}
                 </div>
