@@ -16,3 +16,11 @@ export type MonthlyReportContext = {
     ReturnType<AnalyticsService['getCategoryBreakdown']>
   >;
 };
+
+export type MonthlyReportResponse = {
+  year: number;
+  month: number;
+  summary: MonthlyReportContext['summary'];
+  categoryBreakdown: MonthlyReportContext['categoryBreakdown'];
+  insights: Insight[];
+};

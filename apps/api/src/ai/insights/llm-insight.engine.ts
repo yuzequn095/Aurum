@@ -1,12 +1,17 @@
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InsightEngine } from './insight-engine.interface';
 import { MonthlyReportContext } from './types';
 
+@Injectable()
 export class LLMInsightEngine implements InsightEngine {
-  constructor(private readonly placeholderEnabled = false) {}
+  constructor(private readonly config: ConfigService) {}
 
   generate(context: MonthlyReportContext) {
     void context;
-    if (!this.placeholderEnabled) return Promise.resolve([]);
+    const placeholderEnabled =
+      this.config.get<string>('AURUM_LLM_PLACEHOLDER') === 'true';
+    if (!placeholderEnabled) return Promise.resolve([]);
 
     return Promise.resolve([
       {

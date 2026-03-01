@@ -1,31 +1,43 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
 import { HybridInsightEngine } from './insights/hybrid-insight.engine';
+import type { InsightEngine } from './insights/insight-engine.interface';
 import { INSIGHT_ENGINE } from './insights/insight-engine.token';
 import { LLMInsightEngine } from './insights/llm-insight.engine';
 import { RuleInsightEngine } from './insights/rule-insight.engine';
 
 @Module({
-  imports: [AnalyticsModule],
+  imports: [AnalyticsModule, ConfigModule],
   controllers: [AiController],
   providers: [
+    RuleInsightEngine,
+    LLMInsightEngine,
+    HybridInsightEngine,
     {
       provide: INSIGHT_ENGINE,
-      useFactory: () => {
-        const mode = (process.env.AURUM_INSIGHTS_MODE ?? 'rules').toLowerCase();
-        const llmPlaceholderEnabled =
-          process.env.AURUM_LLM_PLACEHOLDER === 'true';
-
-        const ruleEngine = new RuleInsightEngine();
-        const llmEngine = new LLMInsightEngine(llmPlaceholderEnabled);
-
+      inject: [
+        ConfigService,
+        RuleInsightEngine,
+        LLMInsightEngine,
+        HybridInsightEngine,
+      ],
+      useFactory: (
+        config: ConfigService,
+        ruleEngine: RuleInsightEngine,
+        llmEngine: LLMInsightEngine,
+        hybridEngine: HybridInsightEngine,
+      ): InsightEngine => {
+        const mode = (config.get<string>('AURUM_INSIGHTS_MODE') ?? 'rules')
+          .toLowerCase()
+          .trim();
         if (mode === 'llm') {
           return llmEngine;
         }
         if (mode === 'hybrid') {
-          return new HybridInsightEngine(ruleEngine, llmEngine, true, 10);
+          return hybridEngine;
         }
         return ruleEngine;
       },

@@ -1,4 +1,4 @@
-# Aurum
+﻿# Aurum
 
 ![Node.js](https://img.shields.io/badge/Node.js-20.x-339933?logo=node.js&logoColor=white)
 ![pnpm](https://img.shields.io/badge/pnpm-9.x-F69220?logo=pnpm&logoColor=white)
@@ -30,22 +30,22 @@ flowchart LR
 
 ## Current Status
 
-Aurum is currently at the end of Phase 2.
+Aurum is currently in Phase 3.
 Core ledger, analytics dashboard, and AI report (rule-based insights) are complete.
-Next step is extensible AI insight engine and LLM integration.
+The current focus is extensible insight-engine architecture and staged LLM integration.
 
 ---
 
 ## Roadmap
 
-### Phase 1 – Foundation
+### Phase 1 - Foundation
 - M1: Monorepo setup
 - M2: Database schema (Prisma v7)
 - M3: Transactions CRUD
 - M4: Analytics Dashboard  
 Status: ✅ Completed
 
-### Phase 2 – AI Report (Rule-Based)
+### Phase 2 - AI Report (Rule-Based)
 - M5.1: AI Monthly Report API
 - M5.2: AI Report UI
 - M5.3: Loading / Error / Empty states
@@ -54,14 +54,14 @@ Status: ✅ Completed
 
 > Insights are currently generated via rule-based logic. LLM integration will be introduced in Phase 3.
 
-### Phase 3 – Intelligent Insight Engine (Planned)
-- M6.1: Pluggable Insight Engine abstraction
-- M6.2: LLM-based insight generator
+### Phase 3 - Intelligent Insight Engine
+- M6.1: Pluggable Insight Engine abstraction (completed)
+- M6.2: LLM-based insight generator scaffold (in progress)
 - M6.3: Hybrid (rules + LLM) merge strategy
 - M6.4: Insight explanation + confidence scoring  
-Status: 🚧 Planned
+Status: 🚧 In Progress
 
-### Phase 4 – Hardening & Productization
+### Phase 4 - Hardening & Productization
 - Authentication
 - Multi-user isolation
 - Caching layer
@@ -70,7 +70,6 @@ Status: 🚧 Planned
 Status: ⏳ Planned
 
 ---
-
 ## Current Capabilities
 
 - Add transactions with categories
@@ -220,3 +219,4 @@ curl.exe "http://localhost:3001/v1/ai/monthly-report?year=2026&month=2"
 - API prefix: `/v1`
 - Use `.env` / `.env.local` for runtime configuration
 - Keep shared cross-app logic under `packages/`
+
