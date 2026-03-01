@@ -80,7 +80,7 @@ export function CategoryBreakdownPieChart({ data }: { data: CategoryPoint[] }) {
     <ResponsiveContainer width='100%' height='100%'>
       <PieChart>
         <Tooltip
-          formatter={(value: unknown) => [`${asNumber(value)}%`, 'Share']}
+          formatter={(value: unknown) => [formatDollars(asNumber(value)), 'Expense']}
           contentStyle={{
             border: '1px solid #E2E8F0',
             borderRadius: '12px',

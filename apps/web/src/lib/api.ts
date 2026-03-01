@@ -77,3 +77,21 @@ export async function fetchMonthlySummary(year: number, month: number) {
 
   return (await res.json()) as unknown;
 }
+
+export async function fetchCategoryBreakdown(year: number, month: number) {
+  const qs = new URLSearchParams({
+    year: String(year),
+    month: String(month),
+  });
+  const path = `/v1/analytics/category-breakdown?${qs.toString()}`;
+  const res = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`GET ${path} failed: ${res.status} ${text}`);
+  }
+
+  return (await res.json()) as unknown;
+}

@@ -7,7 +7,7 @@ import {
 } from '@/components/charts/DashboardCharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container, Section } from '@/components/ui/layout';
-import { fetchMonthlySummary } from '@/lib/api';
+import { fetchCategoryBreakdown, fetchMonthlySummary } from '@/lib/api';
 import { KpiCard } from './components/kpi-card';
 
 type DeltaMap = {
@@ -31,6 +31,14 @@ type MonthlySummaryResponse = {
   };
   deltaPercent?: DeltaMap;
   delta?: DeltaMap;
+};
+
+type CategoryBreakdownResponse = {
+  totals: Array<{
+    categoryId: string | null;
+    categoryName: string | null;
+    expenseCents: number;
+  }>;
 };
 
 function formatCents(cents: number) {
@@ -82,18 +90,14 @@ const monthNames = [
   'December',
 ];
 
-const categoryBreakdownMock = [
-  { name: 'Food', value: 40 },
-  { name: 'Dining', value: 25 },
-  { name: 'Transport', value: 20 },
-  { name: 'Other', value: 15 },
-];
-
 export default function DashboardPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [summary, setSummary] = useState<MonthlySummaryResponse | null>(null);
+  const [categoryBreakdownData, setCategoryBreakdownData] = useState<
+    Array<{ name: string; value: number }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,14 +109,23 @@ export default function DashboardPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = (await fetchMonthlySummary(
-          year,
-          month,
-        )) as MonthlySummaryResponse;
-        if (!cancelled) setSummary(data);
+        const [summaryData, categoryData] = await Promise.all([
+          fetchMonthlySummary(year, month) as Promise<MonthlySummaryResponse>,
+          fetchCategoryBreakdown(year, month) as Promise<CategoryBreakdownResponse>,
+        ]);
+        if (!cancelled) {
+          setSummary(summaryData);
+          setCategoryBreakdownData(
+            categoryData.totals.map((item) => ({
+              label: item.categoryName || 'Uncategorized',
+              value: item.expenseCents / 100,
+            })).map((item) => ({ name: item.label, value: item.value })),
+          );
+        }
       } catch (e) {
         if (!cancelled) {
           setSummary(null);
+          setCategoryBreakdownData([]);
           setError(e instanceof Error ? e.message : String(e));
         }
       } finally {
@@ -319,7 +332,15 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className='h-[200px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner'>
-              <CategoryBreakdownPieChart data={categoryBreakdownMock} />
+              {loading ? (
+                <div className='flex h-full items-center justify-center text-sm text-aurum-muted'>Loading...</div>
+              ) : categoryBreakdownData.length === 0 ? (
+                <div className='flex h-full items-center justify-center text-sm text-aurum-muted'>
+                  No expenses this month
+                </div>
+              ) : (
+                <CategoryBreakdownPieChart data={categoryBreakdownData} />
+              )}
             </div>
           </CardContent>
         </Card>

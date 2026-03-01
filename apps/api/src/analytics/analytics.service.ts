@@ -129,4 +129,60 @@ export class AnalyticsService {
       },
     };
   }
+
+  async getCategoryBreakdown(year: number, month: number) {
+    const userId = await this.getDemoUserId();
+    const { startDate, endDate } = this.getMonthRange(year, month);
+
+    const grouped = await this.prisma.transaction.groupBy({
+      by: ['categoryId'],
+      where: {
+        userId,
+        type: TransactionType.EXPENSE,
+        categoryId: { not: null },
+        occurredAt: { gte: startDate, lt: endDate },
+      },
+      _sum: {
+        amountCents: true,
+      },
+    });
+
+    const categoryIds = grouped
+      .map((row) => row.categoryId)
+      .filter((id): id is string => typeof id === 'string');
+
+    const categories =
+      categoryIds.length === 0
+        ? []
+        : await this.prisma.category.findMany({
+            where: {
+              userId,
+              id: { in: categoryIds },
+            },
+            select: {
+              id: true,
+              name: true,
+            },
+          });
+
+    const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
+
+    const totals = grouped
+      .map((row) => {
+        if (!row.categoryId) return null;
+        return {
+          categoryId: row.categoryId,
+          categoryName: categoryNameById.get(row.categoryId) ?? 'Unknown',
+          expenseCents: row._sum.amountCents ?? 0,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null)
+      .sort((a, b) => b.expenseCents - a.expenseCents);
+
+    return {
+      year,
+      month,
+      totals,
+    };
+  }
 }

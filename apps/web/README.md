@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aurum Web (`apps/web`)
 
-## Getting Started
+Next.js web app for Aurum.
 
-First, run the development server:
+## Stack
+- Next.js 16 (App Router)
+- React 19
+- Tailwind CSS 4
+- Recharts (dashboard charts)
+
+## Run
+
+From repo root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm --filter web dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open: `http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create `apps/web/.env.local`:
 
-## Learn More
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Current Pages
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `/` home (includes link to dashboard)
+- `/transactions` transactions CRUD UI
+- `/dashboard` KPI + analytics charts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Dashboard Data Flow
 
-## Deploy on Vercel
+`/dashboard` fetches analytics from API using:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `fetchMonthlySummary(year, month)`
+- `fetchCategoryBreakdown(year, month)`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Source:
+- `src/lib/api.ts`
+- `src/app/dashboard/page.tsx`
+
+## Dashboard Charts
+
+Chart components:
+- `src/components/charts/DashboardCharts.tsx`
+  - `IncomeExpenseBarChart`
+  - `CategoryBreakdownPieChart`
+
+Behavior:
+- Income vs Expense bar chart uses live monthly totals.
+- Category Breakdown doughnut uses live category breakdown.
+- Empty category data shows: `No expenses this month`.
+- Chart containers remain responsive and keep existing card styling.
+
+## Design System
+
+Shared primitives:
+- `src/components/ui/button.tsx`
+- `src/components/ui/card.tsx`
+- `src/components/ui/layout.tsx`
+- `src/lib/cn.ts`
+
+Design tokens:
+- `tailwind.config.ts` (`colors.aurum`, `borderRadius.aurum`, `boxShadow.aurum*`)
+- `src/app/globals.css`
+
+## Checks
+
+From repo root:
+
+```bash
+pnpm lint
+pnpm typecheck
+```

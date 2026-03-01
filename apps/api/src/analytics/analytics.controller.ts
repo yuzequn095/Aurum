@@ -10,4 +10,9 @@ export class AnalyticsController {
   async getMonthlySummary(@Query() query: GetMonthlySummaryQueryDto) {
     return this.service.getMonthlySummary(query.year, query.month);
   }
+
+  @Get('category-breakdown')
+  async getCategoryBreakdown(@Query() query: GetMonthlySummaryQueryDto) {
+    return this.service.getCategoryBreakdown(query.year, query.month);
+  }
 }
