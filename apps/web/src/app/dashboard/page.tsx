@@ -36,16 +36,16 @@ export default function DashboardPage() {
         </Card>
       </Section>
 
-      <Card className='relative overflow-hidden rounded-[14px] shadow-aurumSm'>
+      <Card className='relative overflow-hidden rounded-[14px] border-0 shadow-aurumSm'>
         <div className='absolute inset-0 bg-gradient-to-br from-aurum-primarySoft to-white' />
-        <CardContent className='relative py-12'>
+        <CardContent className='relative py-14'>
           <div className='flex flex-col gap-6 md:flex-row md:items-end md:justify-between'>
             <div className='space-y-2'>
               <p className='text-sm font-medium text-aurum-muted'>Total Balance</p>
-              <p className='text-4xl font-semibold text-aurum-text'>$42,860.00</p>
+              <p className='text-5xl font-semibold text-aurum-text'>$42,860.00</p>
               <p className='text-sm font-medium text-aurum-success'>+8.6% from previous month</p>
             </div>
-            <p className='max-w-xs text-sm text-aurum-muted'>
+            <p className='max-w-xs text-xs text-aurum-muted'>
               Strong inflow momentum this month. Keep monitoring discretionary expense categories.
             </p>
           </div>
@@ -55,7 +55,7 @@ export default function DashboardPage() {
       <section className='grid grid-cols-1 gap-6 md:grid-cols-3'>
         <KpiCard title='Income' value='$8,240.00' deltaText='+12.4% vs last month' tone='positive' />
         <KpiCard title='Expense' value='$5,120.00' deltaText='+4.2% vs last month' tone='negative' />
-        <KpiCard title='Net Cashflow' value='$3,120.00' deltaText='+26.1% vs last month' tone='positive' />
+        <KpiCard title='Net Cashflow' value='$3,120.00' deltaText='+26.1% vs last month' tone='positive' emphasized />
       </section>
 
       <section className='grid grid-cols-1 gap-6 md:grid-cols-2'>
