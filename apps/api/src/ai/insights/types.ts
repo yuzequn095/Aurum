@@ -1,6 +1,6 @@
-import { AnalyticsService } from '../../../analytics/analytics.service';
+import { AnalyticsService } from '../../analytics/analytics.service';
 
-export type InsightSeverity = 'info' | 'warn' | 'good';
+export type InsightSeverity = 'info' | 'warn' | 'good' | 'error';
 
 export type Insight = {
   id: string;

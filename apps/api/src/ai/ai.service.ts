@@ -1,11 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { AnalyticsService } from '../analytics/analytics.service';
-import { RuleInsightEngine } from '../modules/ai/insights/rule-insight.engine';
-import { MonthlyReportContext } from '../modules/ai/insights/types';
+import type { InsightEngine } from './insights/insight-engine.interface';
+import { INSIGHT_ENGINE } from './insights/insight-engine.token';
+import { MonthlyReportContext } from './insights/types';
 
 @Injectable()
 export class AiService {
-  constructor(private readonly analyticsService: AnalyticsService) {}
+  constructor(
+    private readonly analyticsService: AnalyticsService,
+    @Inject(INSIGHT_ENGINE) private readonly insightEngine: InsightEngine,
+  ) {}
 
   async getMonthlyReport(year: number, month: number) {
     const [summary, categoryBreakdown] = await Promise.all([
@@ -16,8 +20,7 @@ export class AiService {
       summary,
       categoryBreakdown,
     };
-    const engine = new RuleInsightEngine();
-    const insights = await engine.generate(context);
+    const insights = await this.insightEngine.generate(context);
 
     return {
       year,
