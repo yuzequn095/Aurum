@@ -16,8 +16,8 @@ const toneClasses: Record<KpiCardProps['tone'], string> = {
 
 export function KpiCard({ title, value, deltaText, tone }: KpiCardProps) {
   return (
-    <Card className='relative overflow-hidden rounded-[14px] shadow-aurumSm transition hover:shadow-lg'>
-      <div className='absolute right-4 top-4 h-12 w-12 rounded-full bg-gradient-to-br from-aurum-primary to-aurum-primaryHover opacity-80' />
+    <Card className='relative overflow-hidden rounded-[14px] bg-white/80 shadow-aurumSm backdrop-blur transition hover:shadow-xl'>
+      <div className='absolute right-4 top-4 h-12 w-12 rounded-full border border-aurum-primaryHover bg-aurum-primarySoft shadow-md' />
       <CardHeader className='pb-2'>
         <CardTitle className='text-sm text-aurum-muted'>{title}</CardTitle>
       </CardHeader>

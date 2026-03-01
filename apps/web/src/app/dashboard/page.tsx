@@ -36,8 +36,9 @@ export default function DashboardPage() {
         </Card>
       </Section>
 
-      <Card className='rounded-[14px] border-aurum-primaryHover bg-gradient-to-br from-aurum-primarySoft to-white shadow-aurumSm'>
-        <CardContent className='pt-6'>
+      <Card className='relative overflow-hidden rounded-[14px] shadow-aurumSm'>
+        <div className='absolute inset-0 bg-gradient-to-br from-aurum-primarySoft to-white' />
+        <CardContent className='relative py-12'>
           <div className='flex flex-col gap-6 md:flex-row md:items-end md:justify-between'>
             <div className='space-y-2'>
               <p className='text-sm font-medium text-aurum-muted'>Total Balance</p>
@@ -63,7 +64,7 @@ export default function DashboardPage() {
             <CardTitle>Income vs Expense</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className='h-[200px] rounded-[12px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/30' />
+            <div className='h-[200px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner' />
           </CardContent>
         </Card>
 
@@ -72,7 +73,7 @@ export default function DashboardPage() {
             <CardTitle>Category Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className='h-[200px] rounded-[12px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/30' />
+            <div className='h-[200px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner' />
           </CardContent>
         </Card>
       </section>
