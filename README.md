@@ -21,9 +21,9 @@ The long-term goal is to help users build consistent financial clarity without s
 
 ```mermaid
 flowchart LR
-  U[User / Browser] -->|HTTP| WEB[Next.js Web (apps/web)]
-  WEB -->|REST /v1| API[NestJS API (apps/api)]
-  API -->|Prisma ORM v7| DB[(PostgreSQL)]
+  U["User / Browser"] -->|"HTTP"| WEB["Next.js Web (apps/web)"]
+  WEB -->|"REST /v1"| API["NestJS API (apps/api)"]
+  API -->|"Prisma ORM v7"| DB[("PostgreSQL")]
 ```
 
 ---
