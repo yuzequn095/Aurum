@@ -52,13 +52,13 @@ Status: ✅ Completed
 - Rule-based insights engine (baseline deterministic insights)  
 Status: ✅ Completed
 
-> Insights are currently generated via rule-based logic. LLM integration will be introduced in Phase 3.
+> Insights are currently generated via rule-based logic. LLM integration is rolling out in Phase 3.
 
-### Phase 3 - Intelligent Insight Engine
-- M6.1: Pluggable Insight Engine abstraction (completed)
-- M6.2: LLM-based insight generator scaffold (in progress)
-- M6.3: Hybrid (rules + LLM) merge strategy
-- M6.4: Insight explanation + confidence scoring  
+### Phase 3 — AI Insight Engine (In Progress)
+- [x] M6.1 Pluggable Insight Engine abstraction
+- [x] M6.2 OpenAI-compatible LLM scaffold
+- [ ] M6.3 Hybrid merge strategy (rules + LLM)
+- [ ] M6.4 Insight explanation + confidence scoring  
 Status: 🚧 In Progress
 
 ### Phase 4 - Hardening & Productization
@@ -81,16 +81,49 @@ Status: ⏳ Planned
 
 ---
 
-## AI Insight Architecture (Current)
+## 🧠 AI Insight Architecture
 
-Currently:  
-Analytics -> Rule Engine -> Insights -> Web UI
+```text
+Client (Web)
+   |
+   v
+AiController
+   |
+   v
+AiService
+   |
+   v
+INSIGHT_ENGINE (DI Token)
+   |
+   +--> RuleInsightEngine
+   |
+   +--> LLMInsightEngine
+   |
+   +--> HybridInsightEngine
+              |
+              +--> OpenAiCompatibleLlmClient
+                      |
+                      +--> OpenAI / vLLM (OpenAI-compatible API)
+```
 
-Future:  
-Analytics -> Rule Engine + LLM Engine -> Merge Layer -> Insights
+## ⚙️ Insight Modes
 
-Current implementation is deterministic and auditable.
-Phase 3 introduces pluggable generation and merge logic without changing existing analytics contracts.
+Aurum supports multiple insight generation modes:
+
+| Mode | Description |
+| --- | --- |
+| `rules` | Deterministic rule-based insights (default, no AI required) |
+| `llm` | Pure LLM-generated insights |
+| `hybrid` | Rule insights + LLM augmentation |
+
+Environment variables:
+
+```bash
+AURUM_INSIGHTS_MODE=rules|llm|hybrid
+AURUM_LLM_ENABLED=true|false
+AURUM_LLM_BASE_URL=http://localhost:8000
+AURUM_LLM_MODEL=gpt-4.1-mini
+```
 
 ---
 
@@ -149,6 +182,17 @@ Quality checks:
 pnpm lint
 pnpm typecheck
 ```
+
+### AI (optional)
+
+By default, AI is disabled.
+To test LLM mode:
+
+- Set `AURUM_LLM_ENABLED=true`
+- Set `AURUM_INSIGHTS_MODE=llm` or `AURUM_INSIGHTS_MODE=hybrid`
+- Provide `AURUM_LLM_BASE_URL` and `AURUM_LLM_MODEL`
+
+If no LLM server is running, the system safely falls back.
 
 ---
 
@@ -219,4 +263,3 @@ curl.exe "http://localhost:3001/v1/ai/monthly-report?year=2026&month=2"
 - API prefix: `/v1`
 - Use `.env` / `.env.local` for runtime configuration
 - Keep shared cross-app logic under `packages/`
-
