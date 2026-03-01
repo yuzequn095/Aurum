@@ -1,6 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import {
+  CategoryBreakdownPieChart,
+  IncomeExpenseBarChart,
+} from '@/components/charts/DashboardCharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container, Section } from '@/components/ui/layout';
 import { fetchMonthlySummary } from '@/lib/api';
@@ -37,12 +41,14 @@ function formatCents(cents: number) {
 }
 
 function formatPct(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value)) return '—';
+  if (value == null || Number.isNaN(value)) return '--';
   const sign = value > 0 ? '+' : '';
   return `${sign}${value.toFixed(1)}%`;
 }
 
-function toneFromPct(value: number | null | undefined): 'positive' | 'negative' | 'neutral' {
+function toneFromPct(
+  value: number | null | undefined,
+): 'positive' | 'negative' | 'neutral' {
   if (value == null || Number.isNaN(value) || value === 0) return 'neutral';
   return value > 0 ? 'positive' : 'negative';
 }
@@ -56,7 +62,7 @@ function getDeltaLabel(
     return 'New this month';
   }
   if (deltaPercent == null || Number.isNaN(deltaPercent)) {
-    return '— vs last month';
+    return '-- vs last month';
   }
   return `${formatPct(deltaPercent)} vs last month`;
 }
@@ -76,6 +82,15 @@ const monthNames = [
   'December',
 ];
 
+const incomeExpenseMock = [{ name: 'Jan', income: 824000, expense: 512000 }];
+
+const categoryBreakdownMock = [
+  { name: 'Food', value: 40 },
+  { name: 'Dining', value: 25 },
+  { name: 'Transport', value: 20 },
+  { name: 'Other', value: 15 },
+];
+
 export default function DashboardPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -92,7 +107,10 @@ export default function DashboardPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = (await fetchMonthlySummary(year, month)) as MonthlySummaryResponse;
+        const data = (await fetchMonthlySummary(
+          year,
+          month,
+        )) as MonthlySummaryResponse;
         if (!cancelled) setSummary(data);
       } catch (e) {
         if (!cancelled) {
@@ -126,8 +144,12 @@ export default function DashboardPage() {
   return (
     <Container className='py-8 space-y-10'>
       <header className='space-y-2'>
-        <h1 className='text-3xl font-semibold tracking-tight text-aurum-text'>Dashboard</h1>
-        <p className='text-sm text-aurum-muted'>Monitor cashflow trends and monthly performance at a glance.</p>
+        <h1 className='text-3xl font-semibold tracking-tight text-aurum-text'>
+          Dashboard
+        </h1>
+        <p className='text-sm text-aurum-muted'>
+          Monitor cashflow trends and monthly performance at a glance.
+        </p>
       </header>
 
       {error ? (
@@ -179,7 +201,9 @@ export default function DashboardPage() {
         <CardContent className='relative py-14'>
           <div className='flex flex-col gap-6 md:flex-row md:items-end md:justify-between'>
             <div className='space-y-2'>
-              <p className='text-sm font-medium text-aurum-muted'>Monthly Net Cashflow</p>
+              <p className='text-sm font-medium text-aurum-muted'>
+                Monthly Net Cashflow
+              </p>
               {loading ? (
                 <div className='h-14 w-64 animate-pulse rounded-[12px] bg-aurum-primarySoft/60' />
               ) : (
@@ -207,9 +231,7 @@ export default function DashboardPage() {
                 {loading ? 'Loading...' : getDeltaLabel(delta.net, netCents, prevNetCents)}
               </p>
             </div>
-            <p className='max-w-xs text-xs text-aurum-muted'>
-              {heroMessage}
-            </p>
+            <p className='max-w-xs text-xs text-aurum-muted'>{heroMessage}</p>
           </div>
         </CardContent>
       </Card>
@@ -276,7 +298,9 @@ export default function DashboardPage() {
             <CardTitle>Income vs Expense</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className='h-[200px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner' />
+            <div className='h-[200px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner'>
+              <IncomeExpenseBarChart data={incomeExpenseMock} />
+            </div>
           </CardContent>
         </Card>
 
@@ -285,7 +309,9 @@ export default function DashboardPage() {
             <CardTitle>Category Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className='h-[200px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner' />
+            <div className='h-[200px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner'>
+              <CategoryBreakdownPieChart data={categoryBreakdownMock} />
+            </div>
           </CardContent>
         </Card>
       </section>
