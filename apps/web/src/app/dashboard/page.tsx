@@ -36,6 +36,21 @@ export default function DashboardPage() {
         </Card>
       </Section>
 
+      <Card className='rounded-[14px] border-aurum-primaryHover bg-gradient-to-br from-aurum-primarySoft to-white shadow-aurumSm'>
+        <CardContent className='pt-6'>
+          <div className='flex flex-col gap-6 md:flex-row md:items-end md:justify-between'>
+            <div className='space-y-2'>
+              <p className='text-sm font-medium text-aurum-muted'>Total Balance</p>
+              <p className='text-4xl font-semibold text-aurum-text'>$42,860.00</p>
+              <p className='text-sm font-medium text-aurum-success'>+8.6% from previous month</p>
+            </div>
+            <p className='max-w-xs text-sm text-aurum-muted'>
+              Strong inflow momentum this month. Keep monitoring discretionary expense categories.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <section className='grid grid-cols-1 gap-6 md:grid-cols-3'>
         <KpiCard title='Income' value='$8,240.00' deltaText='+12.4% vs last month' tone='positive' />
         <KpiCard title='Expense' value='$5,120.00' deltaText='+4.2% vs last month' tone='negative' />
@@ -48,7 +63,7 @@ export default function DashboardPage() {
             <CardTitle>Income vs Expense</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className='h-[200px] rounded-[14px] border border-aurum-border bg-aurum-primarySoft/40' />
+            <div className='h-[200px] rounded-[12px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/30' />
           </CardContent>
         </Card>
 
@@ -57,7 +72,7 @@ export default function DashboardPage() {
             <CardTitle>Category Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className='h-[200px] rounded-[14px] border border-aurum-border bg-aurum-bg' />
+            <div className='h-[200px] rounded-[12px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/30' />
           </CardContent>
         </Card>
       </section>
