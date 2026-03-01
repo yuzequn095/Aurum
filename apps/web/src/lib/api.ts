@@ -42,7 +42,7 @@ export type AiInsight = {
   id: string;
   title: string;
   body: string;
-  severity: 'info' | 'warn' | 'good';
+  severity: 'info' | 'warn' | 'good' | 'error';
   meta?: Record<string, unknown>;
 };
 
@@ -151,19 +151,18 @@ export async function fetchCategoryBreakdown(year: number, month: number) {
 }
 
 export async function fetchAiMonthlyReport(year: number, month: number): Promise<AiMonthlyReportResponse> {
+  return getMonthlyAiReport(year, month);
+}
+
+export async function getMonthlyAiReport(
+  year: number,
+  month: number,
+): Promise<AiMonthlyReportResponse> {
   const qs = new URLSearchParams({
     year: String(year),
     month: String(month),
   });
-  const path = `/v1/ai/monthly-report?${qs.toString()}`;
-  const res = await fetch(`${API_BASE}${path}`, {
-    credentials: 'include',
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`GET ${path} failed: ${res.status} ${text}`);
-  }
-
-  return (await res.json()) as AiMonthlyReportResponse;
+  return apiGet<AiMonthlyReportResponse>(
+    `/v1/ai/monthly-report?${qs.toString()}`,
+  );
 }

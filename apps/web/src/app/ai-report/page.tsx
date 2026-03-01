@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { CategoryBreakdownPieChart } from '@/components/charts/DashboardCharts';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container, Section } from '@/components/ui/layout';
 import {
   AiInsight,
   AiMonthlyReportResponse,
-  fetchAiMonthlyReport,
+  getMonthlyAiReport,
 } from '@/lib/api';
 
 const monthNames = [
@@ -33,13 +34,16 @@ function formatCents(cents: number) {
 }
 
 function insightClasses(severity: AiInsight['severity']) {
+  if (severity === 'error') {
+    return 'border-aurum-danger/40 bg-aurum-card text-aurum-danger';
+  }
   if (severity === 'warn') {
-    return 'border-aurum-danger/30 bg-aurum-card text-aurum-danger';
+    return 'border-aurum-primaryHover/40 bg-aurum-primarySoft/35 text-aurum-text';
   }
   if (severity === 'good') {
     return 'border-aurum-success/30 bg-aurum-card text-aurum-success';
   }
-  return 'border-aurum-primaryHover/30 bg-aurum-card text-aurum-text';
+  return 'border-aurum-border bg-aurum-card text-aurum-text';
 }
 
 export default function AiReportPage() {
@@ -49,6 +53,7 @@ export default function AiReportPage() {
   const [report, setReport] = useState<AiMonthlyReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const yearOptions = useMemo(() => [year, year - 1, year - 2], [year]);
 
@@ -58,7 +63,7 @@ export default function AiReportPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchAiMonthlyReport(year, month);
+        const data = await getMonthlyAiReport(year, month);
         if (!cancelled) setReport(data);
       } catch (e) {
         if (!cancelled) {
@@ -73,7 +78,7 @@ export default function AiReportPage() {
     return () => {
       cancelled = true;
     };
-  }, [year, month]);
+  }, [year, month, retryCount]);
 
   const totals = report?.summary.totals ?? {
     incomeCents: 0,
@@ -102,6 +107,12 @@ export default function AiReportPage() {
     totals.expenseCents === 0 &&
     totals.netCents === 0 &&
     categoryTotals.length === 0;
+  const isReportEmpty =
+    !loading &&
+    totals.incomeCents === 0 &&
+    totals.expenseCents === 0 &&
+    totals.netCents === 0 &&
+    insights.length === 0;
 
   return (
     <Container className='py-8 space-y-10'>
@@ -111,8 +122,16 @@ export default function AiReportPage() {
       </header>
 
       {error ? (
-        <div className='rounded-[14px] border border-aurum-danger/30 bg-aurum-card px-3 py-2 text-xs text-aurum-danger'>
-          Failed to load AI report: {error}
+        <div className='flex items-center justify-between gap-4 rounded-[14px] border border-aurum-danger/30 bg-aurum-card px-3 py-2 text-xs text-aurum-danger'>
+          <span>Failed to load AI report: {error}</span>
+          <Button
+            type='button'
+            variant='secondary'
+            className='h-8 px-2 py-1 text-xs'
+            onClick={() => setRetryCount((prev) => prev + 1)}
+          >
+            Retry
+          </Button>
         </div>
       ) : null}
 
@@ -153,6 +172,16 @@ export default function AiReportPage() {
           </CardContent>
         </Card>
       </Section>
+
+      {isReportEmpty ? (
+        <Card className='rounded-[14px] shadow-aurumSm'>
+          <CardContent className='pt-6'>
+            <div className='rounded-[12px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 p-4 text-sm text-aurum-muted'>
+              No transactions or insights available for this month yet.
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Section title='Overview'>
         <Card className='rounded-[14px] shadow-aurumSm'>
@@ -223,6 +252,9 @@ export default function AiReportPage() {
                     <p className='mt-1 text-sm'>{insight.body}</p>
                   </div>
                 ))}
+                <p className='pt-1 text-xs text-aurum-muted'>
+                  Insights are currently rule-based. LLM-based insights will be added in a later milestone.
+                </p>
               </div>
             )}
           </CardContent>
