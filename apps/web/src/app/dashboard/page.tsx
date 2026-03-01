@@ -116,6 +116,12 @@ export default function DashboardPage() {
   const prevIncomeCents = summary?.previousMonth?.totals?.incomeCents;
   const prevExpenseCents = summary?.previousMonth?.totals?.expenseCents;
   const prevNetCents = summary?.previousMonth?.totals?.netCents;
+  const heroMessage =
+    netCents > 0
+      ? 'Strong inflow momentum this month.'
+      : netCents < 0
+        ? 'Spending exceeded income this month.'
+        : 'Balanced month.';
 
   return (
     <Container className='py-8 space-y-10'>
@@ -182,7 +188,7 @@ export default function DashboardPage() {
                     netCents > 0
                       ? 'text-aurum-success'
                       : netCents < 0
-                        ? 'text-aurum-danger'
+                        ? 'text-aurum-danger/80'
                         : 'text-aurum-muted'
                   }`}
                 >
@@ -202,7 +208,7 @@ export default function DashboardPage() {
               </p>
             </div>
             <p className='max-w-xs text-xs text-aurum-muted'>
-              Strong inflow momentum this month. Keep monitoring discretionary expense categories.
+              {heroMessage}
             </p>
           </div>
         </CardContent>
