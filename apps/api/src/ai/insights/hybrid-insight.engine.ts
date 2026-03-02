@@ -5,7 +5,6 @@ import type { Insight, MonthlyReportContext } from './types';
 import { LLMInsightEngine } from './llm-insight.engine';
 import { RuleInsightEngine } from './rule-insight.engine';
 
-const DEFAULT_MAX_INSIGHTS = 10;
 const SEVERITY_PRIORITY: Record<Insight['severity'], number> = {
   error: 4,
   warn: 3,
@@ -68,7 +67,7 @@ export class HybridInsightEngine implements InsightEngine {
       merged.push(insight);
     }
 
-    return merged.slice(0, DEFAULT_MAX_INSIGHTS);
+    return merged;
   }
 
   private sortBySeverityStable(insights: Insight[]): Insight[] {
