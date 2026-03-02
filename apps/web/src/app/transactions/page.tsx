@@ -511,10 +511,20 @@ export default function TransactionsPage() {
                     <div style={{ display: 'grid', justifyItems: 'end', gap: 8 }}>
                       <div style={{ fontWeight: 600 }}>{formatMoneyForType(tx.type, tx.amountCents, tx.currency)}</div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <Button type='button' variant='secondary' onClick={() => openEditModal(tx)} className='px-2 py-1'>
+                        <Button
+                          type='button'
+                          variant='secondary'
+                          onClick={() => openEditModal(tx)}
+                          className='h-10 min-w-[84px] px-4'
+                        >
                           Edit
                         </Button>
-                        <Button type='button' variant='destructive' onClick={() => onDeleteTx(tx)} className='px-2 py-1'>
+                        <Button
+                          type='button'
+                          variant='destructive'
+                          onClick={() => onDeleteTx(tx)}
+                          className='h-10 min-w-[84px] px-4'
+                        >
                           Delete
                         </Button>
                       </div>
