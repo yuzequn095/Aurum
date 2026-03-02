@@ -57,9 +57,9 @@ Status: ✅ Completed
 ### Phase 3 — AI Insight Engine (In Progress)
 - [x] M6.1 Pluggable Insight Engine abstraction
 - [x] M6.2 OpenAI-compatible LLM scaffold
-- [ ] M6.3 Hybrid merge strategy (rules + LLM)
-- [ ] M6.4 Insight explanation + confidence scoring  
-Status: 🚧 In Progress
+- [x] M6.3 Hybrid merge strategy (rules + LLM)
+- [x] M6.4 Insight explanation + confidence scoring  
+Status: ✅ Completed
 
 ### Phase 4 - Hardening & Productization
 - Authentication
@@ -77,7 +77,7 @@ Status: ⏳ Planned
 - Income vs Expense visualization
 - Category breakdown visualization
 - AI Report page with rule-based insights
-- Pluggable architecture prepared for future LLM integration
+- Pluggable architecture with hybrid merge, explainability, and confidence scoring
 
 ---
 
