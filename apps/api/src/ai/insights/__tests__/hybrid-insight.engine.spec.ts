@@ -153,7 +153,12 @@ describe('HybridInsightEngine', () => {
         title: 'rule',
         body: 'rule',
         severity: 'info',
-        meta: { note: 'existing' },
+        meta: {
+          note: 'existing',
+          confidence: 0.93,
+          evidence: { metric: 'rule-signal' },
+          explain: 'Rule rationale',
+        },
       },
     ]);
     jest
@@ -164,7 +169,13 @@ describe('HybridInsightEngine', () => {
 
     const merged = await hybridEngine.generate(baseContext);
 
-    expect(merged[0]?.meta).toEqual({ note: 'existing', source: 'rule' });
+    expect(merged[0]?.meta).toEqual({
+      note: 'existing',
+      confidence: 0.93,
+      evidence: { metric: 'rule-signal' },
+      explain: 'Rule rationale',
+      source: 'rule',
+    });
     expect(merged[1]?.meta).toEqual({ source: 'llm' });
   });
 

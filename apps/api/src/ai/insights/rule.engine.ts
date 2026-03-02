@@ -23,7 +23,11 @@ export function ruleSpendingExceededIncome(
     title: 'Spending Alert',
     body: 'Spending exceeded income this month.',
     severity: 'warn',
-    meta: { incomeCents, expenseCents },
+    meta: {
+      evidence: { incomeCents, expenseCents },
+      confidence: 0.9,
+      explain: 'Expenses were higher than income in the selected month.',
+    },
   };
 }
 
@@ -37,7 +41,11 @@ export function ruleSavedThisMonth(
     title: 'Savings',
     body: `You saved ${formatDollars(netCents)} this month.`,
     severity: 'good',
-    meta: { netCents },
+    meta: {
+      evidence: { netCents },
+      confidence: 0.85,
+      explain: 'Net cashflow is positive after subtracting expenses.',
+    },
   };
 }
 
@@ -61,8 +69,12 @@ export function ruleTopSpendingCategory(
     body: `Top spending category: ${topCategory.categoryName} (${formatDollars(topCategory.expenseCents)}).`,
     severity: 'info',
     meta: {
-      categoryId: topCategory.categoryId,
-      expenseCents: topCategory.expenseCents,
+      evidence: {
+        categoryId: topCategory.categoryId,
+        expenseCents: topCategory.expenseCents,
+      },
+      confidence: 0.8,
+      explain: 'This category has the highest expense total this month.',
     },
   };
 }
@@ -81,9 +93,14 @@ export function ruleMoMNetChange(
     body: `Net cashflow changed ${sign}${netDelta.toFixed(2)}% vs last month.`,
     severity: 'info',
     meta: {
-      netDeltaPercent: netDelta,
-      previousNetCents: context.summary.previousMonth.totals.netCents,
-      currentNetCents: context.summary.totals.netCents,
+      evidence: {
+        netDeltaPercent: netDelta,
+        previousNetCents: context.summary.previousMonth.totals.netCents,
+        currentNetCents: context.summary.totals.netCents,
+      },
+      confidence: 0.7,
+      explain:
+        'Month-over-month net comparison uses previous and current totals.',
     },
   };
 }

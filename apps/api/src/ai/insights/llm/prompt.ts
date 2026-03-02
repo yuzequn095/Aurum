@@ -63,6 +63,28 @@ function normalizeBody(body: string): string {
   return `${trimmed.slice(0, MAX_BODY_LENGTH - 3)}...`;
 }
 
+function clampConfidence(value: unknown): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return 0.6;
+  }
+  return Math.max(0, Math.min(1, value));
+}
+
+function normalizeMeta(meta: unknown): Record<string, unknown> {
+  const base = isRecord(meta) ? { ...meta } : {};
+  base.confidence = clampConfidence(base.confidence);
+
+  if (typeof base.explain === 'string') {
+    const trimmed = base.explain.trim();
+    base.explain =
+      trimmed.length <= 140 ? trimmed : `${trimmed.slice(0, 137)}...`;
+  } else {
+    delete base.explain;
+  }
+
+  return base;
+}
+
 function normalizeOneInsight(raw: unknown, index: number): LlmInsight {
   if (!isRecord(raw)) {
     throw new LlmResponseValidationError(
@@ -107,7 +129,7 @@ function normalizeOneInsight(raw: unknown, index: number): LlmInsight {
     title: title.trim(),
     body: normalizeBody(body),
     severity,
-    meta: isRecord(meta) ? meta : {},
+    meta: normalizeMeta(meta),
   };
 }
 

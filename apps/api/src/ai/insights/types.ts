@@ -2,12 +2,19 @@ import { AnalyticsService } from '../../analytics/analytics.service';
 
 export type InsightSeverity = 'info' | 'warn' | 'good' | 'error';
 
+export type InsightMeta = Record<string, unknown> & {
+  source?: string;
+  confidence?: number;
+  evidence?: Record<string, unknown>;
+  explain?: string;
+};
+
 export type Insight = {
   id: string;
   title: string;
   body: string;
   severity: InsightSeverity;
-  meta?: Record<string, unknown>;
+  meta?: InsightMeta;
 };
 
 export type MonthlyReportContext = {
