@@ -65,6 +65,7 @@ Status: ✅ Completed
 - [x] M7.1 API Auth
 - [x] M7.2 Web login/session
 - [x] M7.3 Full userId isolation
+- [x] M7.4 Auth security hardening (rotation/reuse detection/logout-all)
 Status: ✅ Completed
 
 ### Phase 5 - Ledger v2
@@ -198,6 +199,10 @@ pnpm typecheck
 - Protected routes (web): `/transactions`, `/reports` (redirects to `/ai-report`)
 - Auth endpoints (api): `POST /v1/auth/register`, `POST /v1/auth/login`, `POST /v1/auth/refresh`
 - Server-side user isolation: Accounts/Categories/Transactions/Analytics/AI enforce `userId` from JWT. Client never sends `userId`.
+- Refresh token rotation enabled: `POST /v1/auth/refresh` returns `{ accessToken, refreshToken }` and revokes previous refresh token.
+- Reuse detection enabled: using a revoked/expired refresh token triggers user-wide refresh session revocation.
+- Session management: `POST /v1/auth/logout-all` revokes all refresh tokens for current user.
+- Current web storage is `localStorage` (dev convenience). Future hardening target: `httpOnly` secure cookies.
 
 ### AI (optional)
 

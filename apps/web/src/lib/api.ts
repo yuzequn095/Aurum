@@ -1,4 +1,5 @@
 import { clearTokens, getAccessToken, getRefreshToken, setAccessToken } from '@/lib/auth/tokens';
+import { setRefreshToken } from '@/lib/auth/tokens';
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
 
@@ -58,6 +59,7 @@ export type AiMonthlyReportResponse = {
 
 type RefreshResponse = {
   accessToken: string;
+  refreshToken: string;
 };
 
 function isBrowser() {
@@ -91,8 +93,9 @@ async function refreshAccessToken(): Promise<string | null> {
   if (!res.ok) return null;
 
   const payload = (await res.json()) as RefreshResponse;
-  if (!payload.accessToken) return null;
+  if (!payload.accessToken || !payload.refreshToken) return null;
   setAccessToken(payload.accessToken);
+  setRefreshToken(payload.refreshToken);
   return payload.accessToken;
 }
 

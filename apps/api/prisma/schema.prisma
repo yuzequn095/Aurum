@@ -54,17 +54,27 @@ model AuthIdentity {
 }
 
 model RefreshToken {
-  id        String    @id @default(cuid())
-  userId    String
-  tokenHash String
-  revokedAt DateTime?
-  expiresAt DateTime
-  createdAt DateTime  @default(now())
+  id                String    @id @default(cuid())
+  userId            String
+  tokenHash         String
+  parentTokenId     String?
+  replacedByTokenId String?
+  userAgent         String?
+  ip                String?
+  revokedAt         DateTime?
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentToken       RefreshToken?  @relation("RefreshTokenParent", fields: [parentTokenId], references: [id])
+  childTokens       RefreshToken[] @relation("RefreshTokenParent")
+  replacedByToken   RefreshToken?  @relation("RefreshTokenReplacement", fields: [replacedByTokenId], references: [id])
+  replacesTokens    RefreshToken[] @relation("RefreshTokenReplacement")
 
   @@index([userId])
   @@index([tokenHash])
+  @@index([parentTokenId])
+  @@index([replacedByTokenId])
   @@index([expiresAt])
 }
 

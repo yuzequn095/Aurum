@@ -3,11 +3,11 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthProvider } from '@prisma/client';
 import { compare, hash } from 'bcryptjs';
-import { createHash } from 'crypto';
-import { JwtService } from '@nestjs/jwt';
+import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import type { JwtPayload } from './auth.types';
 
@@ -18,6 +18,11 @@ type AuthResponse = {
   };
   accessToken: string;
   refreshToken: string;
+};
+
+type ClientMeta = {
+  userAgent?: string;
+  ip?: string;
 };
 
 type Duration = {
@@ -33,7 +38,11 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  async register(email: string, password: string): Promise<AuthResponse> {
+  async register(
+    email: string,
+    password: string,
+    meta?: ClientMeta,
+  ): Promise<AuthResponse> {
     const normalizedEmail = this.normalizeEmail(email);
     const existing = await this.prisma.authIdentity.findUnique({
       where: {
@@ -63,7 +72,7 @@ export class AuthService {
       select: { id: true },
     });
 
-    const tokens = await this.issueTokens(user.id, normalizedEmail);
+    const tokens = await this.issueTokens(user.id, normalizedEmail, meta);
 
     return {
       user: {
@@ -74,7 +83,11 @@ export class AuthService {
     };
   }
 
-  async login(email: string, password: string): Promise<AuthResponse> {
+  async login(
+    email: string,
+    password: string,
+    meta?: ClientMeta,
+  ): Promise<AuthResponse> {
     const normalizedEmail = this.normalizeEmail(email);
     const identity = await this.prisma.authIdentity.findUnique({
       where: {
@@ -100,7 +113,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const tokens = await this.issueTokens(identity.userId, identity.identifier);
+    const tokens = await this.issueTokens(
+      identity.userId,
+      identity.identifier,
+      meta,
+    );
 
     return {
       user: {
@@ -111,30 +128,97 @@ export class AuthService {
     };
   }
 
-  async refresh(refreshToken: string): Promise<{ accessToken: string }> {
+  async refresh(
+    refreshToken: string,
+    meta?: ClientMeta,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const payload = await this.verifyRefreshToken(refreshToken);
+    const sessionPayload: JwtPayload = {
+      userId: payload.userId,
+      email: payload.email,
+    };
     const tokenHash = this.hashToken(refreshToken);
+    const now = new Date();
 
-    const record = await this.prisma.refreshToken.findFirst({
+    const oldRecord = await this.prisma.refreshToken.findFirst({
       where: {
         tokenHash,
-        userId: payload.userId,
-        revokedAt: null,
-        expiresAt: { gt: new Date() },
+        userId: sessionPayload.userId,
       },
       select: {
         id: true,
         userId: true,
+        revokedAt: true,
+        expiresAt: true,
       },
     });
 
-    if (!record) {
+    if (!oldRecord) {
       throw new UnauthorizedException('Refresh token is invalid or expired');
     }
 
-    // TODO(M7.4): implement refresh-token rotation (issue new refresh token and revoke current).
+    if (oldRecord.revokedAt || oldRecord.expiresAt <= now) {
+      await this.revokeAllUserRefreshTokens(sessionPayload.userId);
+      throw new UnauthorizedException('Refresh token reused');
+    }
+
+    const refreshTtl = this.getRequiredEnv('JWT_REFRESH_TTL');
+    const [accessToken, newRefreshToken] = await Promise.all([
+      this.signAccessToken(sessionPayload),
+      this.signRefreshToken(sessionPayload),
+    ]);
+
+    const newRefreshExpiresAt = new Date(
+      Date.now() + this.parseDuration(refreshTtl).milliseconds,
+    );
+
+    try {
+      const newRecordId = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.refreshToken.create({
+          data: {
+            userId: sessionPayload.userId,
+            tokenHash: this.hashToken(newRefreshToken),
+            parentTokenId: oldRecord.id,
+            expiresAt: newRefreshExpiresAt,
+            userAgent: meta?.userAgent,
+            ip: meta?.ip,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        const updateOld = await tx.refreshToken.updateMany({
+          where: {
+            id: oldRecord.id,
+            userId: sessionPayload.userId,
+            revokedAt: null,
+            expiresAt: { gt: now },
+          },
+          data: {
+            revokedAt: now,
+            replacedByTokenId: created.id,
+          },
+        });
+
+        if (updateOld.count !== 1) {
+          throw new UnauthorizedException('Refresh token reused');
+        }
+
+        return created.id;
+      });
+
+      if (!newRecordId) {
+        throw new UnauthorizedException('Refresh token reused');
+      }
+    } catch {
+      await this.revokeAllUserRefreshTokens(sessionPayload.userId);
+      throw new UnauthorizedException('Refresh token reused');
+    }
+
     return {
-      accessToken: await this.signAccessToken(payload),
+      accessToken,
+      refreshToken: newRefreshToken,
     };
   }
 
@@ -152,6 +236,11 @@ export class AuthService {
       },
     });
 
+    return { ok: true };
+  }
+
+  async logoutAll(userId: string): Promise<{ ok: true }> {
+    await this.revokeAllUserRefreshTokens(userId);
     return { ok: true };
   }
 
@@ -182,6 +271,7 @@ export class AuthService {
   private async issueTokens(
     userId: string,
     email: string,
+    meta?: ClientMeta,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const payload: JwtPayload = { userId, email };
     const refreshTtl = this.getRequiredEnv('JWT_REFRESH_TTL');
@@ -198,6 +288,8 @@ export class AuthService {
         expiresAt: new Date(
           Date.now() + this.parseDuration(refreshTtl).milliseconds,
         ),
+        userAgent: meta?.userAgent,
+        ip: meta?.ip,
       },
     });
 
@@ -217,6 +309,7 @@ export class AuthService {
     return this.jwtService.signAsync(payload, {
       secret: this.getRequiredEnv('JWT_REFRESH_SECRET'),
       expiresIn: this.parseDuration(refreshTtl).seconds,
+      jwtid: randomUUID(),
     });
   }
 
@@ -228,6 +321,18 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Refresh token is invalid or expired');
     }
+  }
+
+  private async revokeAllUserRefreshTokens(userId: string): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: {
+        userId,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
   }
 
   private parseDuration(ttl: string): Duration {
