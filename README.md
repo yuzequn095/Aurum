@@ -5,164 +5,74 @@
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)
 ![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white)
 ![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)
 
----
+Aurum is a pnpm workspace + Turborepo monorepo for personal finance tracking and AI-assisted monthly insights.
 
-## Product Vision
+## Current Status
 
-Aurum is a privacy-first AI-powered personal finance assistant designed for intelligent monthly insights and long-term financial awareness.
-It combines ledger operations, analytics, and explainable monthly reporting in a web-first architecture.
-The system is built around API-owned business logic and typed frontend clients.
-The near-term focus is to evolve from deterministic insights to a pluggable AI insight pipeline.
+Milestone 7 (Auth) and Milestone 8 (Ledger v2) are complete.
 
----
+- Auth: email/password login, JWT access token + refresh token, refresh rotation/reuse detection, logout/logout-all, guarded APIs, server-side userId isolation.
+- Ledger v2: income transactions, date-only `occurredAt` API contract (`YYYY-MM-DD`) with DB `DateTime`, category + subcategory taxonomy, and enforced category/subcategory for income/expense.
+- Analytics + AI: monthly summary and category breakdown endpoints; AI monthly report is available via pluggable insight engine (`rules` / `llm` / `hybrid`).
+- LLM is optional and controlled by env flags to avoid cost in local/dev.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  U["User / Browser"] -->|"HTTP"| WEB["Next.js Web (apps/web)"]
-  WEB -->|"REST /v1"| API["NestJS API (apps/api)"]
-  API -->|"Prisma ORM v7"| DB[("PostgreSQL")]
+  B[Browser] --> W[Next.js Web<br/>apps/web]
+  W -->|REST /v1 + Bearer access token| A[NestJS API<br/>apps/api]
+  A -->|Prisma ORM v7| P[(PostgreSQL)]
+  W -.->|refresh token in localStorage<br/>dev mode| W
+  A -->|issue/verify access + refresh| A
 ```
 
----
-
-## Current Status
-
-Aurum is currently in Phase 5.
-Core ledger, analytics dashboard, AI report, auth/security, and Ledger v2 milestones are complete.
-The next focus is production hardening (cookie-based auth/session security and deployment readiness).
-
----
-
-## Roadmap
-
-### Phase 1 - Foundation
-- M1: Monorepo setup
-- M2: Database schema (Prisma v7)
-- M3: Transactions CRUD
-- M4: Analytics Dashboard  
-Status: ✅ Completed
-
-### Phase 2 - AI Report (Rule-Based)
-- M5.1: AI Monthly Report API
-- M5.2: AI Report UI
-- M5.3: Loading / Error / Empty states
-- Rule-based insights engine (baseline deterministic insights)  
-Status: ✅ Completed
-
-> Insights are currently generated via rule-based logic. LLM integration is rolling out in Phase 3.
-
-### Phase 3 - AI Insight Engine
-- [x] M6.1 Pluggable Insight Engine abstraction
-- [x] M6.2 OpenAI-compatible LLM scaffold
-- [x] M6.3 Hybrid merge strategy (rules + LLM)
-- [x] M6.4 Insight explanation + confidence scoring  
-Status: ✅ Completed
-
-### Phase 4 - Auth & Productization
-- [x] M7.1 API Auth
-- [x] M7.2 Web login/session
-- [x] M7.3 Full userId isolation
-- [x] M7.4 Auth security hardening (rotation/reuse detection/logout-all)
-Status: ✅ Completed
-
-### Phase 5 - Ledger v2
-- [x] M8.1 Date-only occurredAt (Strategy A: API accepts/returns YYYY-MM-DD, DB remains DateTime)
-- [x] M8.2 Income support
-- [x] M8.3 Subcategory + custom create taxonomy
-Status: ✅ Completed
-
-### Milestone 8 Completion Notes
-- Strategy A implemented: API accepts/returns date-only `YYYY-MM-DD`, while DB keeps `occurredAt` as `DateTime`.
-
----
-## Current Capabilities
-
-- Add transactions with categories
-- Monthly summary analytics
-- Income vs Expense visualization
-- Category breakdown visualization
-- AI Report page with rule-based insights
-- Pluggable architecture with hybrid merge, explainability, and confidence scoring
-- User-scoped category/subcategory taxonomy with in-flow create/select UX
-
----
-
-## 🧠 AI Insight Architecture
-
-```text
-Client (Web)
-   |
-   v
-AiController
-   |
-   v
-AiService
-   |
-   v
-INSIGHT_ENGINE (DI Token)
-   |
-   +--> RuleInsightEngine
-   |
-   +--> LLMInsightEngine
-   |
-   +--> HybridInsightEngine
-              |
-              +--> OpenAiCompatibleLlmClient
-                      |
-                      +--> OpenAI / vLLM (OpenAI-compatible API)
+```mermaid
+flowchart LR
+  MS[Monthly Summary] --> AIS[AiService]
+  CB[Category Breakdown] --> AIS
+  AIS --> IE[Insight Engine]
+  IE --> R[Rule Engine]
+  IE --> L[LLM Engine]
+  IE --> H[Hybrid Merge]
+  H --> OUT[Insights Response]
 ```
 
-## ⚙️ Insight Modes
+## Progress Table
 
-Aurum supports multiple insight generation modes:
+| Phase | Milestones | Status | Notes |
+| --- | --- | --- | --- |
+| Phase 1 - Foundation | M1 Monorepo setup, M2 DB schema (Prisma v7 + Postgres), M3 Transactions CRUD, M4 Analytics Dashboard | Done | Core stack and ledger/analytics baseline landed. |
+| Phase 2 - AI Report Baseline | M5 AI monthly report (rule-based baseline + UI states) | Done | Stable rule-based report and UI handling for loading/error/empty. |
+| Phase 3 - Insight Engine | M6 refactor + LLM scaffold + hybrid merge + tests | Done | `rules`/`llm`/`hybrid` modes available; LLM path optional by env. |
+| Phase 4 - Auth & Productization | M7 Auth (email/password, identities, refresh tokens, guards, user scoping) | Done | Refresh rotation + reuse detection + logout-all implemented. |
+| Phase 5 - Ledger v2 | M8.1 Date-only occurredAt, M8.2 Income, M8.3 Category/Subcategory taxonomy | Done | API date-only, DB DateTime retained (Strategy A). |
 
-| Mode | Description |
-| --- | --- |
-| `rules` | Deterministic rule-based insights (default, no AI required) |
-| `llm` | Pure LLM-generated insights |
-| `hybrid` | Rule insights + LLM augmentation |
+## Next Up
 
-Environment variables:
-
-```bash
-AURUM_INSIGHTS_MODE=rules|llm|hybrid
-AURUM_LLM_ENABLED=true|false
-AURUM_LLM_BASE_URL=http://localhost:8000
-AURUM_LLM_MODEL=gpt-4.1-mini
-```
-
----
+- M9 UX hardening: taxonomy defaults, clearer validation/errors, transaction list/filter usability.
+- M10 Mobile UI and page structure upgrade: route/layout cleanup with stronger responsive behavior.
+- M11 Import/Export: CSV import/export and backup workflows.
+- M12 AI cost-managed integration: prompt pack/copy, provider abstraction, optional self-hosted vLLM later.
+- M13 Observability and output: logging/metrics, caching strategy, PDF export.
 
 ## Monorepo Structure
 
 ```text
-apps/
-  api/   (NestJS + Prisma v7)
-  web/   (Next.js 14 App Router)
-```
-
-```text
 Aurum/
-|
-|-- apps/
-|   |-- web/
-|   `-- api/
-|
-|-- packages/
-|   `-- core/
-|
-|-- infra/
-|   `-- docker/
-|
-|-- pnpm-workspace.yaml
-|-- turbo.json
-`-- package.json
+├─ apps/
+│  ├─ api/              # NestJS + Prisma v7
+│  └─ web/              # Next.js App Router
+├─ packages/
+│  └─ core/             # shared types/utilities
+├─ infra/
+│  └─ docker/           # local postgres compose
+├─ package.json
+├─ pnpm-workspace.yaml
+└─ turbo.json
 ```
-
----
 
 ## Quickstart
 
@@ -172,10 +82,11 @@ Prerequisites:
 - pnpm 9.x
 - Docker Desktop
 
-Start local infrastructure:
+Start/stop infrastructure:
 
 ```bash
 docker compose -f infra/docker/docker-compose.yml up -d
+docker compose -f infra/docker/docker-compose.yml down
 ```
 
 Install and run:
@@ -192,99 +103,98 @@ pnpm lint
 pnpm typecheck
 ```
 
-### Auth Flow
+Common ports:
 
 - Web: `http://localhost:3000`
 - API: `http://localhost:3001`
-- Auth routes (web): `/login`, `/register`
-- Protected routes (web): `/transactions`, `/reports`, `/ai-report` (client-side `AuthGate`)
-- Auth endpoints (api): `POST /v1/auth/register`, `POST /v1/auth/login`, `POST /v1/auth/refresh`
-- Server-side user isolation: Accounts/Categories/Transactions/Analytics/AI enforce `userId` from JWT. Client never sends `userId`.
-- Refresh token rotation enabled: `POST /v1/auth/refresh` returns `{ accessToken, refreshToken }` and revokes previous refresh token.
-- Reuse detection enabled: using a revoked/expired refresh token triggers user-wide refresh session revocation.
-- Session management: `POST /v1/auth/logout-all` revokes all refresh tokens for current user.
-- Current web storage is `localStorage` (dev convenience). Future hardening target: `httpOnly` secure cookies.
+- Prisma Studio: dynamic port (shown in terminal after `prisma studio`)
 
-### AI (optional)
-
-By default, AI is disabled.
-To test LLM mode:
-
-- Set `AURUM_LLM_ENABLED=true`
-- Set `AURUM_INSIGHTS_MODE=llm` or `AURUM_INSIGHTS_MODE=hybrid`
-- Provide `AURUM_LLM_BASE_URL` and `AURUM_LLM_MODEL`
-
-If no LLM server is running, the system safely falls back.
-
----
-
-## Database
-
-Run migrations:
+Prisma (v7) commands:
 
 ```bash
 pnpm --filter api exec prisma migrate dev --name <migration-name>
-```
-
-Seed data:
-
-```bash
 pnpm --filter api exec prisma db seed
-```
-
-Open Prisma Studio:
-
-```bash
 pnpm --filter api exec prisma studio
 ```
 
----
+Troubleshooting:
+
+- If Prisma Studio or DB introspection fails, first ensure PostgreSQL is up via Docker Compose.
+
+## Environment Variables
+
+### Web (`apps/web/.env.local`)
+
+| Key | Example | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:3001` | API base URL used by web client. |
+
+### API (`apps/api/.env`)
+
+| Key | Example | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/aurum` | Prisma/Postgres connection string (Prisma v7 config path). |
+| `PORT` | `3001` | API port (if overridden by runtime/start script). |
+| `CORS_ORIGIN` | `http://localhost:3000` | Allowed web origin. |
+| `JWT_ACCESS_SECRET` | `change-me` | Access token signing secret. |
+| `JWT_REFRESH_SECRET` | `change-me-too` | Refresh token signing secret. |
+| `JWT_ACCESS_TTL` | `15m` | Access token TTL. |
+| `JWT_REFRESH_TTL` | `30d` | Refresh token TTL. |
+| `AURUM_INSIGHTS_MODE` | `rules` / `llm` / `hybrid` | Insight engine mode. |
+| `AURUM_LLM_ENABLED` | `false` | Toggle LLM engine on/off. |
+| `AURUM_INSIGHTS_MAX` | `10` | Max merged insights in hybrid mode. |
+| `AURUM_LLM_BASE_URL` | `http://localhost:8000` | OpenAI-compatible LLM endpoint. |
+| `AURUM_LLM_API_KEY` | `<key>` | Required for non-local providers. |
+| `AURUM_LLM_MODEL` | `gpt-4.1-mini` | LLM model id. |
+| `AURUM_LLM_TIMEOUT_MS` | `8000` | LLM HTTP timeout (ms). |
 
 ## API Reference
 
 Base URL: `http://localhost:3001`
 
-| Endpoint | Method | Description |
-| --- | --- | --- |
-| `/v1/health` | GET | Health check |
-| `/v1/categories` | GET | List categories for current user |
-| `/v1/categories` | POST | Create category (user-scoped, unique per user) |
-| `/v1/subcategories` | GET | List subcategories by categoryId (user-scoped) |
-| `/v1/subcategories` | POST | Create subcategory under category (user-scoped) |
-| `/v1/accounts` | GET | List accounts for current user |
-| `/v1/transactions` | GET | List transactions with filters/pagination |
-| `/v1/transactions/:id` | GET | Get transaction detail |
-| `/v1/transactions` | POST | Create transaction |
-| `/v1/transactions/:id` | PATCH | Update transaction |
-| `/v1/transactions/:id` | DELETE | Delete transaction |
-| `/v1/analytics/monthly-summary` | GET | Monthly summary analytics |
-| `/v1/analytics/category-breakdown` | GET | Expense by category for month |
-| `/v1/ai/monthly-report` | GET | Rule-based AI monthly report payload |
+| Endpoint | Method | Auth | Description |
+| --- | --- | --- | --- |
+| `/v1/health` | GET | No | Health check. |
+| `/v1/auth/register` | POST | No | Register with email/password, returns `{ user, accessToken, refreshToken }`. |
+| `/v1/auth/login` | POST | No | Login with email/password, returns `{ user, accessToken, refreshToken }`. |
+| `/v1/auth/refresh` | POST | No | Rotate refresh token, returns `{ accessToken, refreshToken }`. |
+| `/v1/auth/logout` | POST | No | Revoke provided refresh token. |
+| `/v1/auth/logout-all` | POST | Yes | Revoke all refresh tokens for current user. |
+| `/v1/accounts` | GET | Yes | List accounts for current user. |
+| `/v1/accounts` | POST | Yes | Create account for current user. |
+| `/v1/accounts/:id` | GET | Yes | Get account (user-scoped). |
+| `/v1/accounts/:id` | PATCH | Yes | Update account (user-scoped). |
+| `/v1/accounts/:id` | DELETE | Yes | Delete account (user-scoped). |
+| `/v1/categories` | GET | Yes | List categories (user-scoped). |
+| `/v1/categories` | POST | Yes | Create category (unique per user). |
+| `/v1/subcategories` | GET | Yes | List subcategories by `categoryId` (user-scoped). |
+| `/v1/subcategories` | POST | Yes | Create subcategory under a user-owned category. |
+| `/v1/transactions` | GET | Yes | List transactions with filters/pagination (user-scoped). |
+| `/v1/transactions` | POST | Yes | Create transaction (income/expense require `categoryId` + `subcategoryId`). |
+| `/v1/transactions/:id` | GET | Yes | Get transaction by id (user-scoped). |
+| `/v1/transactions/:id` | PATCH | Yes | Update transaction (user-scoped + taxonomy validation). |
+| `/v1/transactions/:id` | DELETE | Yes | Delete transaction (user-scoped). |
+| `/v1/analytics/monthly-summary` | GET | Yes | Income/expense/net monthly summary. |
+| `/v1/analytics/category-breakdown` | GET | Yes | Monthly expense breakdown by category. |
+| `/v1/ai/monthly-report` | GET | Yes | Monthly AI report payload with generated insights. |
 
-`GET /v1/transactions` query params:
+Transactions query params (`GET /v1/transactions`):
 
 - `limit`, `offset`
 - `accountId`, `categoryId`
 - `from`, `to`
-- `include=refs` (optional; includes account/category refs)
+- `include=refs` (optional account/category/subcategory refs)
 
----
+## Auth and Session Notes
 
-## PowerShell curl Examples
-
-```powershell
-curl.exe "http://localhost:3001/v1/health"
-curl.exe "http://localhost:3001/v1/analytics/monthly-summary?year=2026&month=2"
-curl.exe "http://localhost:3001/v1/analytics/category-breakdown?year=2026&month=2"
-curl.exe "http://localhost:3001/v1/ai/monthly-report?year=2026&month=2"
-```
-
----
+- Protected web routes use client-side `AuthGate`.
+- Current dev storage is `localStorage` for access/refresh tokens.
+- Refresh rotation and reuse detection are enforced server-side.
+- Future production hardening target: `httpOnly` secure cookie-based session flow.
 
 ## Conventions
 
 - Package manager: `pnpm`
-- Monorepo task runner: `turbo`
+- Task runner: `turbo`
 - API prefix: `/v1`
-- Use `.env` / `.env.local` for runtime configuration
-- Keep shared cross-app logic under `packages/`
+- Shared cross-app logic: `packages/`
