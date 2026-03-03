@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { AuthProvider } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('v1/categories')
@@ -7,16 +8,20 @@ export class CategoriesController {
 
   @Get()
   async list() {
-    // Phase 1：先用 demo 用户；Milestone 3 再接 Auth（JWT/session）
-    const user = await this.prisma.user.findUnique({
-      where: { email: 'demo@aurum.local' },
-      select: { id: true },
+    const identity = await this.prisma.authIdentity.findUnique({
+      where: {
+        provider_identifier: {
+          provider: AuthProvider.EMAIL,
+          identifier: 'demo@aurum.local',
+        },
+      },
+      select: { userId: true },
     });
 
-    if (!user) return [];
+    if (!identity) return [];
 
     return this.prisma.category.findMany({
-      where: { userId: user.id },
+      where: { userId: identity.userId },
       orderBy: [{ parentId: 'asc' }, { name: 'asc' }],
       select: {
         id: true,

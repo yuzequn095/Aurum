@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { TransactionType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -11,19 +11,6 @@ type RangeSummary = {
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
-
-  private async getDemoUserId() {
-    const user = await this.prisma.user.findUnique({
-      where: { email: 'demo@aurum.local' },
-      select: { id: true },
-    });
-    if (!user) {
-      throw new NotFoundException(
-        'Demo user not found. Did you run prisma db seed?',
-      );
-    }
-    return user.id;
-  }
 
   private getMonthRange(year: number, month: number) {
     const startDate = new Date(Date.UTC(year, month - 1, 1));
@@ -80,9 +67,7 @@ export class AnalyticsService {
     };
   }
 
-  async getMonthlySummary(year: number, month: number) {
-    const userId = await this.getDemoUserId();
-
+  async getMonthlySummary(userId: string, year: number, month: number) {
     const currentRange = this.getMonthRange(year, month);
     const previousMonth = this.getPreviousMonth(year, month);
     const previousRange = this.getMonthRange(
@@ -130,8 +115,7 @@ export class AnalyticsService {
     };
   }
 
-  async getCategoryBreakdown(year: number, month: number) {
-    const userId = await this.getDemoUserId();
+  async getCategoryBreakdown(userId: string, year: number, month: number) {
     const { startDate, endDate } = this.getMonthRange(year, month);
 
     const grouped = await this.prisma.transaction.groupBy({

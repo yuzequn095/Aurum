@@ -54,20 +54,27 @@ Status: ✅ Completed
 
 > Insights are currently generated via rule-based logic. LLM integration is rolling out in Phase 3.
 
-### Phase 3 — AI Insight Engine (In Progress)
+### Phase 3 - AI Insight Engine
 - [x] M6.1 Pluggable Insight Engine abstraction
 - [x] M6.2 OpenAI-compatible LLM scaffold
 - [x] M6.3 Hybrid merge strategy (rules + LLM)
 - [x] M6.4 Insight explanation + confidence scoring  
 Status: ✅ Completed
 
-### Phase 4 - Hardening & Productization
-- Authentication
-- Multi-user isolation
-- Caching layer
-- PDF export of monthly reports
-- Observability & logging  
+### Phase 4 - Auth & Productization
+- [ ] M7.1 API Auth (in progress)
+- [ ] M7.2 Web login/session
+- [ ] M7.3 Full userId isolation
+Status: ⏳ In progress
+
+### Phase 5 - Ledger v2
+- [ ] M8.1 Date-only occurredAt (Strategy A: API accepts/returns YYYY-MM-DD, DB remains DateTime)
+- [ ] M8.2 Income support
+- [ ] M8.3 Subcategory + custom create
 Status: ⏳ Planned
+
+### TODO (M8)
+- Strategy A implementation pending: keep `occurredAt` as `DateTime` in DB, but change API contract to date-only (`YYYY-MM-DD`).
 
 ---
 ## Current Capabilities

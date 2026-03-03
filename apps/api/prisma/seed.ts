@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { PrismaClient, TransactionType } from '@prisma/client';
+import { AuthProvider, PrismaClient, TransactionType } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const adapter = new PrismaPg({
@@ -9,11 +9,30 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const user = await prisma.user.upsert({
-    where: { email: 'demo@aurum.local' },
-    update: {},
-    create: { email: 'demo@aurum.local' },
+  const demoEmail = 'demo@aurum.local';
+  const identity = await prisma.authIdentity.findUnique({
+    where: {
+      provider_identifier: {
+        provider: AuthProvider.EMAIL,
+        identifier: demoEmail,
+      },
+    },
+    select: { userId: true },
   });
+  const user =
+    identity?.userId != null
+      ? { id: identity.userId }
+      : await prisma.user.create({
+          data: {
+            identities: {
+              create: {
+                provider: AuthProvider.EMAIL,
+                identifier: demoEmail,
+              },
+            },
+          },
+          select: { id: true },
+        });
 
   const food = await prisma.category.create({
     data: { userId: user.id, name: 'Food' },

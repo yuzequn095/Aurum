@@ -15,12 +15,13 @@ export class AiService {
   ) {}
 
   async getMonthlyReport(
+    userId: string,
     year: number,
     month: number,
   ): Promise<MonthlyReportResponse> {
     const [summary, categoryBreakdown] = await Promise.all([
-      this.analyticsService.getMonthlySummary(year, month),
-      this.analyticsService.getCategoryBreakdown(year, month),
+      this.analyticsService.getMonthlySummary(userId, year, month),
+      this.analyticsService.getCategoryBreakdown(userId, year, month),
     ]);
     const context: MonthlyReportContext = {
       summary,

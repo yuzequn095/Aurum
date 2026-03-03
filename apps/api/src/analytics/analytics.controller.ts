@@ -1,18 +1,32 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/auth.types';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AnalyticsService } from './analytics.service';
 import { GetMonthlySummaryQueryDto } from './dto/get-monthly-summary-query.dto';
 
 @Controller('v1/analytics')
+@UseGuards(JwtAuthGuard)
 export class AnalyticsController {
   constructor(private readonly service: AnalyticsService) {}
 
   @Get('monthly-summary')
-  async getMonthlySummary(@Query() query: GetMonthlySummaryQueryDto) {
-    return this.service.getMonthlySummary(query.year, query.month);
+  async getMonthlySummary(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GetMonthlySummaryQueryDto,
+  ) {
+    return this.service.getMonthlySummary(user.userId, query.year, query.month);
   }
 
   @Get('category-breakdown')
-  async getCategoryBreakdown(@Query() query: GetMonthlySummaryQueryDto) {
-    return this.service.getCategoryBreakdown(query.year, query.month);
+  async getCategoryBreakdown(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GetMonthlySummaryQueryDto,
+  ) {
+    return this.service.getCategoryBreakdown(
+      user.userId,
+      query.year,
+      query.month,
+    );
   }
 }
