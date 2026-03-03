@@ -90,9 +90,10 @@ export class AuthService {
       },
     });
 
-    if (!identity?.secretHash) {
+    if (!identity) {
       throw new UnauthorizedException('Invalid credentials');
     }
+    this.assertEmailPasswordIdentity(identity.secretHash);
 
     const passwordOk = await compare(password, identity.secretHash);
     if (!passwordOk) {
@@ -131,16 +132,19 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token is invalid or expired');
     }
 
+    // TODO(M7.4): implement refresh-token rotation (issue new refresh token and revoke current).
     return {
       accessToken: await this.signAccessToken(payload),
     };
   }
 
   async logout(refreshToken: string): Promise<{ ok: true }> {
+    const payload = await this.verifyRefreshToken(refreshToken);
     const tokenHash = this.hashToken(refreshToken);
     await this.prisma.refreshToken.updateMany({
       where: {
         tokenHash,
+        userId: payload.userId,
         revokedAt: null,
       },
       data: {
@@ -153,6 +157,14 @@ export class AuthService {
 
   private normalizeEmail(email: string): string {
     return email.trim().toLowerCase();
+  }
+
+  private assertEmailPasswordIdentity(
+    secretHash: string | null,
+  ): asserts secretHash is string {
+    if (!secretHash) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
   }
 
   private hashToken(token: string): string {
