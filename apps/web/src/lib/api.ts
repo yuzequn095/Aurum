@@ -1,4 +1,6 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+import { clearTokens, getAccessToken, getRefreshToken, setAccessToken } from '@/lib/auth/tokens';
+
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
 
 export type MonthlySummaryResponse = {
   year: number;
@@ -54,64 +56,131 @@ export type AiMonthlyReportResponse = {
   insights: AiInsight[];
 };
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    // dev: allow cookies later; safe now
-    credentials: "include",
+type RefreshResponse = {
+  accessToken: string;
+};
+
+function isBrowser() {
+  return typeof window !== 'undefined';
+}
+
+function redirectToLogin() {
+  if (!isBrowser()) return;
+  window.location.href = '/login';
+}
+
+async function readErrorBody(res: Response): Promise<string> {
+  try {
+    return await res.text();
+  } catch {
+    return '';
+  }
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  const res = await fetch(`${API_BASE}/v1/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ refreshToken }),
   });
 
+  if (!res.ok) return null;
+
+  const payload = (await res.json()) as RefreshResponse;
+  if (!payload.accessToken) return null;
+  setAccessToken(payload.accessToken);
+  return payload.accessToken;
+}
+
+async function authFetch(
+  path: string,
+  init: RequestInit = {},
+  retryOnUnauthorized = true,
+): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    headers.set('Authorization', `Bearer ${accessToken}`);
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers,
+    credentials: 'include',
+  });
+
+  if (response.status !== 401 || !retryOnUnauthorized) {
+    return response;
+  }
+
+  const newAccessToken = await refreshAccessToken();
+  if (!newAccessToken) {
+    clearTokens();
+    redirectToLogin();
+    return response;
+  }
+
+  const retryHeaders = new Headers(init.headers);
+  retryHeaders.set('Authorization', `Bearer ${newAccessToken}`);
+
+  return fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: retryHeaders,
+    credentials: 'include',
+  });
+}
+
+async function parseJsonOrThrow<T>(res: Response, method: string, path: string): Promise<T> {
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`GET ${path} failed: ${res.status} ${text}`);
+    const text = await readErrorBody(res);
+    throw new Error(`${method} ${path} failed: ${res.status} ${text}`);
   }
 
   return (await res.json()) as T;
+}
+
+export async function apiGet<T>(path: string): Promise<T> {
+  const res = await authFetch(path);
+  return parseJsonOrThrow<T>(res, 'GET', path);
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
+  const res = await authFetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`POST ${path} failed: ${res.status} ${text}`);
-  }
-
-  return (await res.json()) as T;
+  return parseJsonOrThrow<T>(res, 'POST', path);
 }
 
-export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+export async function apiPublicPost<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
-    method: 'PATCH',
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     body: JSON.stringify(body),
   });
+  return parseJsonOrThrow<T>(res, 'POST', path);
+}
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`PATCH ${path} failed: ${res.status} ${text}`);
-  }
-
-  return (await res.json()) as T;
+export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  const res = await authFetch(path, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return parseJsonOrThrow<T>(res, 'PATCH', path);
 }
 
 export async function apiDelete<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await authFetch(path, {
     method: 'DELETE',
-    credentials: 'include',
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`DELETE ${path} failed: ${res.status} ${text}`);
-  }
-
-  return (await res.json()) as T;
+  return parseJsonOrThrow<T>(res, 'DELETE', path);
 }
 
 export async function fetchMonthlySummary(year: number, month: number) {
@@ -119,17 +188,7 @@ export async function fetchMonthlySummary(year: number, month: number) {
     year: String(year),
     month: String(month),
   });
-  const path = `/v1/analytics/monthly-summary?${qs.toString()}`;
-  const res = await fetch(`${API_BASE}${path}`, {
-    credentials: 'include',
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`GET ${path} failed: ${res.status} ${text}`);
-  }
-
-  return (await res.json()) as unknown;
+  return apiGet<MonthlySummaryResponse>(`/v1/analytics/monthly-summary?${qs.toString()}`);
 }
 
 export async function fetchCategoryBreakdown(year: number, month: number) {
@@ -137,20 +196,13 @@ export async function fetchCategoryBreakdown(year: number, month: number) {
     year: String(year),
     month: String(month),
   });
-  const path = `/v1/analytics/category-breakdown?${qs.toString()}`;
-  const res = await fetch(`${API_BASE}${path}`, {
-    credentials: 'include',
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`GET ${path} failed: ${res.status} ${text}`);
-  }
-
-  return (await res.json()) as unknown;
+  return apiGet<CategoryBreakdownResponse>(`/v1/analytics/category-breakdown?${qs.toString()}`);
 }
 
-export async function fetchAiMonthlyReport(year: number, month: number): Promise<AiMonthlyReportResponse> {
+export async function fetchAiMonthlyReport(
+  year: number,
+  month: number,
+): Promise<AiMonthlyReportResponse> {
   return getMonthlyAiReport(year, month);
 }
 
@@ -162,7 +214,5 @@ export async function getMonthlyAiReport(
     year: String(year),
     month: String(month),
   });
-  return apiGet<AiMonthlyReportResponse>(
-    `/v1/ai/monthly-report?${qs.toString()}`,
-  );
+  return apiGet<AiMonthlyReportResponse>(`/v1/ai/monthly-report?${qs.toString()}`);
 }

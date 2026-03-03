@@ -62,10 +62,10 @@ Status: ✅ Completed
 Status: ✅ Completed
 
 ### Phase 4 - Auth & Productization
-- [ ] M7.1 API Auth (in progress)
-- [ ] M7.2 Web login/session
+- [x] M7.1 API Auth
+- [x] M7.2 Web login/session
 - [ ] M7.3 Full userId isolation
-Status: ⏳ In progress
+Status: ⏳ In progress (M7.3 pending)
 
 ### Phase 5 - Ledger v2
 - [ ] M8.1 Date-only occurredAt (Strategy A: API accepts/returns YYYY-MM-DD, DB remains DateTime)
@@ -189,6 +189,14 @@ Quality checks:
 pnpm lint
 pnpm typecheck
 ```
+
+### Auth Flow
+
+- Web: `http://localhost:3000`
+- API: `http://localhost:3001`
+- Auth routes (web): `/login`, `/register`
+- Protected routes (web): `/transactions`, `/reports` (redirects to `/ai-report`)
+- Auth endpoints (api): `POST /v1/auth/register`, `POST /v1/auth/login`, `POST /v1/auth/refresh`
 
 ### AI (optional)
 
