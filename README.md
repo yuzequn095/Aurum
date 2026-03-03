@@ -64,8 +64,8 @@ Status: ✅ Completed
 ### Phase 4 - Auth & Productization
 - [x] M7.1 API Auth
 - [x] M7.2 Web login/session
-- [ ] M7.3 Full userId isolation
-Status: ⏳ In progress (M7.3 pending)
+- [x] M7.3 Full userId isolation
+Status: ✅ Completed
 
 ### Phase 5 - Ledger v2
 - [ ] M8.1 Date-only occurredAt (Strategy A: API accepts/returns YYYY-MM-DD, DB remains DateTime)
@@ -197,6 +197,7 @@ pnpm typecheck
 - Auth routes (web): `/login`, `/register`
 - Protected routes (web): `/transactions`, `/reports` (redirects to `/ai-report`)
 - Auth endpoints (api): `POST /v1/auth/register`, `POST /v1/auth/login`, `POST /v1/auth/refresh`
+- Server-side user isolation: Accounts/Categories/Transactions/Analytics/AI enforce `userId` from JWT. Client never sends `userId`.
 
 ### AI (optional)
 

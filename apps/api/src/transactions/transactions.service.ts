@@ -14,7 +14,6 @@ export class TransactionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateTransactionDto) {
-    // TODO(M7.3): tighten full userId isolation invariants across all transaction operations.
     const account = await this.prisma.account.findFirst({
       where: { id: dto.accountId, userId },
       select: { id: true },
@@ -145,12 +144,6 @@ export class TransactionsService {
   }
 
   async update(userId: string, id: string, dto: UpdateTransactionDto) {
-    const existing = await this.prisma.transaction.findFirst({
-      where: { id, userId },
-      select: { id: true },
-    });
-    if (!existing) return null;
-
     if (dto.accountId) {
       const account = await this.prisma.account.findFirst({
         where: { id: dto.accountId, userId },
@@ -167,8 +160,8 @@ export class TransactionsService {
       if (!category) return null;
     }
 
-    return this.prisma.transaction.update({
-      where: { id },
+    const result = await this.prisma.transaction.updateMany({
+      where: { id, userId },
       data: {
         accountId: dto.accountId,
         type: dto.type,
@@ -180,31 +173,17 @@ export class TransactionsService {
         note: dto.note,
         transferId: dto.transferId,
       },
-      select: {
-        id: true,
-        accountId: true,
-        type: true,
-        amountCents: true,
-        currency: true,
-        occurredAt: true,
-        categoryId: true,
-        merchant: true,
-        note: true,
-        transferId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
     });
+
+    if (result.count === 0) return null;
+
+    return this.getById(userId, id);
   }
 
   async remove(userId: string, id: string) {
-    const existing = await this.prisma.transaction.findFirst({
+    const result = await this.prisma.transaction.deleteMany({
       where: { id, userId },
-      select: { id: true },
     });
-    if (!existing) return false;
-
-    await this.prisma.transaction.delete({ where: { id } });
-    return true;
+    return result.count > 0;
   }
 }
