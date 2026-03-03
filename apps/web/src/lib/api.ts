@@ -1,5 +1,10 @@
-import { clearTokens, getAccessToken, getRefreshToken, setAccessToken } from '@/lib/auth/tokens';
-import { setRefreshToken } from '@/lib/auth/tokens';
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  setAccessToken,
+  setRefreshToken,
+} from '@/lib/auth/tokens';
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
 
@@ -55,6 +60,18 @@ export type AiMonthlyReportResponse = {
   summary: MonthlySummaryResponse;
   categoryBreakdown: CategoryBreakdownResponse;
   insights: AiInsight[];
+};
+
+export type CategoryOption = {
+  id: string;
+  name: string;
+  parentId: string | null;
+};
+
+export type SubcategoryOption = {
+  id: string;
+  categoryId: string;
+  name: string;
 };
 
 type RefreshResponse = {
@@ -218,4 +235,27 @@ export async function getMonthlyAiReport(
     month: String(month),
   });
   return apiGet<AiMonthlyReportResponse>(`/v1/ai/monthly-report?${qs.toString()}`);
+}
+
+export async function getCategories(): Promise<CategoryOption[]> {
+  return apiGet<CategoryOption[]>('/v1/categories');
+}
+
+export async function createCategory(name: string): Promise<CategoryOption> {
+  return apiPost<CategoryOption>('/v1/categories', { name });
+}
+
+export async function getSubcategories(categoryId: string): Promise<SubcategoryOption[]> {
+  const qs = new URLSearchParams({ categoryId });
+  return apiGet<SubcategoryOption[]>(`/v1/subcategories?${qs.toString()}`);
+}
+
+export async function createSubcategory(
+  categoryId: string,
+  name: string,
+): Promise<SubcategoryOption> {
+  return apiPost<SubcategoryOption>('/v1/subcategories', {
+    categoryId,
+    name,
+  });
 }

@@ -1,8 +1,10 @@
 import { Transform } from 'class-transformer';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
-import { MinLength } from 'class-validator';
+import { IsString, MaxLength, MinLength } from 'class-validator';
 
-export class CreateCategoryDto {
+export class CreateSubcategoryDto {
+  @IsString()
+  categoryId!: string;
+
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
@@ -10,8 +12,4 @@ export class CreateCategoryDto {
   @MinLength(1)
   @MaxLength(80)
   name!: string;
-
-  @IsOptional()
-  @IsString()
-  parentId?: string;
 }

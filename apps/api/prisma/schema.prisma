@@ -35,6 +35,7 @@ model User {
   refreshTokens RefreshToken[]
   accounts      Account[]
   categories    Category[]
+  subcategories Subcategory[]
   transactions  Transaction[]
 }
 
@@ -86,14 +87,33 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id])
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   parent   Category? @relation("CategoryToParent", fields: [parentId], references: [id])
   children Category[] @relation("CategoryToParent")
 
-  transactions Transaction[]
+  transactions  Transaction[]
+  subcategories Subcategory[]
 
+  @@unique([userId, name])
   @@index([userId])
   @@index([parentId])
+}
+
+model Subcategory {
+  id         String   @id @default(cuid())
+  userId     String
+  categoryId String
+  name       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([userId, categoryId, name])
+  @@index([userId])
+  @@index([categoryId])
 }
 
 model Account {
@@ -121,16 +141,19 @@ model Transaction {
   merchant    String?
   note        String?
   categoryId  String?
+  subcategoryId String?
   transferId  String?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id])
-  account  Account   @relation(fields: [accountId], references: [id])
-  category Category? @relation(fields: [categoryId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+  account     Account     @relation(fields: [accountId], references: [id])
+  category    Category?   @relation(fields: [categoryId], references: [id])
+  subcategory Subcategory? @relation(fields: [subcategoryId], references: [id])
 
   @@index([userId, occurredAt])
   @@index([accountId, occurredAt])
   @@index([categoryId])
+  @@index([subcategoryId])
   @@index([transferId])
 }

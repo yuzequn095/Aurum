@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -41,18 +46,25 @@ export class CategoriesService {
       }
     }
 
-    return this.prisma.category.create({
-      data: {
-        userId,
-        name: dto.name,
-        parentId: dto.parentId,
-      },
-      select: {
-        id: true,
-        name: true,
-        parentId: true,
-      },
-    });
+    try {
+      return await this.prisma.category.create({
+        data: {
+          userId,
+          name: dto.name,
+          parentId: dto.parentId,
+        },
+        select: {
+          id: true,
+          name: true,
+          parentId: true,
+        },
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        throw new ConflictException('Category name already exists');
+      }
+      throw error;
+    }
   }
 
   async update(userId: string, id: string, dto: UpdateCategoryDto) {
@@ -66,13 +78,21 @@ export class CategoriesService {
       }
     }
 
-    const result = await this.prisma.category.updateMany({
-      where: { id, userId },
-      data: {
-        name: dto.name,
-        parentId: dto.parentId,
-      },
-    });
+    let result: Prisma.BatchPayload;
+    try {
+      result = await this.prisma.category.updateMany({
+        where: { id, userId },
+        data: {
+          name: dto.name,
+          parentId: dto.parentId,
+        },
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        throw new ConflictException('Category name already exists');
+      }
+      throw error;
+    }
 
     if (result.count === 0) {
       return null;
@@ -86,5 +106,12 @@ export class CategoriesService {
       where: { id, userId },
     });
     return result.count > 0;
+  }
+
+  private isUniqueViolation(error: unknown): boolean {
+    return (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    );
   }
 }

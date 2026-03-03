@@ -8,6 +8,7 @@ import { AccountsModule } from './accounts/accounts.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
+import { SubcategoriesModule } from './subcategories/subcategories.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { AuthModule } from './auth/auth.module';
     PrismaModule,
     AuthModule,
     CategoriesModule,
+    SubcategoriesModule,
     TransactionsModule,
     AccountsModule,
     AnalyticsModule,

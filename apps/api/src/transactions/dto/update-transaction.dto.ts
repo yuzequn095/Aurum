@@ -36,6 +36,10 @@ export class UpdateTransactionDto {
 
   @IsOptional()
   @IsString()
+  subcategoryId?: string;
+
+  @IsOptional()
+  @IsString()
   merchant?: string;
 
   @IsOptional()

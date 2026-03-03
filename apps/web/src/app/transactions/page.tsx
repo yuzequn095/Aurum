@@ -7,7 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Container, Section } from '@/components/ui/layout';
 import { clearTokens } from '@/lib/auth/tokens';
-import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api';
+import {
+  apiDelete,
+  apiGet,
+  apiPatch,
+  apiPost,
+  createCategory,
+  createSubcategory,
+  getCategories,
+  getSubcategories,
+} from '@/lib/api';
 
 type Tx = {
   id: string;
@@ -17,21 +26,25 @@ type Tx = {
   currency: string;
   note: string | null;
   categoryId: string | null;
+  subcategoryId: string | null;
   accountId: string;
   type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
   account?: { id: string; name: string; currency: string };
   category?: { id: string; name: string; parentId: string | null } | null;
+  subcategory?: { id: string; categoryId: string; name: string } | null;
 };
 
 type Account = { id: string; name: string; currency: string };
 type Category = { id: string; name: string; parentId: string | null };
+type Subcategory = { id: string; categoryId: string; name: string };
 
 type CreateTxPayload = {
   accountId: string;
   type: 'EXPENSE';
   amountCents: number;
   occurredAt: string;
-  categoryId?: string;
+  categoryId: string;
+  subcategoryId: string;
   merchant: string;
   note?: string;
 };
@@ -44,6 +57,7 @@ type UpdateTxPayload = {
 };
 
 const LIMIT = 20;
+const CREATE_NEW_OPTION = '__create_new__';
 
 function formatMoneyForType(type: Tx['type'], cents: number, currency: string) {
   const dollars = (Math.abs(cents) / 100).toFixed(2);
@@ -78,6 +92,7 @@ export default function TransactionsPage() {
   const [items, setItems] = useState<Tx[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -91,6 +106,7 @@ export default function TransactionsPage() {
 
   const [accountId, setAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [subcategoryId, setSubcategoryId] = useState('');
   const [amountCents, setAmountCents] = useState('100');
   const [merchant, setMerchant] = useState('');
   const [note, setNote] = useState('');
@@ -163,13 +179,80 @@ export default function TransactionsPage() {
     }
   };
 
+  const loadSubcategoriesForCategory = async (
+    selectedCategoryId: string,
+    opts?: { pickFirst?: boolean; preserveSelection?: boolean },
+  ) => {
+    const subs = await getSubcategories(selectedCategoryId);
+    setSubcategories(subs);
+    if (opts?.pickFirst) {
+      setSubcategoryId(subs[0]?.id ?? '');
+      return;
+    }
+    if (opts?.preserveSelection) {
+      setSubcategoryId((current) => (subs.some((sub) => sub.id === current) ? current : ''));
+      return;
+    }
+    setSubcategoryId('');
+  };
+
+  const handleCreateCategory = async (): Promise<string | null> => {
+    const raw = window.prompt('New category name');
+    const name = raw?.trim();
+    if (!name) return null;
+
+    const created = await createCategory(name);
+    setCategories((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+    setCategoryId(created.id);
+    await loadSubcategoriesForCategory(created.id);
+    return created.id;
+  };
+
+  const handleCreateSubcategory = async (selectedCategoryId: string): Promise<string | null> => {
+    const raw = window.prompt('New subcategory name');
+    const name = raw?.trim();
+    if (!name) return null;
+
+    const created = await createSubcategory(selectedCategoryId, name);
+    setSubcategories((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+    setSubcategoryId(created.id);
+    return created.id;
+  };
+
+  const onCategoryChange = async (value: string) => {
+    if (value === CREATE_NEW_OPTION) {
+      await handleCreateCategory();
+      return;
+    }
+
+    setCategoryId(value);
+    if (!value) {
+      setSubcategories([]);
+      setSubcategoryId('');
+      return;
+    }
+    await loadSubcategoriesForCategory(value);
+  };
+
+  const onSubcategoryChange = async (value: string) => {
+    if (value === CREATE_NEW_OPTION) {
+      if (!categoryId) {
+        setSubmitErr('Select a category first.');
+        return;
+      }
+      await handleCreateSubcategory(categoryId);
+      return;
+    }
+    setSubcategoryId(value);
+  };
+
   useEffect(() => {
     const loadInitial = async () => {
       try {
         setLoadErr(null);
         const [accs, cats] = await Promise.all([
           apiGet<Account[]>('/v1/accounts'),
-          apiGet<Category[]>('/v1/categories'),
+          getCategories(),
         ]);
         setAccounts(accs);
         setCategories(cats);
@@ -217,6 +300,10 @@ export default function TransactionsPage() {
       setSubmitErr('amountCents must be an integer >= 1.');
       return;
     }
+    if (!categoryId || !subcategoryId) {
+      setSubmitErr('Category and subcategory are required.');
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -225,7 +312,8 @@ export default function TransactionsPage() {
         type: 'EXPENSE',
         amountCents: parsedAmount,
         occurredAt: new Date(occurredAtLocal).toISOString(),
-        categoryId: categoryId || undefined,
+        categoryId,
+        subcategoryId,
         merchant,
         note: note || undefined,
       };
@@ -237,6 +325,8 @@ export default function TransactionsPage() {
       setNote('');
       setOccurredAtLocal(toLocalDatetimeInputValue());
       setCategoryId('');
+      setSubcategoryId('');
+      setSubcategories([]);
     } catch (e) {
       setSubmitErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -435,15 +525,38 @@ export default function TransactionsPage() {
                   Category
                   <select
                     value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
+                    onChange={(e) => void onCategoryChange(e.target.value)}
                     style={{ width: '100%', marginTop: 4 }}
+                    required
                   >
-                    <option value="">(none)</option>
+                    <option value="">Select category</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
                       </option>
                     ))}
+                    <option value={CREATE_NEW_OPTION}>+ Create new...</option>
+                  </select>
+                </label>
+
+                <label>
+                  Subcategory
+                  <select
+                    value={subcategoryId}
+                    onChange={(e) => void onSubcategoryChange(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
+                    required
+                    disabled={!categoryId}
+                  >
+                    <option value="">
+                      {categoryId ? 'Select subcategory' : 'Select category first'}
+                    </option>
+                    {subcategories.map((sub) => (
+                      <option key={sub.id} value={sub.id}>
+                        {sub.name}
+                      </option>
+                    ))}
+                    {categoryId ? <option value={CREATE_NEW_OPTION}>+ Create new...</option> : null}
                   </select>
                 </label>
 
@@ -532,6 +645,9 @@ export default function TransactionsPage() {
                       </div>
                       <div style={{ opacity: 0.75, marginTop: 4 }}>
                         Category: {tx.category?.name ?? tx.categoryId ?? '-'}
+                      </div>
+                      <div style={{ opacity: 0.75, marginTop: 4 }}>
+                        Subcategory: {tx.subcategory?.name ?? tx.subcategoryId ?? '-'}
                       </div>
                       {tx.note && <div style={{ marginTop: 6 }}>{tx.note}</div>}
                     </div>

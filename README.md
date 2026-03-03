@@ -71,8 +71,8 @@ Status: ✅ Completed
 ### Phase 5 - Ledger v2
 - [ ] M8.1 Date-only occurredAt (Strategy A: API accepts/returns YYYY-MM-DD, DB remains DateTime)
 - [ ] M8.2 Income support
-- [ ] M8.3 Subcategory + custom create
-Status: ⏳ Planned
+- [x] M8.3 Subcategory + custom create taxonomy
+Status: ⏳ In progress (M8.1/M8.2 pending)
 
 ### TODO (M8)
 - Strategy A implementation pending: keep `occurredAt` as `DateTime` in DB, but change API contract to date-only (`YYYY-MM-DD`).
@@ -86,6 +86,7 @@ Status: ⏳ Planned
 - Category breakdown visualization
 - AI Report page with rule-based insights
 - Pluggable architecture with hybrid merge, explainability, and confidence scoring
+- User-scoped category/subcategory taxonomy with in-flow create/select UX
 
 ---
 
@@ -246,8 +247,11 @@ Base URL: `http://localhost:3001`
 | Endpoint | Method | Description |
 | --- | --- | --- |
 | `/v1/health` | GET | Health check |
-| `/v1/categories` | GET | List categories for demo user |
-| `/v1/accounts` | GET | List accounts for demo user |
+| `/v1/categories` | GET | List categories for current user |
+| `/v1/categories` | POST | Create category (user-scoped, unique per user) |
+| `/v1/subcategories` | GET | List subcategories by categoryId (user-scoped) |
+| `/v1/subcategories` | POST | Create subcategory under category (user-scoped) |
+| `/v1/accounts` | GET | List accounts for current user |
 | `/v1/transactions` | GET | List transactions with filters/pagination |
 | `/v1/transactions/:id` | GET | Get transaction detail |
 | `/v1/transactions` | POST | Create transaction |
