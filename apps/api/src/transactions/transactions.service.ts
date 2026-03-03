@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, TransactionType } from '@prisma/client';
+import { formatDateOnly, parseDateOnly } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { GetTransactionsQueryDto } from './dto/get-transactions-query.dto';
@@ -34,7 +35,7 @@ export class TransactionsService {
         type: dto.type,
         amountCents: dto.amountCents,
         currency: dto.currency ?? 'USD',
-        occurredAt: new Date(dto.occurredAt),
+        occurredAt: parseDateOnly(dto.occurredAt),
         categoryId: dto.categoryId,
         subcategoryId: dto.subcategoryId,
         merchant: dto.merchant,
@@ -48,7 +49,7 @@ export class TransactionsService {
       throw new BadRequestException('Failed to create transaction');
     }
 
-    return created;
+    return this.mapTransactionDate(created);
   }
 
   async list(userId: string, query: GetTransactionsQueryDto) {
@@ -60,7 +61,7 @@ export class TransactionsService {
     if (query.from) occurredAt.gte = new Date(query.from);
     if (query.to) occurredAt.lte = new Date(query.to);
 
-    return this.prisma.transaction.findMany({
+    const rows = await this.prisma.transaction.findMany({
       where: {
         userId,
         ...(query.accountId ? { accountId: query.accountId } : {}),
@@ -72,13 +73,16 @@ export class TransactionsService {
       take: limit,
       select: this.transactionSelect(includeRefs),
     });
+
+    return rows.map((row) => this.mapTransactionDate(row));
   }
 
   async getById(userId: string, id: string) {
-    return this.prisma.transaction.findFirst({
+    const row = await this.prisma.transaction.findFirst({
       where: { id, userId },
       select: this.transactionSelect(false),
     });
+    return row ? this.mapTransactionDate(row) : null;
   }
 
   async update(userId: string, id: string, dto: UpdateTransactionDto) {
@@ -123,7 +127,7 @@ export class TransactionsService {
         type: dto.type,
         amountCents: dto.amountCents,
         currency: dto.currency,
-        occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : undefined,
+        occurredAt: dto.occurredAt ? parseDateOnly(dto.occurredAt) : undefined,
         categoryId: dto.categoryId,
         subcategoryId: dto.subcategoryId,
         merchant: dto.merchant,
@@ -226,6 +230,15 @@ export class TransactionsService {
           categoryId: true,
         },
       },
+    };
+  }
+
+  private mapTransactionDate<T extends { occurredAt: Date }>(
+    tx: T,
+  ): Omit<T, 'occurredAt'> & { occurredAt: string } {
+    return {
+      ...tx,
+      occurredAt: formatDateOnly(tx.occurredAt),
     };
   }
 }

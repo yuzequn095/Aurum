@@ -65,19 +65,12 @@ function formatMoneyForType(type: Tx['type'], cents: number, currency: string) {
   return `${prefix}${currency} ${dollars}`;
 }
 
-function toLocalDatetimeInputValue(date: Date = new Date()) {
+function toDateInputValue(date: Date = new Date()) {
   const pad = (n: number) => String(n).padStart(2, '0');
   const year = date.getFullYear();
   const month = pad(date.getMonth() + 1);
   const day = pad(date.getDate());
-  const hour = pad(date.getHours());
-  const minute = pad(date.getMinutes());
-  return `${year}-${month}-${day}T${hour}:${minute}`;
-}
-
-function toLocalDatetimeInputFromIso(isoString: string) {
-  const date = new Date(isoString);
-  return toLocalDatetimeInputValue(date);
+  return `${year}-${month}-${day}`;
 }
 
 type Filters = {
@@ -111,7 +104,7 @@ export default function TransactionsPage() {
   const [amountCents, setAmountCents] = useState('100');
   const [merchant, setMerchant] = useState('');
   const [note, setNote] = useState('');
-  const [occurredAtLocal, setOccurredAtLocal] = useState(toLocalDatetimeInputValue());
+  const [occurredAtDate, setOccurredAtDate] = useState(toDateInputValue());
 
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -121,7 +114,7 @@ export default function TransactionsPage() {
   const [editMerchant, setEditMerchant] = useState('');
   const [editNote, setEditNote] = useState('');
   const [editAmountDollars, setEditAmountDollars] = useState('0.00');
-  const [editOccurredAtLocal, setEditOccurredAtLocal] = useState(toLocalDatetimeInputValue());
+  const [editOccurredAtDate, setEditOccurredAtDate] = useState(toDateInputValue());
   const [editErr, setEditErr] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
 
@@ -301,10 +294,7 @@ export default function TransactionsPage() {
       setSubmitErr('amountCents must be an integer >= 1.');
       return;
     }
-    if (
-      (createType === 'INCOME' || createType === 'EXPENSE') &&
-      (!categoryId || !subcategoryId)
-    ) {
+    if ((createType === 'INCOME' || createType === 'EXPENSE') && (!categoryId || !subcategoryId)) {
       setSubmitErr('Category and subcategory are required for income/expense.');
       return;
     }
@@ -315,7 +305,7 @@ export default function TransactionsPage() {
         accountId,
         type: createType,
         amountCents: parsedAmount,
-        occurredAt: new Date(occurredAtLocal).toISOString(),
+        occurredAt: occurredAtDate,
         categoryId: categoryId || undefined,
         subcategoryId: subcategoryId || undefined,
         merchant,
@@ -328,7 +318,7 @@ export default function TransactionsPage() {
       setCreateType('EXPENSE');
       setMerchant('');
       setNote('');
-      setOccurredAtLocal(toLocalDatetimeInputValue());
+      setOccurredAtDate(toDateInputValue());
       setCategoryId('');
       setSubcategoryId('');
       setSubcategories([]);
@@ -344,7 +334,7 @@ export default function TransactionsPage() {
     setEditMerchant(tx.merchant ?? '');
     setEditNote(tx.note ?? '');
     setEditAmountDollars((tx.amountCents / 100).toFixed(2));
-    setEditOccurredAtLocal(toLocalDatetimeInputFromIso(tx.occurredAt));
+    setEditOccurredAtDate(tx.occurredAt);
     setEditErr(null);
     setEditOpen(true);
   };
@@ -380,7 +370,7 @@ export default function TransactionsPage() {
         merchant: editMerchant || undefined,
         note: editNote || undefined,
         amountCents: newAmountCents,
-        occurredAt: new Date(editOccurredAtLocal).toISOString(),
+        occurredAt: editOccurredAtDate,
       };
 
       await apiPatch<Tx>(`/v1/transactions/${selectedTx.id}`, payload);
@@ -531,9 +521,7 @@ export default function TransactionsPage() {
                   <select
                     value={createType}
                     onChange={(e) =>
-                      setCreateType(
-                        e.target.value as 'EXPENSE' | 'INCOME' | 'TRANSFER',
-                      )
+                      setCreateType(e.target.value as 'EXPENSE' | 'INCOME' | 'TRANSFER')
                     }
                     style={{ width: '100%', marginTop: 4 }}
                     required
@@ -599,9 +587,9 @@ export default function TransactionsPage() {
                 <label>
                   Occurred At
                   <input
-                    type="datetime-local"
-                    value={occurredAtLocal}
-                    onChange={(e) => setOccurredAtLocal(e.target.value)}
+                    type="date"
+                    value={occurredAtDate}
+                    onChange={(e) => setOccurredAtDate(e.target.value)}
                     style={{ width: '100%', marginTop: 4 }}
                     required
                   />
@@ -660,9 +648,7 @@ export default function TransactionsPage() {
                         {tx.merchant ?? '(no merchant)'}{' '}
                         <span style={{ opacity: 0.6, fontWeight: 400 }}>- {tx.type}</span>
                       </div>
-                      <div style={{ opacity: 0.75, marginTop: 4 }}>
-                        {new Date(tx.occurredAt).toLocaleString()}
-                      </div>
+                      <div style={{ opacity: 0.75, marginTop: 4 }}>{tx.occurredAt}</div>
                       <div style={{ opacity: 0.75, marginTop: 4 }}>
                         Account: {tx.account?.name ?? tx.accountId}
                       </div>
@@ -755,9 +741,9 @@ export default function TransactionsPage() {
             <label>
               Occurred At
               <input
-                type="datetime-local"
-                value={editOccurredAtLocal}
-                onChange={(e) => setEditOccurredAtLocal(e.target.value)}
+                type="date"
+                value={editOccurredAtDate}
+                onChange={(e) => setEditOccurredAtDate(e.target.value)}
                 style={{ width: '100%', marginTop: 4 }}
                 required
               />

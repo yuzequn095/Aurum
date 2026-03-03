@@ -14,7 +14,7 @@ export class AnalyticsService {
 
   private getMonthRange(year: number, month: number) {
     const startDate = new Date(Date.UTC(year, month - 1, 1));
-    const endDate = new Date(Date.UTC(year, month, 1));
+    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
     return { startDate, endDate };
   }
 
@@ -44,7 +44,7 @@ export class AnalyticsService {
         where: {
           userId,
           type: TransactionType.INCOME,
-          occurredAt: { gte: startDate, lt: endDate },
+          occurredAt: { gte: startDate, lte: endDate },
         },
         _sum: { amountCents: true },
       }),
@@ -52,7 +52,7 @@ export class AnalyticsService {
         where: {
           userId,
           type: TransactionType.EXPENSE,
-          occurredAt: { gte: startDate, lt: endDate },
+          occurredAt: { gte: startDate, lte: endDate },
         },
         _sum: { amountCents: true },
       }),
@@ -93,7 +93,7 @@ export class AnalyticsService {
       month,
       range: {
         startDate: currentRange.startDate.toISOString(),
-        endDate: new Date(currentRange.endDate.getTime() - 1).toISOString(),
+        endDate: currentRange.endDate.toISOString(),
       },
       totals: current,
       previousMonth: {
@@ -124,7 +124,7 @@ export class AnalyticsService {
         userId,
         type: TransactionType.EXPENSE,
         categoryId: { not: null },
-        occurredAt: { gte: startDate, lt: endDate },
+        occurredAt: { gte: startDate, lte: endDate },
       },
       _sum: {
         amountCents: true,
