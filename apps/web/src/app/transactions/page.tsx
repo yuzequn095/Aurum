@@ -40,11 +40,11 @@ type Subcategory = { id: string; categoryId: string; name: string };
 
 type CreateTxPayload = {
   accountId: string;
-  type: 'EXPENSE';
+  type: 'EXPENSE' | 'INCOME' | 'TRANSFER';
   amountCents: number;
   occurredAt: string;
-  categoryId: string;
-  subcategoryId: string;
+  categoryId?: string;
+  subcategoryId?: string;
   merchant: string;
   note?: string;
 };
@@ -105,6 +105,7 @@ export default function TransactionsPage() {
   const [to, setTo] = useState<string>('');
 
   const [accountId, setAccountId] = useState('');
+  const [createType, setCreateType] = useState<'EXPENSE' | 'INCOME' | 'TRANSFER'>('EXPENSE');
   const [categoryId, setCategoryId] = useState('');
   const [subcategoryId, setSubcategoryId] = useState('');
   const [amountCents, setAmountCents] = useState('100');
@@ -300,8 +301,11 @@ export default function TransactionsPage() {
       setSubmitErr('amountCents must be an integer >= 1.');
       return;
     }
-    if (!categoryId || !subcategoryId) {
-      setSubmitErr('Category and subcategory are required.');
+    if (
+      (createType === 'INCOME' || createType === 'EXPENSE') &&
+      (!categoryId || !subcategoryId)
+    ) {
+      setSubmitErr('Category and subcategory are required for income/expense.');
       return;
     }
 
@@ -309,11 +313,11 @@ export default function TransactionsPage() {
       setSubmitting(true);
       const payload: CreateTxPayload = {
         accountId,
-        type: 'EXPENSE',
+        type: createType,
         amountCents: parsedAmount,
         occurredAt: new Date(occurredAtLocal).toISOString(),
-        categoryId,
-        subcategoryId,
+        categoryId: categoryId || undefined,
+        subcategoryId: subcategoryId || undefined,
         merchant,
         note: note || undefined,
       };
@@ -321,6 +325,7 @@ export default function TransactionsPage() {
       await apiPost<Tx>('/v1/transactions', payload);
       await refreshTransactions();
       setAmountCents('100');
+      setCreateType('EXPENSE');
       setMerchant('');
       setNote('');
       setOccurredAtLocal(toLocalDatetimeInputValue());
@@ -500,7 +505,7 @@ export default function TransactionsPage() {
           </Card>
         </Section>
 
-        <Section title="Create Expense">
+        <Section title="Create Transaction">
           <Card>
             <CardContent className="pt-4">
               <form onSubmit={onSubmit} className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -522,12 +527,30 @@ export default function TransactionsPage() {
                 </label>
 
                 <label>
+                  Type
+                  <select
+                    value={createType}
+                    onChange={(e) =>
+                      setCreateType(
+                        e.target.value as 'EXPENSE' | 'INCOME' | 'TRANSFER',
+                      )
+                    }
+                    style={{ width: '100%', marginTop: 4 }}
+                    required
+                  >
+                    <option value="EXPENSE">Expense</option>
+                    <option value="INCOME">Income</option>
+                    <option value="TRANSFER">Transfer</option>
+                  </select>
+                </label>
+
+                <label>
                   Category
                   <select
                     value={categoryId}
                     onChange={(e) => void onCategoryChange(e.target.value)}
                     style={{ width: '100%', marginTop: 4 }}
-                    required
+                    required={createType === 'INCOME' || createType === 'EXPENSE'}
                   >
                     <option value="">Select category</option>
                     {categories.map((c) => (
@@ -545,7 +568,7 @@ export default function TransactionsPage() {
                     value={subcategoryId}
                     onChange={(e) => void onSubcategoryChange(e.target.value)}
                     style={{ width: '100%', marginTop: 4 }}
-                    required
+                    required={createType === 'INCOME' || createType === 'EXPENSE'}
                     disabled={!categoryId}
                   >
                     <option value="">
