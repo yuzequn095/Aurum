@@ -30,9 +30,9 @@ flowchart LR
 
 ## Current Status
 
-Aurum is currently in Phase 3.
-Core ledger, analytics dashboard, and AI report (rule-based insights) are complete.
-The current focus is extensible insight-engine architecture and staged LLM integration.
+Aurum is currently in Phase 5.
+Core ledger, analytics dashboard, AI report, auth/security, and Ledger v2 milestones are complete.
+The next focus is production hardening (cookie-based auth/session security and deployment readiness).
 
 ---
 
@@ -69,13 +69,13 @@ Status: ✅ Completed
 Status: ✅ Completed
 
 ### Phase 5 - Ledger v2
-- [ ] M8.1 Date-only occurredAt (Strategy A: API accepts/returns YYYY-MM-DD, DB remains DateTime)
-- [ ] M8.2 Income support
+- [x] M8.1 Date-only occurredAt (Strategy A: API accepts/returns YYYY-MM-DD, DB remains DateTime)
+- [x] M8.2 Income support
 - [x] M8.3 Subcategory + custom create taxonomy
-Status: ⏳ In progress (M8.1/M8.2 pending)
+Status: ✅ Completed
 
-### TODO (M8)
-- Strategy A implementation pending: keep `occurredAt` as `DateTime` in DB, but change API contract to date-only (`YYYY-MM-DD`).
+### Milestone 8 Completion Notes
+- Strategy A implemented: API accepts/returns date-only `YYYY-MM-DD`, while DB keeps `occurredAt` as `DateTime`.
 
 ---
 ## Current Capabilities
@@ -197,7 +197,7 @@ pnpm typecheck
 - Web: `http://localhost:3000`
 - API: `http://localhost:3001`
 - Auth routes (web): `/login`, `/register`
-- Protected routes (web): `/transactions`, `/reports` (redirects to `/ai-report`)
+- Protected routes (web): `/transactions`, `/reports`, `/ai-report` (client-side `AuthGate`)
 - Auth endpoints (api): `POST /v1/auth/register`, `POST /v1/auth/login`, `POST /v1/auth/refresh`
 - Server-side user isolation: Accounts/Categories/Transactions/Analytics/AI enforce `userId` from JWT. Client never sends `userId`.
 - Refresh token rotation enabled: `POST /v1/auth/refresh` returns `{ accessToken, refreshToken }` and revokes previous refresh token.
