@@ -122,6 +122,31 @@ type ListFilters = {
   searchText: string;
 };
 
+type DryRunError = {
+  line: number;
+  message: string;
+};
+
+type DryRunPreviewRow = {
+  line: number;
+  occurredAt: string;
+  type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
+  amount: string;
+  amountCents: number;
+  currency: string;
+  account: string;
+  category: string;
+  subcategory: string;
+  merchant: string;
+  note: string;
+};
+
+type DryRunSummary = {
+  totalRows: number;
+  validRows: number;
+  errorCount: number;
+};
+
 export default function TransactionsPage() {
   const router = useRouter();
   const toast = useToast();
@@ -138,6 +163,11 @@ export default function TransactionsPage() {
   const [listYearMonth, setListYearMonth] = useState(getCurrentYearMonth());
   const [listAccountId, setListAccountId] = useState('');
   const [listSearchText, setListSearchText] = useState('');
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [dryRunLoading, setDryRunLoading] = useState(false);
+  const [dryRunPreviewRows, setDryRunPreviewRows] = useState<DryRunPreviewRow[]>([]);
+  const [dryRunErrors, setDryRunErrors] = useState<DryRunError[]>([]);
+  const [dryRunSummary, setDryRunSummary] = useState<DryRunSummary | null>(null);
 
   const [filterAccountId, setFilterAccountId] = useState<string>('');
   const [filterCategoryId, setFilterCategoryId] = useState<string>('');
@@ -593,6 +623,52 @@ export default function TransactionsPage() {
     }
   };
 
+  const onDryRunImport = async () => {
+    if (!importFile) {
+      toast.error('Choose a CSV file first.');
+      return;
+    }
+
+    try {
+      setDryRunLoading(true);
+      const token = getAccessToken();
+      const form = new FormData();
+      form.append('file', importFile);
+
+      const response = await fetch(`${API_BASE}/v1/import/transactions/dry-run`, {
+        method: 'POST',
+        body: form,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          clearTokens();
+          router.replace('/login');
+          return;
+        }
+        const text = await response.text();
+        throw new Error(text || 'Dry-run failed');
+      }
+
+      const payload = (await response.json()) as {
+        previewRows: DryRunPreviewRow[];
+        errors: DryRunError[];
+        summary: DryRunSummary;
+      };
+      setDryRunPreviewRows(payload.previewRows ?? []);
+      setDryRunErrors(payload.errors ?? []);
+      setDryRunSummary(payload.summary ?? null);
+      toast.success('Dry-run completed.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Dry-run failed';
+      toast.error(message);
+    } finally {
+      setDryRunLoading(false);
+    }
+  };
+
   return (
     <Container className="min-h-screen bg-aurum-bg text-aurum-text py-8 space-y-10">
       <main className="space-y-10">
@@ -835,6 +911,94 @@ export default function TransactionsPage() {
         {!loadErr && refreshing && items.length === 0 && <p>Loading...</p>}
 
         <Section>
+          <Card className="mb-4">
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_auto]">
+                <label>
+                  Import CSV
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    style={{ width: '100%', marginTop: 4 }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setImportFile(file);
+                    }}
+                  />
+                </label>
+                <div className="flex items-end">
+                  <Button type="button" onClick={() => void onDryRunImport()} disabled={dryRunLoading}>
+                    {dryRunLoading ? 'Validating...' : 'Dry Run'}
+                  </Button>
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={!dryRunSummary || dryRunErrors.length > 0}
+                  >
+                    Confirm Import
+                  </Button>
+                </div>
+              </div>
+
+              {dryRunSummary ? (
+                <p className="mt-4 text-sm">
+                  Rows: {dryRunSummary.totalRows} | Valid: {dryRunSummary.validRows} | Errors:{' '}
+                  {dryRunSummary.errorCount}
+                </p>
+              ) : null}
+
+              {dryRunErrors.length > 0 ? (
+                <div className="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+                  <p className="m-0 font-medium">Validation Errors</p>
+                  <ul className="m-0 mt-2 list-disc pl-5">
+                    {dryRunErrors.map((error, index) => (
+                      <li key={`${error.line}-${index}`}>
+                        Line {error.line}: {error.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {dryRunPreviewRows.length > 0 ? (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead>
+                      <tr>
+                        <th className="border px-2 py-1 text-left">Line</th>
+                        <th className="border px-2 py-1 text-left">Date</th>
+                        <th className="border px-2 py-1 text-left">Type</th>
+                        <th className="border px-2 py-1 text-left">Amount</th>
+                        <th className="border px-2 py-1 text-left">Account</th>
+                        <th className="border px-2 py-1 text-left">Category</th>
+                        <th className="border px-2 py-1 text-left">Subcategory</th>
+                        <th className="border px-2 py-1 text-left">Merchant</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dryRunPreviewRows.map((row) => (
+                        <tr key={row.line}>
+                          <td className="border px-2 py-1">{row.line}</td>
+                          <td className="border px-2 py-1">{row.occurredAt}</td>
+                          <td className="border px-2 py-1">{row.type}</td>
+                          <td className="border px-2 py-1">
+                            {row.amount} {row.currency}
+                          </td>
+                          <td className="border px-2 py-1">{row.account}</td>
+                          <td className="border px-2 py-1">{row.category}</td>
+                          <td className="border px-2 py-1">{row.subcategory}</td>
+                          <td className="border px-2 py-1">{row.merchant}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
           <Card className="mb-4">
             <CardContent className="pt-4">
               <div className="mb-4 flex justify-end">

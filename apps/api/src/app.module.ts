@@ -10,6 +10,7 @@ import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
 import { SubcategoriesModule } from './subcategories/subcategories.module';
 import { ExportModule } from './export/export.module';
+import { ImportModule } from './import/import.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ExportModule } from './export/export.module';
     AnalyticsModule,
     AiModule,
     ExportModule,
+    ImportModule,
   ],
   controllers: [AppController],
 })
