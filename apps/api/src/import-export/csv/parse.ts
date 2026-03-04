@@ -186,6 +186,9 @@ export function parseCsv(input: Buffer | string): CsvParseResult {
 
     const category = getValue(record.fields, 'category');
     const subcategory = getValue(record.fields, 'subcategory');
+    if (subcategory && !category) {
+      rowErrors.push('subcategory requires category');
+    }
     if (
       (parsedType === TransactionType.INCOME ||
         parsedType === TransactionType.EXPENSE) &&

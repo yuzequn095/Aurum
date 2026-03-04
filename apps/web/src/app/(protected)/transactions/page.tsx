@@ -165,6 +165,7 @@ export default function TransactionsPage() {
   const [listSearchText, setListSearchText] = useState('');
   const [importFile, setImportFile] = useState<File | null>(null);
   const [dryRunLoading, setDryRunLoading] = useState(false);
+  const [importingCsv, setImportingCsv] = useState(false);
   const [dryRunPreviewRows, setDryRunPreviewRows] = useState<DryRunPreviewRow[]>([]);
   const [dryRunErrors, setDryRunErrors] = useState<DryRunError[]>([]);
   const [dryRunSummary, setDryRunSummary] = useState<DryRunSummary | null>(null);
@@ -669,6 +670,54 @@ export default function TransactionsPage() {
     }
   };
 
+  const onConfirmImport = async () => {
+    if (!importFile || !dryRunSummary || dryRunErrors.length > 0) return;
+
+    try {
+      setImportingCsv(true);
+      const token = getAccessToken();
+      const form = new FormData();
+      form.append('file', importFile);
+
+      const response = await fetch(`${API_BASE}/v1/import/transactions`, {
+        method: 'POST',
+        body: form,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          clearTokens();
+          router.replace('/login');
+          return;
+        }
+        const text = await response.text();
+        throw new Error(text || 'Import failed');
+      }
+
+      const payload = (await response.json()) as {
+        importedCount: number;
+        createdAccounts: number;
+        createdCategories: number;
+        createdSubcategories: number;
+      };
+      toast.success(
+        `Imported ${payload.importedCount} rows (${payload.createdAccounts} accounts, ${payload.createdCategories} categories, ${payload.createdSubcategories} subcategories created).`,
+      );
+      setImportFile(null);
+      setDryRunPreviewRows([]);
+      setDryRunErrors([]);
+      setDryRunSummary(null);
+      await refreshTransactions();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Import failed';
+      toast.error(message);
+    } finally {
+      setImportingCsv(false);
+    }
+  };
+
   return (
     <Container className="min-h-screen bg-aurum-bg text-aurum-text py-8 space-y-10">
       <main className="space-y-10">
@@ -923,6 +972,9 @@ export default function TransactionsPage() {
                     onChange={(e) => {
                       const file = e.target.files?.[0] ?? null;
                       setImportFile(file);
+                      setDryRunPreviewRows([]);
+                      setDryRunErrors([]);
+                      setDryRunSummary(null);
                     }}
                   />
                 </label>
@@ -935,9 +987,15 @@ export default function TransactionsPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    disabled={!dryRunSummary || dryRunErrors.length > 0}
+                    onClick={() => void onConfirmImport()}
+                    disabled={
+                      importingCsv ||
+                      !dryRunSummary ||
+                      dryRunErrors.length > 0 ||
+                      !importFile
+                    }
                   >
-                    Confirm Import
+                    {importingCsv ? 'Importing...' : 'Confirm Import'}
                   </Button>
                 </div>
               </div>
