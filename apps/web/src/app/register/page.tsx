@@ -5,6 +5,7 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/toast/ToastProvider';
 import { apiPublicPost } from '@/lib/api';
 import { setAccessToken, setRefreshToken } from '@/lib/auth/tokens';
 
@@ -16,6 +17,7 @@ type AuthResponse = {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const toast = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -33,9 +35,12 @@ export default function RegisterPage() {
       });
       setAccessToken(payload.accessToken);
       setRefreshToken(payload.refreshToken);
+      toast.success('Account created successfully.');
       router.push('/transactions');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const message = e instanceof Error ? e.message : String(e);
+      setError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
