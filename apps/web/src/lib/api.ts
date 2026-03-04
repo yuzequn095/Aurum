@@ -8,6 +8,18 @@ import {
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
 
+export class ApiError extends Error {
+  readonly status: number;
+  readonly details?: unknown;
+
+  constructor(status: number, message: string, details?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.details = details;
+  }
+}
+
 export type MonthlySummaryResponse = {
   year: number;
   month: number;
@@ -88,11 +100,54 @@ function redirectToLogin() {
   window.location.href = '/login';
 }
 
-async function readErrorBody(res: Response): Promise<string> {
+function extractMessage(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((item) => extractMessage(item))
+      .filter((item): item is string => Boolean(item));
+    return parts.length > 0 ? parts.join(', ') : null;
+  }
+
+  return null;
+}
+
+function deriveErrorMessage(status: number, parsed: unknown, fallbackText: string): string {
+  const direct = extractMessage(parsed);
+  if (direct) return direct;
+
+  if (parsed && typeof parsed === 'object' && 'message' in parsed) {
+    const payloadMessage = extractMessage((parsed as { message?: unknown }).message);
+    if (payloadMessage) return payloadMessage;
+  }
+
+  const fallback = fallbackText.trim();
+  if (fallback.length > 0) return fallback;
+
+  return `Request failed with status ${status}`;
+}
+
+async function readErrorResponse(res: Response): Promise<{ parsed: unknown; text: string }> {
+  let text = '';
+
   try {
-    return await res.text();
+    text = await res.text();
   } catch {
-    return '';
+    return { parsed: undefined, text: '' };
+  }
+
+  if (!text) {
+    return { parsed: undefined, text: '' };
+  }
+
+  try {
+    return { parsed: JSON.parse(text), text };
+  } catch {
+    return { parsed: undefined, text };
   }
 }
 
@@ -154,10 +209,11 @@ async function authFetch(
   });
 }
 
-async function parseJsonOrThrow<T>(res: Response, method: string, path: string): Promise<T> {
+async function parseJsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const text = await readErrorBody(res);
-    throw new Error(`${method} ${path} failed: ${res.status} ${text}`);
+    const { parsed, text } = await readErrorResponse(res);
+    const message = deriveErrorMessage(res.status, parsed, text);
+    throw new ApiError(res.status, message, parsed);
   }
 
   return (await res.json()) as T;
@@ -165,7 +221,7 @@ async function parseJsonOrThrow<T>(res: Response, method: string, path: string):
 
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await authFetch(path);
-  return parseJsonOrThrow<T>(res, 'GET', path);
+  return parseJsonOrThrow<T>(res);
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
@@ -174,7 +230,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  return parseJsonOrThrow<T>(res, 'POST', path);
+  return parseJsonOrThrow<T>(res);
 }
 
 export async function apiPublicPost<T>(path: string, body: unknown): Promise<T> {
@@ -184,7 +240,7 @@ export async function apiPublicPost<T>(path: string, body: unknown): Promise<T> 
     credentials: 'include',
     body: JSON.stringify(body),
   });
-  return parseJsonOrThrow<T>(res, 'POST', path);
+  return parseJsonOrThrow<T>(res);
 }
 
 export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
@@ -193,14 +249,14 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  return parseJsonOrThrow<T>(res, 'PATCH', path);
+  return parseJsonOrThrow<T>(res);
 }
 
 export async function apiDelete<T>(path: string): Promise<T> {
   const res = await authFetch(path, {
     method: 'DELETE',
   });
-  return parseJsonOrThrow<T>(res, 'DELETE', path);
+  return parseJsonOrThrow<T>(res);
 }
 
 export async function fetchMonthlySummary(year: number, month: number) {
