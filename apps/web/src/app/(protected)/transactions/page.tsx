@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Modal } from '@/components/Modal';
+import { useToast } from '@/components/toast/ToastProvider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Container, Section } from '@/components/ui/layout';
@@ -58,6 +59,13 @@ type UpdateTxPayload = {
 
 const LIMIT = 20;
 const CREATE_NEW_OPTION = '__create_new__';
+const LAST_FORM_DEFAULTS_KEY = 'aurum.lastTransactionFormDefaults';
+
+type LastFormDefaults = {
+  lastAccountId: string | null;
+  lastCategoryId: string | null;
+  lastSubcategoryId: string | null;
+};
 
 function formatMoneyForType(type: Tx['type'], cents: number, currency: string) {
   const dollars = (Math.abs(cents) / 100).toFixed(2);
@@ -65,12 +73,52 @@ function formatMoneyForType(type: Tx['type'], cents: number, currency: string) {
   return `${prefix}${currency} ${dollars}`;
 }
 
-function toDateInputValue(date: Date = new Date()) {
+function getTodayDateOnly(date: Date = new Date()) {
   const pad = (n: number) => String(n).padStart(2, '0');
   const year = date.getFullYear();
   const month = pad(date.getMonth() + 1);
   const day = pad(date.getDate());
   return `${year}-${month}-${day}`;
+}
+
+function readLastFormDefaults(): LastFormDefaults {
+  if (typeof window === 'undefined') {
+    return {
+      lastAccountId: null,
+      lastCategoryId: null,
+      lastSubcategoryId: null,
+    };
+  }
+
+  try {
+    const raw = window.localStorage.getItem(LAST_FORM_DEFAULTS_KEY);
+    if (!raw) {
+      return {
+        lastAccountId: null,
+        lastCategoryId: null,
+        lastSubcategoryId: null,
+      };
+    }
+
+    const parsed = JSON.parse(raw) as Partial<LastFormDefaults>;
+    return {
+      lastAccountId: typeof parsed.lastAccountId === 'string' ? parsed.lastAccountId : null,
+      lastCategoryId: typeof parsed.lastCategoryId === 'string' ? parsed.lastCategoryId : null,
+      lastSubcategoryId:
+        typeof parsed.lastSubcategoryId === 'string' ? parsed.lastSubcategoryId : null,
+    };
+  } catch {
+    return {
+      lastAccountId: null,
+      lastCategoryId: null,
+      lastSubcategoryId: null,
+    };
+  }
+}
+
+function writeLastFormDefaults(defaults: LastFormDefaults): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(LAST_FORM_DEFAULTS_KEY, JSON.stringify(defaults));
 }
 
 type Filters = {
@@ -82,6 +130,7 @@ type Filters = {
 
 export default function TransactionsPage() {
   const router = useRouter();
+  const toast = useToast();
   const [items, setItems] = useState<Tx[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -105,7 +154,7 @@ export default function TransactionsPage() {
   const [amountCents, setAmountCents] = useState('100');
   const [merchant, setMerchant] = useState('');
   const [note, setNote] = useState('');
-  const [occurredAtDate, setOccurredAtDate] = useState(toDateInputValue());
+  const [occurredAtDate, setOccurredAtDate] = useState(getTodayDateOnly());
 
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -115,7 +164,7 @@ export default function TransactionsPage() {
   const [editMerchant, setEditMerchant] = useState('');
   const [editNote, setEditNote] = useState('');
   const [editAmountDollars, setEditAmountDollars] = useState('0.00');
-  const [editOccurredAtDate, setEditOccurredAtDate] = useState(toDateInputValue());
+  const [editOccurredAtDate, setEditOccurredAtDate] = useState(getTodayDateOnly());
   const [editErr, setEditErr] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
 
@@ -225,15 +274,21 @@ export default function TransactionsPage() {
     const loadSubcategories = async () => {
       if (!categoryId) {
         setSubcategories([]);
+        setSubcategoryId(null);
         return;
       }
 
       try {
         const subs = await getSubcategories(categoryId);
-        setSubcategories([...subs].sort((a, b) => a.name.localeCompare(b.name)));
+        const sorted = [...subs].sort((a, b) => a.name.localeCompare(b.name));
+        setSubcategories(sorted);
+        setSubcategoryId((current) =>
+          current && sorted.some((sub) => sub.id === current) ? current : null,
+        );
       } catch (e) {
         setSubmitErr(e instanceof Error ? e.message : String(e));
         setSubcategories([]);
+        setSubcategoryId(null);
       }
     };
 
@@ -248,15 +303,26 @@ export default function TransactionsPage() {
     const loadInitial = async () => {
       try {
         setLoadErr(null);
+        const remembered = readLastFormDefaults();
         const [accs, cats] = await Promise.all([
           apiGet<Account[]>('/v1/accounts'),
           getCategories(),
         ]);
         setAccounts(accs);
         setCategories(cats);
-        if (accs.length > 0) {
-          setAccountId((prev) => prev || accs[0].id);
-        }
+        const nextAccountId =
+          remembered.lastAccountId && accs.some((acc) => acc.id === remembered.lastAccountId)
+            ? remembered.lastAccountId
+            : (accs[0]?.id ?? '');
+        const nextCategoryId =
+          remembered.lastCategoryId && cats.some((cat) => cat.id === remembered.lastCategoryId)
+            ? remembered.lastCategoryId
+            : null;
+        setAccountId(nextAccountId);
+        setCategoryId(nextCategoryId);
+        setSubcategoryId(nextCategoryId ? remembered.lastSubcategoryId : null);
+        setCreateType('EXPENSE');
+        setOccurredAtDate(getTodayDateOnly());
       } catch (e) {
         setLoadErr(e instanceof Error ? e.message : String(e));
       }
@@ -317,16 +383,19 @@ export default function TransactionsPage() {
       };
 
       await apiPost<Tx>('/v1/transactions', payload);
+      writeLastFormDefaults({
+        lastAccountId: accountId || null,
+        lastCategoryId: categoryId,
+        lastSubcategoryId: subcategoryId,
+      });
+      toast.success('Transaction created.');
       await refreshTransactions();
       setAmountCents('100');
       setCreateType('EXPENSE');
       setMerchant('');
       setNote('');
-      setOccurredAtDate(toDateInputValue());
-      setCategoryId(null);
-      setSubcategoryId(null);
+      setOccurredAtDate(getTodayDateOnly());
       setSubcategorySearch('');
-      setSubcategories([]);
     } catch (e) {
       setSubmitErr(e instanceof Error ? e.message : String(e));
     } finally {
