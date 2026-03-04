@@ -160,6 +160,7 @@ export default function TransactionsPage() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [downloadingBackup, setDownloadingBackup] = useState(false);
   const [listYearMonth, setListYearMonth] = useState(getCurrentYearMonth());
   const [listAccountId, setListAccountId] = useState('');
   const [listSearchText, setListSearchText] = useState('');
@@ -624,6 +625,44 @@ export default function TransactionsPage() {
     }
   };
 
+  const onDownloadBackup = async () => {
+    try {
+      setDownloadingBackup(true);
+      const token = getAccessToken();
+      const response = await fetch(`${API_BASE}/v1/export/backup.json`, {
+        method: 'GET',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          clearTokens();
+          router.replace('/login');
+          return;
+        }
+        throw new Error('Failed to download backup');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Backup download started.');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to download backup';
+      toast.error(message);
+    } finally {
+      setDownloadingBackup(false);
+    }
+  };
+
   const onDryRunImport = async () => {
     if (!importFile) {
       toast.error('Choose a CSV file first.');
@@ -1064,9 +1103,23 @@ export default function TransactionsPage() {
           <Card className="mb-4">
             <CardContent className="pt-4">
               <div className="mb-4 flex justify-end">
-                <Button type="button" onClick={() => void onExportCsv()} disabled={exporting}>
-                  {exporting ? 'Exporting...' : 'Export CSV'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void onDownloadBackup()}
+                    disabled={downloadingBackup}
+                  >
+                    {downloadingBackup ? 'Downloading...' : 'Download Backup'}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => void onExportCsv()}
+                    disabled={exporting}
+                  >
+                    {exporting ? 'Exporting...' : 'Export CSV'}
+                  </Button>
+                </div>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <label>

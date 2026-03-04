@@ -93,4 +93,75 @@ export class ExportService {
 
     return toCsv(mapped);
   }
+
+  async exportBackupJson(userId: string) {
+    const [accounts, categories, subcategories, transactions] =
+      await Promise.all([
+        this.prisma.account.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            currency: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+        this.prisma.category.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            parentId: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+        this.prisma.subcategory.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            categoryId: true,
+            name: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+        this.prisma.transaction.findMany({
+          where: { userId },
+          orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
+          select: {
+            id: true,
+            accountId: true,
+            categoryId: true,
+            subcategoryId: true,
+            type: true,
+            amountCents: true,
+            currency: true,
+            occurredAt: true,
+            merchant: true,
+            note: true,
+            transferId: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+      ]);
+
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      userId,
+      accounts,
+      categories,
+      subcategories,
+      transactions: transactions.map((tx) => ({
+        ...tx,
+        occurredAt: formatDateOnly(tx.occurredAt),
+      })),
+    };
+  }
 }

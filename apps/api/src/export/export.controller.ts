@@ -31,4 +31,16 @@ export class ExportController {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(csv);
   }
+
+  @Get('backup.json')
+  async exportBackup(
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() res: Response,
+  ) {
+    const backup = await this.exportService.exportBackupJson(user.userId);
+    const filename = `backup-${new Date().toISOString().slice(0, 10)}.json`;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(JSON.stringify(backup, null, 2));
+  }
 }
