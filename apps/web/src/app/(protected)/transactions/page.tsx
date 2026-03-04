@@ -99,8 +99,9 @@ export default function TransactionsPage() {
 
   const [accountId, setAccountId] = useState('');
   const [createType, setCreateType] = useState<'EXPENSE' | 'INCOME' | 'TRANSFER'>('EXPENSE');
-  const [categoryId, setCategoryId] = useState('');
-  const [subcategoryId, setSubcategoryId] = useState('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [subcategoryId, setSubcategoryId] = useState<string | null>(null);
+  const [subcategorySearch, setSubcategorySearch] = useState('');
   const [amountCents, setAmountCents] = useState('100');
   const [merchant, setMerchant] = useState('');
   const [note, setNote] = useState('');
@@ -173,23 +174,6 @@ export default function TransactionsPage() {
     }
   };
 
-  const loadSubcategoriesForCategory = async (
-    selectedCategoryId: string,
-    opts?: { pickFirst?: boolean; preserveSelection?: boolean },
-  ) => {
-    const subs = await getSubcategories(selectedCategoryId);
-    setSubcategories(subs);
-    if (opts?.pickFirst) {
-      setSubcategoryId(subs[0]?.id ?? '');
-      return;
-    }
-    if (opts?.preserveSelection) {
-      setSubcategoryId((current) => (subs.some((sub) => sub.id === current) ? current : ''));
-      return;
-    }
-    setSubcategoryId('');
-  };
-
   const handleCreateCategory = async (): Promise<string | null> => {
     const raw = window.prompt('New category name');
     const name = raw?.trim();
@@ -198,7 +182,8 @@ export default function TransactionsPage() {
     const created = await createCategory(name);
     setCategories((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
     setCategoryId(created.id);
-    await loadSubcategoriesForCategory(created.id);
+    setSubcategoryId(null);
+    setSubcategorySearch('');
     return created.id;
   };
 
@@ -219,13 +204,9 @@ export default function TransactionsPage() {
       return;
     }
 
-    setCategoryId(value);
-    if (!value) {
-      setSubcategories([]);
-      setSubcategoryId('');
-      return;
-    }
-    await loadSubcategoriesForCategory(value);
+    setCategoryId(value || null);
+    setSubcategoryId(null);
+    setSubcategorySearch('');
   };
 
   const onSubcategoryChange = async (value: string) => {
@@ -237,8 +218,31 @@ export default function TransactionsPage() {
       await handleCreateSubcategory(categoryId);
       return;
     }
-    setSubcategoryId(value);
+    setSubcategoryId(value || null);
   };
+
+  useEffect(() => {
+    const loadSubcategories = async () => {
+      if (!categoryId) {
+        setSubcategories([]);
+        return;
+      }
+
+      try {
+        const subs = await getSubcategories(categoryId);
+        setSubcategories([...subs].sort((a, b) => a.name.localeCompare(b.name)));
+      } catch (e) {
+        setSubmitErr(e instanceof Error ? e.message : String(e));
+        setSubcategories([]);
+      }
+    };
+
+    void loadSubcategories();
+  }, [categoryId]);
+
+  const filteredSubcategories = subcategories.filter((sub) =>
+    sub.name.toLowerCase().includes(subcategorySearch.trim().toLowerCase()),
+  );
 
   useEffect(() => {
     const loadInitial = async () => {
@@ -319,8 +323,9 @@ export default function TransactionsPage() {
       setMerchant('');
       setNote('');
       setOccurredAtDate(toDateInputValue());
-      setCategoryId('');
-      setSubcategoryId('');
+      setCategoryId(null);
+      setSubcategoryId(null);
+      setSubcategorySearch('');
       setSubcategories([]);
     } catch (e) {
       setSubmitErr(e instanceof Error ? e.message : String(e));
@@ -535,7 +540,7 @@ export default function TransactionsPage() {
                 <label>
                   Category
                   <select
-                    value={categoryId}
+                    value={categoryId ?? ''}
                     onChange={(e) => void onCategoryChange(e.target.value)}
                     style={{ width: '100%', marginTop: 4 }}
                     required={createType === 'INCOME' || createType === 'EXPENSE'}
@@ -552,17 +557,25 @@ export default function TransactionsPage() {
 
                 <label>
                   Subcategory
+                  <input
+                    type="text"
+                    value={subcategorySearch}
+                    onChange={(e) => setSubcategorySearch(e.target.value)}
+                    style={{ width: '100%', marginTop: 4, marginBottom: 4 }}
+                    placeholder="Search subcategories..."
+                    disabled={!categoryId}
+                  />
                   <select
-                    value={subcategoryId}
+                    value={subcategoryId ?? ''}
                     onChange={(e) => void onSubcategoryChange(e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
+                    style={{ width: '100%', marginTop: 0 }}
                     required={createType === 'INCOME' || createType === 'EXPENSE'}
                     disabled={!categoryId}
                   >
                     <option value="">
                       {categoryId ? 'Select subcategory' : 'Select category first'}
                     </option>
-                    {subcategories.map((sub) => (
+                    {filteredSubcategories.map((sub) => (
                       <option key={sub.id} value={sub.id}>
                         {sub.name}
                       </option>
