@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Modal } from '@/components/Modal';
 import { useToast } from '@/components/toast/ToastProvider';
@@ -59,6 +59,13 @@ function getTodayDateOnly(date: Date = new Date()) {
   const month = pad(date.getMonth() + 1);
   const day = pad(date.getDate());
   return `${year}-${month}-${day}`;
+}
+
+function getCurrentYearMonth(date: Date = new Date()) {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  return `${year}-${month}`;
 }
 
 function readLastFormDefaults(): LastFormDefaults {
@@ -120,6 +127,9 @@ export default function TransactionsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [listYearMonth, setListYearMonth] = useState(getCurrentYearMonth());
+  const [listAccountId, setListAccountId] = useState('');
+  const [listSearchText, setListSearchText] = useState('');
 
   const [filterAccountId, setFilterAccountId] = useState<string>('');
   const [filterCategoryId, setFilterCategoryId] = useState<string>('');
@@ -278,6 +288,22 @@ export default function TransactionsPage() {
   const filteredSubcategories = subcategories.filter((sub) =>
     sub.name.toLowerCase().includes(subcategorySearch.trim().toLowerCase()),
   );
+
+  const filteredRows = useMemo(() => {
+    const needle = listSearchText.trim().toLowerCase();
+
+    return items
+      .map((item) => ({ item, row: mapTransactionToRowVM(item) }))
+      .filter(({ item, row }) => {
+        const matchesMonth = !listYearMonth || row.date.startsWith(listYearMonth);
+        const matchesAccount = !listAccountId || item.accountId === listAccountId;
+        const matchesSearch =
+          !needle ||
+          row.merchant.toLowerCase().includes(needle) ||
+          (row.note?.toLowerCase().includes(needle) ?? false);
+        return matchesMonth && matchesAccount && matchesSearch;
+      });
+  }, [items, listAccountId, listSearchText, listYearMonth]);
 
   const handleApiFailure = (
     error: unknown,
@@ -718,47 +744,90 @@ export default function TransactionsPage() {
         {!loadErr && refreshing && items.length === 0 && <p>Loading...</p>}
 
         <Section>
-          <div>
-            {items.map((tx) => {
-              const row = mapTransactionToRowVM(tx);
-              return (
-              <Card key={row.id} className="mb-4 transition-shadow hover:shadow-aurum">
-                <CardContent className="pt-4">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>
-                        {row.merchant} <span style={{ opacity: 0.6, fontWeight: 400 }}>- {row.type}</span>
-                      </div>
-                      <div style={{ opacity: 0.75, marginTop: 4 }}>{row.date}</div>
-                      <div style={{ opacity: 0.75, marginTop: 4 }}>Account: {row.accountName}</div>
-                      <div style={{ opacity: 0.75, marginTop: 4 }}>Category: {row.categoryPath}</div>
-                      {row.note && <div style={{ marginTop: 6 }}>{row.note}</div>}
-                    </div>
+          <Card className="mb-4">
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <label>
+                  Month
+                  <input
+                    type="month"
+                    value={listYearMonth}
+                    onChange={(e) => setListYearMonth(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
+                  />
+                </label>
 
-                    <div style={{ display: 'grid', justifyItems: 'end', gap: 8 }}>
-                      <div style={{ fontWeight: 600 }}>{row.signedAmount}</div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => openEditModal(tx)}
-                          className="h-10 min-w-[84px] px-4"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          onClick={() => onDeleteTx(tx)}
-                          className="h-10 min-w-[84px] px-4"
-                        >
-                          Delete
-                        </Button>
+                <label>
+                  Account
+                  <select
+                    value={listAccountId}
+                    onChange={(e) => setListAccountId(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
+                  >
+                    <option value="">All accounts</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  Search
+                  <input
+                    type="text"
+                    value={listSearchText}
+                    onChange={(e) => setListSearchText(e.target.value)}
+                    style={{ width: '100%', marginTop: 4 }}
+                    placeholder="Merchant or note"
+                  />
+                </label>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div>
+            {filteredRows.map(({ item: tx, row }) => {
+              return (
+                <Card key={row.id} className="mb-4 transition-shadow hover:shadow-aurum">
+                  <CardContent className="pt-4">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>
+                          {row.merchant}{' '}
+                          <span style={{ opacity: 0.6, fontWeight: 400 }}>- {row.type}</span>
+                        </div>
+                        <div style={{ opacity: 0.75, marginTop: 4 }}>{row.date}</div>
+                        <div style={{ opacity: 0.75, marginTop: 4 }}>Account: {row.accountName}</div>
+                        <div style={{ opacity: 0.75, marginTop: 4 }}>Category: {row.categoryPath}</div>
+                        {row.note && <div style={{ marginTop: 6 }}>{row.note}</div>}
+                      </div>
+
+                      <div style={{ display: 'grid', justifyItems: 'end', gap: 8 }}>
+                        <div style={{ fontWeight: 600 }}>{row.signedAmount}</div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => openEditModal(tx)}
+                            className="h-10 min-w-[84px] px-4"
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => onDeleteTx(tx)}
+                            className="h-10 min-w-[84px] px-4"
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
