@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Container, Section } from '@/components/ui/layout';
 import { clearTokens } from '@/lib/auth/tokens';
 import {
+  ApiError,
   apiDelete,
   apiGet,
   apiPatch,
@@ -299,6 +300,24 @@ export default function TransactionsPage() {
     sub.name.toLowerCase().includes(subcategorySearch.trim().toLowerCase()),
   );
 
+  const handleApiFailure = (
+    error: unknown,
+    setFieldError: (message: string | null) => void,
+  ): void => {
+    if (error instanceof ApiError) {
+      setFieldError(error.message);
+      toast.error(error.message);
+      if (error.status === 401) {
+        clearTokens();
+        router.replace('/login');
+      }
+      return;
+    }
+
+    setFieldError('Unexpected error');
+    toast.error('Unexpected error');
+  };
+
   useEffect(() => {
     const loadInitial = async () => {
       try {
@@ -397,7 +416,7 @@ export default function TransactionsPage() {
       setOccurredAtDate(getTodayDateOnly());
       setSubcategorySearch('');
     } catch (e) {
-      setSubmitErr(e instanceof Error ? e.message : String(e));
+      handleApiFailure(e, setSubmitErr);
     } finally {
       setSubmitting(false);
     }
@@ -451,7 +470,7 @@ export default function TransactionsPage() {
       await refreshTransactions();
       closeEditModal();
     } catch (e) {
-      setEditErr(e instanceof Error ? e.message : String(e));
+      handleApiFailure(e, setEditErr);
     } finally {
       setEditSubmitting(false);
     }
