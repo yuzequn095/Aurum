@@ -7,9 +7,10 @@ import { useToast } from '@/components/toast/ToastProvider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Container, Section } from '@/components/ui/layout';
-import { clearTokens } from '@/lib/auth/tokens';
+import { clearTokens, getAccessToken } from '@/lib/auth/tokens';
 import { mapTransactionToRowVM, type TransactionItem } from '@/utils/transaction-row-vm';
 import {
+  API_BASE,
   ApiError,
   apiDelete,
   apiGet,
@@ -133,6 +134,7 @@ export default function TransactionsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [listYearMonth, setListYearMonth] = useState(getCurrentYearMonth());
   const [listAccountId, setListAccountId] = useState('');
   const [listSearchText, setListSearchText] = useState('');
@@ -543,6 +545,54 @@ export default function TransactionsPage() {
     router.push('/login');
   };
 
+  const onExportCsv = async () => {
+    try {
+      setExporting(true);
+      const params = new URLSearchParams();
+      if (listYearMonth) {
+        const [year, month] = listYearMonth.split('-');
+        if (year && month) {
+          params.set('year', year);
+          params.set('month', String(Number(month)));
+        }
+      }
+      if (listAccountId) params.set('accountId', listAccountId);
+      if (listSearchText.trim()) params.set('q', listSearchText.trim());
+
+      const token = getAccessToken();
+      const response = await fetch(`${API_BASE}/v1/export/transactions.csv?${params.toString()}`, {
+        method: 'GET',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          clearTokens();
+          router.replace('/login');
+          return;
+        }
+        throw new Error('Failed to export CSV');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `transactions-${listYearMonth || 'all'}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('CSV export started.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to export CSV';
+      toast.error(message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <Container className="min-h-screen bg-aurum-bg text-aurum-text py-8 space-y-10">
       <main className="space-y-10">
@@ -787,6 +837,11 @@ export default function TransactionsPage() {
         <Section>
           <Card className="mb-4">
             <CardContent className="pt-4">
+              <div className="mb-4 flex justify-end">
+                <Button type="button" onClick={() => void onExportCsv()} disabled={exporting}>
+                  {exporting ? 'Exporting...' : 'Export CSV'}
+                </Button>
+              </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <label>
                   Month
