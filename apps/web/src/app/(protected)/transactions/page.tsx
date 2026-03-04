@@ -472,6 +472,16 @@ export default function TransactionsPage() {
     setEditErr(null);
   };
 
+  const onRowClick = async (txId: string) => {
+    try {
+      const fetched = await apiGet<TransactionItem>(`/v1/transactions/${txId}`);
+      const cached = items.find((item) => item.id === txId);
+      openEditModal(cached ? { ...cached, ...fetched } : fetched);
+    } catch (e) {
+      handleApiFailure(e, setLoadErr);
+    }
+  };
+
   const onSaveEdit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedTx) return;
@@ -499,8 +509,11 @@ export default function TransactionsPage() {
         occurredAt: editOccurredAtDate,
       };
 
-      await apiPatch<TransactionItem>(`/v1/transactions/${selectedTx.id}`, payload);
-      await refreshTransactions();
+      const updated = await apiPatch<TransactionItem>(`/v1/transactions/${selectedTx.id}`, payload);
+      setItems((prev) =>
+        prev.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)),
+      );
+      toast.success('Transaction updated.');
       closeEditModal();
     } catch (e) {
       handleApiFailure(e, setEditErr);
@@ -831,7 +844,18 @@ export default function TransactionsPage() {
             {filteredRows.map(({ item: tx, row }) => {
               return (
                 <Card key={row.id} className="mb-4 transition-shadow hover:shadow-aurum">
-                  <CardContent className="pt-4">
+                  <CardContent
+                    className="pt-4 cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => void onRowClick(row.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        void onRowClick(row.id);
+                      }
+                    }}
+                  >
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
                       <div>
                         <div style={{ fontWeight: 600 }}>
@@ -850,7 +874,10 @@ export default function TransactionsPage() {
                           <Button
                             type="button"
                             variant="secondary"
-                            onClick={() => openEditModal(tx)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void onRowClick(row.id);
+                            }}
                             className="h-10 min-w-[84px] px-4"
                           >
                             Edit
@@ -858,7 +885,10 @@ export default function TransactionsPage() {
                           <Button
                             type="button"
                             variant="destructive"
-                            onClick={() => onDeleteTx(tx)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void onDeleteTx(tx);
+                            }}
                             className="h-10 min-w-[84px] px-4"
                           >
                             Delete
