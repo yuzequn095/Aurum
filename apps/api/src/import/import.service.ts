@@ -1,5 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { TransactionType } from '@prisma/client';
+import { createHash } from 'node:crypto';
 import { parseDateOnly } from '../common/date-only';
 import { parseCsv } from '../import-export/csv/parse';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 @Injectable()
 export class ImportService {
   constructor(private readonly prisma: PrismaService) {}
+  private static readonly TRANSACTIONS_CSV_KIND = 'transactions_csv';
 
   dryRunTransactions(fileBuffer: Buffer) {
     const parsed = parseCsv(fileBuffer);
@@ -29,6 +35,21 @@ export class ImportService {
   }
 
   async importTransactions(userId: string, fileBuffer: Buffer) {
+    const contentHash = createHash('sha256').update(fileBuffer).digest('hex');
+    const existing = await this.prisma.importLog.findUnique({
+      where: {
+        userId_kind_contentHash: {
+          userId,
+          kind: ImportService.TRANSACTIONS_CSV_KIND,
+          contentHash,
+        },
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new ConflictException('File already imported');
+    }
+
     const parsed = parseCsv(fileBuffer);
     if (parsed.errors.length > 0) {
       throw new BadRequestException({
@@ -37,12 +58,13 @@ export class ImportService {
       });
     }
 
-    return this.importWithAutoCreate(userId, parsed.rows);
+    return this.importWithAutoCreate(userId, parsed.rows, contentHash);
   }
 
   private async importWithAutoCreate(
     userId: string,
     rows: ReturnType<typeof parseCsv>['rows'],
+    contentHash: string,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const accounts = await tx.account.findMany({
@@ -142,6 +164,14 @@ export class ImportService {
           },
         });
       }
+
+      await tx.importLog.create({
+        data: {
+          userId,
+          kind: ImportService.TRANSACTIONS_CSV_KIND,
+          contentHash,
+        },
+      });
 
       return {
         importedCount: rows.length,

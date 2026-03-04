@@ -692,6 +692,10 @@ export default function TransactionsPage() {
           router.replace('/login');
           return;
         }
+        if (response.status === 409) {
+          toast.error('Already imported');
+          return;
+        }
         const text = await response.text();
         throw new Error(text || 'Import failed');
       }
