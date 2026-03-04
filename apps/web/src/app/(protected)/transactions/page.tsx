@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Container, Section } from '@/components/ui/layout';
 import { clearTokens } from '@/lib/auth/tokens';
+import { mapTransactionToRowVM, type TransactionItem } from '@/utils/transaction-row-vm';
 import {
   ApiError,
   apiDelete,
@@ -19,22 +20,6 @@ import {
   getCategories,
   getSubcategories,
 } from '@/lib/api';
-
-type Tx = {
-  id: string;
-  occurredAt: string;
-  merchant: string | null;
-  amountCents: number;
-  currency: string;
-  note: string | null;
-  categoryId: string | null;
-  subcategoryId: string | null;
-  accountId: string;
-  type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
-  account?: { id: string; name: string; currency: string };
-  category?: { id: string; name: string; parentId: string | null } | null;
-  subcategory?: { id: string; categoryId: string; name: string } | null;
-};
 
 type Account = { id: string; name: string; currency: string };
 type Category = { id: string; name: string; parentId: string | null };
@@ -67,12 +52,6 @@ type LastFormDefaults = {
   lastCategoryId: string | null;
   lastSubcategoryId: string | null;
 };
-
-function formatMoneyForType(type: Tx['type'], cents: number, currency: string) {
-  const dollars = (Math.abs(cents) / 100).toFixed(2);
-  const prefix = type === 'EXPENSE' ? '-' : type === 'INCOME' ? '+' : '';
-  return `${prefix}${currency} ${dollars}`;
-}
 
 function getTodayDateOnly(date: Date = new Date()) {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -132,7 +111,7 @@ type Filters = {
 export default function TransactionsPage() {
   const router = useRouter();
   const toast = useToast();
-  const [items, setItems] = useState<Tx[]>([]);
+  const [items, setItems] = useState<TransactionItem[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
@@ -160,7 +139,7 @@ export default function TransactionsPage() {
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const [selectedTx, setSelectedTx] = useState<Tx | null>(null);
+  const [selectedTx, setSelectedTx] = useState<TransactionItem | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editMerchant, setEditMerchant] = useState('');
   const [editNote, setEditNote] = useState('');
@@ -192,7 +171,7 @@ export default function TransactionsPage() {
     setRefreshing(true);
     try {
       setLoadErr(null);
-      const list = await apiGet<Tx[]>(buildTransactionsPath(0, filters));
+      const list = await apiGet<TransactionItem[]>(buildTransactionsPath(0, filters));
       setItems(list);
       setOffset(0);
       setHasMore(list.length === LIMIT);
@@ -213,7 +192,7 @@ export default function TransactionsPage() {
     setLoadingMore(true);
     try {
       setLoadErr(null);
-      const more = await apiGet<Tx[]>(buildTransactionsPath(nextOffset, getCurrentFilters()));
+      const more = await apiGet<TransactionItem[]>(buildTransactionsPath(nextOffset, getCurrentFilters()));
       setItems((prev) => [...prev, ...more]);
       setOffset(nextOffset);
       setHasMore(more.length === LIMIT);
@@ -401,7 +380,7 @@ export default function TransactionsPage() {
         note: note || undefined,
       };
 
-      await apiPost<Tx>('/v1/transactions', payload);
+      await apiPost<TransactionItem>('/v1/transactions', payload);
       writeLastFormDefaults({
         lastAccountId: accountId || null,
         lastCategoryId: categoryId,
@@ -422,7 +401,7 @@ export default function TransactionsPage() {
     }
   };
 
-  const openEditModal = (tx: Tx) => {
+  const openEditModal = (tx: TransactionItem) => {
     setSelectedTx(tx);
     setEditMerchant(tx.merchant ?? '');
     setEditNote(tx.note ?? '');
@@ -466,7 +445,7 @@ export default function TransactionsPage() {
         occurredAt: editOccurredAtDate,
       };
 
-      await apiPatch<Tx>(`/v1/transactions/${selectedTx.id}`, payload);
+      await apiPatch<TransactionItem>(`/v1/transactions/${selectedTx.id}`, payload);
       await refreshTransactions();
       closeEditModal();
     } catch (e) {
@@ -476,7 +455,7 @@ export default function TransactionsPage() {
     }
   };
 
-  const onDeleteTx = async (tx: Tx) => {
+  const onDeleteTx = async (tx: TransactionItem) => {
     const confirmed = window.confirm('Delete this transaction?');
     if (!confirmed) return;
 
@@ -740,32 +719,24 @@ export default function TransactionsPage() {
 
         <Section>
           <div>
-            {items.map((tx) => (
-              <Card key={tx.id} className="mb-4 transition-shadow hover:shadow-aurum">
+            {items.map((tx) => {
+              const row = mapTransactionToRowVM(tx);
+              return (
+              <Card key={row.id} className="mb-4 transition-shadow hover:shadow-aurum">
                 <CardContent className="pt-4">
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
                     <div>
                       <div style={{ fontWeight: 600 }}>
-                        {tx.merchant ?? '(no merchant)'}{' '}
-                        <span style={{ opacity: 0.6, fontWeight: 400 }}>- {tx.type}</span>
+                        {row.merchant} <span style={{ opacity: 0.6, fontWeight: 400 }}>- {row.type}</span>
                       </div>
-                      <div style={{ opacity: 0.75, marginTop: 4 }}>{tx.occurredAt}</div>
-                      <div style={{ opacity: 0.75, marginTop: 4 }}>
-                        Account: {tx.account?.name ?? tx.accountId}
-                      </div>
-                      <div style={{ opacity: 0.75, marginTop: 4 }}>
-                        Category: {tx.category?.name ?? tx.categoryId ?? '-'}
-                      </div>
-                      <div style={{ opacity: 0.75, marginTop: 4 }}>
-                        Subcategory: {tx.subcategory?.name ?? tx.subcategoryId ?? '-'}
-                      </div>
-                      {tx.note && <div style={{ marginTop: 6 }}>{tx.note}</div>}
+                      <div style={{ opacity: 0.75, marginTop: 4 }}>{row.date}</div>
+                      <div style={{ opacity: 0.75, marginTop: 4 }}>Account: {row.accountName}</div>
+                      <div style={{ opacity: 0.75, marginTop: 4 }}>Category: {row.categoryPath}</div>
+                      {row.note && <div style={{ marginTop: 6 }}>{row.note}</div>}
                     </div>
 
                     <div style={{ display: 'grid', justifyItems: 'end', gap: 8 }}>
-                      <div style={{ fontWeight: 600 }}>
-                        {formatMoneyForType(tx.type, tx.amountCents, tx.currency)}
-                      </div>
+                      <div style={{ fontWeight: 600 }}>{row.signedAmount}</div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <Button
                           type="button"
@@ -788,7 +759,8 @@ export default function TransactionsPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
 
           {items.length > 0 && hasMore && (
