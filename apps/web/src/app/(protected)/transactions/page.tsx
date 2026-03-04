@@ -115,6 +115,12 @@ type Filters = {
   to: string;
 };
 
+type ListFilters = {
+  yearMonth: string;
+  accountId: string;
+  searchText: string;
+};
+
 export default function TransactionsPage() {
   const router = useRouter();
   const toast = useToast();
@@ -158,12 +164,26 @@ export default function TransactionsPage() {
   const [editErr, setEditErr] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
 
-  const buildTransactionsPath = (nextOffset: number, filters: Filters) => {
+  const buildTransactionsPath = (
+    nextOffset: number,
+    filters: Filters,
+    listFilters: ListFilters,
+  ) => {
     const qs = new URLSearchParams();
     qs.set('limit', String(LIMIT));
     qs.set('offset', String(nextOffset));
     qs.set('include', 'refs');
-    if (filters.accountId) qs.set('accountId', filters.accountId);
+    if (listFilters.yearMonth) {
+      const [year, month] = listFilters.yearMonth.split('-');
+      if (year && month) {
+        qs.set('year', year);
+        qs.set('month', String(Number(month)));
+      }
+    }
+    if (listFilters.accountId || filters.accountId) {
+      qs.set('accountId', listFilters.accountId || filters.accountId);
+    }
+    if (listFilters.searchText.trim()) qs.set('q', listFilters.searchText.trim());
     if (filters.categoryId) qs.set('categoryId', filters.categoryId);
     if (filters.from) qs.set('from', new Date(filters.from).toISOString());
     if (filters.to) qs.set('to', new Date(filters.to).toISOString());
@@ -177,11 +197,20 @@ export default function TransactionsPage() {
     to,
   });
 
-  const refreshTransactions = async (filters: Filters = getCurrentFilters()) => {
+  const getCurrentListFilters = (): ListFilters => ({
+    yearMonth: listYearMonth,
+    accountId: listAccountId,
+    searchText: listSearchText,
+  });
+
+  const refreshTransactions = async (
+    filters: Filters = getCurrentFilters(),
+    listFilters: ListFilters = getCurrentListFilters(),
+  ) => {
     setRefreshing(true);
     try {
       setLoadErr(null);
-      const list = await apiGet<TransactionItem[]>(buildTransactionsPath(0, filters));
+      const list = await apiGet<TransactionItem[]>(buildTransactionsPath(0, filters, listFilters));
       setItems(list);
       setOffset(0);
       setHasMore(list.length === LIMIT);
@@ -202,7 +231,9 @@ export default function TransactionsPage() {
     setLoadingMore(true);
     try {
       setLoadErr(null);
-      const more = await apiGet<TransactionItem[]>(buildTransactionsPath(nextOffset, getCurrentFilters()));
+      const more = await apiGet<TransactionItem[]>(
+        buildTransactionsPath(nextOffset, getCurrentFilters(), getCurrentListFilters()),
+      );
       setItems((prev) => [...prev, ...more]);
       setOffset(nextOffset);
       setHasMore(more.length === LIMIT);
@@ -290,20 +321,17 @@ export default function TransactionsPage() {
   );
 
   const filteredRows = useMemo(() => {
-    const needle = listSearchText.trim().toLowerCase();
+    return items.map((item) => ({ item, row: mapTransactionToRowVM(item) }));
+  }, [items]);
 
-    return items
-      .map((item) => ({ item, row: mapTransactionToRowVM(item) }))
-      .filter(({ item, row }) => {
-        const matchesMonth = !listYearMonth || row.date.startsWith(listYearMonth);
-        const matchesAccount = !listAccountId || item.accountId === listAccountId;
-        const matchesSearch =
-          !needle ||
-          row.merchant.toLowerCase().includes(needle) ||
-          (row.note?.toLowerCase().includes(needle) ?? false);
-        return matchesMonth && matchesAccount && matchesSearch;
-      });
-  }, [items, listAccountId, listSearchText, listYearMonth]);
+  const applyListFilters = (next: Partial<ListFilters>) => {
+    const nextFilters: ListFilters = {
+      yearMonth: next.yearMonth ?? listYearMonth,
+      accountId: next.accountId ?? listAccountId,
+      searchText: next.searchText ?? listSearchText,
+    };
+    void refreshTransactions(getCurrentFilters(), nextFilters);
+  };
 
   const handleApiFailure = (
     error: unknown,
@@ -752,7 +780,11 @@ export default function TransactionsPage() {
                   <input
                     type="month"
                     value={listYearMonth}
-                    onChange={(e) => setListYearMonth(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setListYearMonth(value);
+                      applyListFilters({ yearMonth: value });
+                    }}
                     style={{ width: '100%', marginTop: 4 }}
                   />
                 </label>
@@ -761,7 +793,11 @@ export default function TransactionsPage() {
                   Account
                   <select
                     value={listAccountId}
-                    onChange={(e) => setListAccountId(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setListAccountId(value);
+                      applyListFilters({ accountId: value });
+                    }}
                     style={{ width: '100%', marginTop: 4 }}
                   >
                     <option value="">All accounts</option>
@@ -778,7 +814,11 @@ export default function TransactionsPage() {
                   <input
                     type="text"
                     value={listSearchText}
-                    onChange={(e) => setListSearchText(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setListSearchText(value);
+                      applyListFilters({ searchText: value });
+                    }}
                     style={{ width: '100%', marginTop: 4 }}
                     placeholder="Merchant or note"
                   />

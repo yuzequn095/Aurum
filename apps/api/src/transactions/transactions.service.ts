@@ -56,18 +56,33 @@ export class TransactionsService {
     const limit = query.limit ?? 50;
     const offset = query.offset ?? 0;
     const includeRefs = query.include === 'refs';
+    const where: Prisma.TransactionWhereInput = { userId };
 
-    const occurredAt: { gte?: Date; lte?: Date } = {};
-    if (query.from) occurredAt.gte = new Date(query.from);
-    if (query.to) occurredAt.lte = new Date(query.to);
+    if (query.year && query.month) {
+      const start = new Date(
+        Date.UTC(query.year, query.month - 1, 1, 0, 0, 0, 0),
+      );
+      const end = new Date(Date.UTC(query.year, query.month, 1, 0, 0, 0, 0));
+      where.occurredAt = { gte: start, lt: end };
+    } else if (query.from || query.to) {
+      where.occurredAt = {
+        ...(query.from ? { gte: new Date(query.from) } : {}),
+        ...(query.to ? { lte: new Date(query.to) } : {}),
+      };
+    }
+
+    if (query.accountId) where.accountId = query.accountId;
+    if (query.categoryId) where.categoryId = query.categoryId;
+    if (query.type) where.type = query.type;
+    if (query.q) {
+      where.OR = [
+        { merchant: { contains: query.q, mode: 'insensitive' } },
+        { note: { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
 
     const rows = await this.prisma.transaction.findMany({
-      where: {
-        userId,
-        ...(query.accountId ? { accountId: query.accountId } : {}),
-        ...(query.categoryId ? { categoryId: query.categoryId } : {}),
-        ...(query.from || query.to ? { occurredAt } : {}),
-      },
+      where,
       orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
       skip: offset,
       take: limit,
