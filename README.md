@@ -11,10 +11,13 @@ Aurum is a pnpm workspace + Turborepo monorepo for personal finance tracking and
 
 ## Current Status
 
-Milestone 7 (Auth) and Milestone 8 (Ledger v2) are complete.
+Milestones 7, 8, 9.1, 9.2, 9.3, and 9.4 are complete.
 
 - Auth: email/password login, JWT access token + refresh token, refresh rotation/reuse detection, logout/logout-all, guarded APIs, server-side userId isolation.
 - Ledger v2: income transactions, date-only `occurredAt` API contract (`YYYY-MM-DD`) with DB `DateTime`, category + subcategory taxonomy, and enforced category/subcategory for income/expense.
+- UX + List: standardized `ApiError`, toast system, improved taxonomy UX/defaults, server-side transaction filters, row-click edit flow, and transaction list view-model/formatters.
+- Import/Export: CSV export, CSV dry-run + import with taxonomy auto-create, idempotent import via content hash (`ImportLog`), and user backup JSON export.
+- Restore tooling: development backup restore CLI (`wipe|append`) with ID-preserving upserts.
 - Analytics + AI: monthly summary and category breakdown endpoints; AI monthly report is available via pluggable insight engine (`rules` / `llm` / `hybrid`).
 - LLM is optional and controlled by env flags to avoid cost in local/dev.
 
@@ -49,12 +52,12 @@ flowchart LR
 | Phase 3 - Insight Engine | M6 refactor + LLM scaffold + hybrid merge + tests | Done | `rules`/`llm`/`hybrid` modes available; LLM path optional by env. |
 | Phase 4 - Auth & Productization | M7 Auth (email/password, identities, refresh tokens, guards, user scoping) | Done | Refresh rotation + reuse detection + logout-all implemented. |
 | Phase 5 - Ledger v2 | M8.1 Date-only occurredAt, M8.2 Income, M8.3 Category/Subcategory taxonomy | Done | API date-only, DB DateTime retained (Strategy A). |
+| Phase 6 - UX + List | M9.1 API errors/toasts/taxonomy UX, M9.2 list VM + filters + row edit | Done | Transactions list supports server-side filtering and fast in-place edit updates. |
+| Phase 7 - Import/Export + Backup | M9.3 CSV import/export, M9.4 idempotency + backup export + restore CLI | Done | End-to-end CSV workflow plus JSON backup/restore tooling for local/dev. |
 
 ## Next Up
 
-- M9 UX hardening: taxonomy defaults, clearer validation/errors, transaction list/filter usability.
 - M10 Mobile UI and page structure upgrade: route/layout cleanup with stronger responsive behavior.
-- M11 Import/Export: CSV import/export and backup workflows.
 - M12 AI cost-managed integration: prompt pack/copy, provider abstraction, optional self-hosted vLLM later.
 - M13 Observability and output: logging/metrics, caching strategy, PDF export.
 
@@ -174,6 +177,10 @@ Base URL: `http://localhost:3001`
 | `/v1/transactions/:id` | GET | Yes | Get transaction by id (user-scoped). |
 | `/v1/transactions/:id` | PATCH | Yes | Update transaction (user-scoped + taxonomy validation). |
 | `/v1/transactions/:id` | DELETE | Yes | Delete transaction (user-scoped). |
+| `/v1/export/transactions.csv` | GET | Yes | Export user transactions CSV (supports month/account/type/query filters). |
+| `/v1/export/backup.json` | GET | Yes | Export full user backup JSON (accounts/categories/subcategories/transactions). |
+| `/v1/import/transactions/dry-run` | POST (multipart) | Yes | Parse/validate CSV and return preview + errors (no DB writes). |
+| `/v1/import/transactions` | POST (multipart) | Yes | Import CSV with taxonomy/account auto-create and idempotency protection. |
 | `/v1/analytics/monthly-summary` | GET | Yes | Income/expense/net monthly summary. |
 | `/v1/analytics/category-breakdown` | GET | Yes | Monthly expense breakdown by category. |
 | `/v1/ai/monthly-report` | GET | Yes | Monthly AI report payload with generated insights. |
@@ -181,9 +188,20 @@ Base URL: `http://localhost:3001`
 Transactions query params (`GET /v1/transactions`):
 
 - `limit`, `offset`
-- `accountId`, `categoryId`
+- `year`, `month`, `accountId`, `categoryId`, `type`, `q`
 - `from`, `to`
 - `include=refs` (optional account/category/subcategory refs)
+
+CSV import/export schema columns:
+
+- `occurredAt,type,amount,currency,account,category,subcategory,merchant,note`
+
+Backup restore CLI (dev/local):
+
+```bash
+pnpm --filter api restore -- --file ./backup.json --mode wipe
+pnpm --filter api restore -- --file ./backup.json --mode append --userId <targetUserId>
+```
 
 ## Auth and Session Notes
 
