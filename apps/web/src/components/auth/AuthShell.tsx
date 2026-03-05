@@ -17,9 +17,13 @@ const tabs = [
 
 export function AuthShell({ mode, heading, subheading, children }: AuthShellProps) {
   return (
-    <main className='relative min-h-screen w-full overflow-hidden bg-aurum-bg px-4 py-10 sm:px-6 lg:px-10'>
+    <main className='relative min-h-screen w-full overflow-hidden bg-[color:var(--aurum-auth-bg-0)] px-4 py-10 sm:px-6 lg:px-10'>
       <div className='absolute inset-0 aurum-auth-bg' />
-      <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,197,66,0.08),transparent_55%)]' />
+      <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(197,160,89,0.06),transparent_55%)]' />
+      <div
+        aria-hidden='true'
+        className='pointer-events-none absolute left-1/2 top-1/2 h-[72vh] w-[72vh] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color:var(--aurum-auth-text)]/[0.03]'
+      />
 
       <div className='relative mx-auto flex w-full max-w-[980px] flex-col items-center gap-6'>
         <div className='flex flex-col items-center gap-3 pt-1'>
@@ -40,44 +44,44 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
               {heading || subheading ? (
                 <header className='space-y-2'>
                   {heading ? (
-                    <h1 className='text-2xl font-semibold tracking-tight text-aurum-text'>
+                    <h1 className='text-2xl font-semibold tracking-tight text-[color:var(--aurum-auth-text)]'>
                       {heading}
                     </h1>
                   ) : null}
                   {subheading ? (
-                    <p className='text-sm text-aurum-muted/90'>{subheading}</p>
+                    <p className='text-sm text-[color:var(--aurum-auth-muted)]/90'>{subheading}</p>
                   ) : null}
                 </header>
               ) : null}
               {children}
             </div>
 
-            <div className='hidden rounded-full bg-aurum-border/80 lg:block' />
+            <div className='hidden rounded-full bg-[color:var(--aurum-auth-border)] lg:block' />
 
             <aside className='space-y-6 px-2'>
-              <h2 className='text-[42px] leading-none font-medium tracking-tight text-aurum-text [font-family:Georgia,Times_New_Roman,serif]'>
+              <h2 className='text-[52px] leading-none font-medium tracking-tight text-[color:var(--aurum-auth-text)] [font-family:Georgia,Times_New_Roman,serif]'>
                 Private Management.
               </h2>
-              <p className='max-w-[320px] text-[15px] leading-7 text-aurum-muted'>
+              <p className='max-w-[320px] text-[15px] leading-7 text-[color:var(--aurum-auth-muted)]'>
                 Aurum is an invitation-only ecosystem for sophisticated financial oversight and
                 AI-driven wealth insights.
               </p>
 
               <div>
-                <p className='mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-aurum-primaryHover/90'>
+                <p className='mb-3 text-[9px] font-bold uppercase tracking-[0.3em] text-[color:var(--aurum-auth-primary)]'>
                   New Prospect
                 </p>
-                <div className='rounded-[16px] border border-aurum-border bg-white/70 p-4'>
+                <div className='rounded-2xl border border-[color:var(--aurum-auth-primary)]/20 bg-white/55 p-6'>
                   <Link
                     href='mailto:hello@aurum.local'
-                    className='group flex items-center justify-between gap-4 rounded-[10px] text-sm font-semibold text-aurum-text transition'
+                    className='group flex items-center justify-between gap-4 rounded-[10px] text-sm font-medium tracking-wide text-[color:var(--aurum-auth-text)] transition'
                   >
                     <span>Request Access</span>
-                    <span className='text-xl text-aurum-primaryHover transition group-hover:translate-x-0.5'>
+                    <span className='text-xl text-[color:var(--aurum-auth-primary)] transition group-hover:translate-x-0.5'>
                       {'->'}
                     </span>
                   </Link>
-                  <p className='mt-2 text-xs text-aurum-muted'>
+                  <p className='mt-2 text-[11px] font-light text-[color:var(--aurum-auth-muted)]'>
                     Apply for membership in our next cohort.
                   </p>
                 </div>
@@ -86,8 +90,8 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
           </div>
         </AuthCard>
 
-        <div className='w-full max-w-[980px] rounded-b-[18px] border border-t-0 border-aurum-border/70 bg-white/40 px-6 py-5 text-center'>
-          <p className='text-[10px] uppercase tracking-[0.26em] text-aurum-muted/90'>
+        <div className='w-full max-w-[980px] rounded-b-[18px] border border-t-0 border-[color:var(--aurum-auth-border)] bg-white/35 px-6 py-5 text-center'>
+          <p className='text-[10px] font-light uppercase tracking-[0.4em] text-[color:var(--aurum-auth-muted)]/50'>
             AURUM &#183; MMXXIV &#183; SECURE END-TO-END ENCRYPTION
           </p>
         </div>

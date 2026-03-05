@@ -71,7 +71,7 @@ export default function RegisterPage() {
           <div className='space-y-2'>
             <label
               htmlFor='register-email'
-              className='text-[11px] font-semibold uppercase tracking-[0.16em] text-aurum-muted'
+              className='text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--aurum-auth-muted)]'
             >
               Identity
             </label>
@@ -82,7 +82,7 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder='email@aurum.exclusive'
-              className='h-12 w-full border-0 border-b border-aurum-border bg-transparent px-0 text-base text-aurum-text outline-none transition placeholder:text-aurum-muted/40 focus:border-aurum-primaryHover'
+              className='h-12 w-full border-0 border-b border-[color:var(--aurum-auth-border)] bg-transparent px-0 text-sm font-light text-[color:var(--aurum-auth-text)] outline-none transition placeholder:text-[color:var(--aurum-auth-muted)]/30 focus:border-[color:var(--aurum-auth-primary)]'
               autoComplete='email'
               required
             />
@@ -91,7 +91,7 @@ export default function RegisterPage() {
           <div className='space-y-2'>
             <label
               htmlFor='register-password'
-              className='text-[11px] font-semibold uppercase tracking-[0.16em] text-aurum-muted'
+              className='text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--aurum-auth-muted)]'
             >
               Credential
             </label>
@@ -102,16 +102,19 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder='At least 8 characters'
-              className='h-12 w-full border-0 border-b border-aurum-border bg-transparent px-0 text-base text-aurum-text outline-none transition placeholder:text-aurum-muted/40 focus:border-aurum-primaryHover'
+              className='h-12 w-full border-0 border-b border-[color:var(--aurum-auth-border)] bg-transparent px-0 text-sm font-light text-[color:var(--aurum-auth-text)] outline-none transition placeholder:text-[color:var(--aurum-auth-muted)]/30 focus:border-[color:var(--aurum-auth-primary)]'
               minLength={8}
               autoComplete='new-password'
               required
             />
           </div>
 
-          <p className='text-sm text-aurum-muted'>
+          <p className='text-sm text-[color:var(--aurum-auth-muted)]'>
             Already have access?{' '}
-            <Link href='/login' className='font-medium text-aurum-text underline underline-offset-4'>
+            <Link
+              href='/login'
+              className='font-medium text-[color:var(--aurum-auth-text)] underline underline-offset-4'
+            >
               Sign In
             </Link>
           </p>

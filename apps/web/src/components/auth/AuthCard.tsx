@@ -9,7 +9,7 @@ export function AuthCard({ className, children }: AuthCardProps) {
   return (
     <section
       className={cn(
-        'rounded-[30px] border border-[color:var(--aurum-card-border)] bg-[color:var(--aurum-card-bg)] p-6 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)] backdrop-blur md:p-10',
+        'rounded-[40px] border border-[color:var(--aurum-auth-border)] bg-[rgba(255,255,255,0.85)] p-6 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.04)] backdrop-blur md:p-10',
         className,
       )}
     >

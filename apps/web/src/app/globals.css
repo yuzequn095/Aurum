@@ -12,6 +12,13 @@
   --aurum-auth-grad-end: #f1e6cf;
   --aurum-card-bg: rgba(255, 255, 255, 0.86);
   --aurum-card-border: rgba(226, 232, 240, 0.85);
+  --aurum-auth-primary: #c5a059;
+  --aurum-auth-primary-strong: #d4af37;
+  --aurum-auth-bg-0: #fdfdfd;
+  --aurum-auth-bg-1: #f6f6f6;
+  --aurum-auth-text: #1a1a1a;
+  --aurum-auth-muted: #888888;
+  --aurum-auth-border: #f0f0f0;
 }
 
 @theme inline {
@@ -36,8 +43,8 @@ body {
 
 .aurum-auth-bg {
   background:
-    radial-gradient(760px 420px at 50% -8%, rgba(245, 197, 66, 0.2), transparent 62%),
-    linear-gradient(160deg, var(--aurum-auth-grad-start), var(--aurum-auth-grad-end));
+    radial-gradient(760px 420px at 50% -8%, rgba(197, 160, 89, 0.08), transparent 62%),
+    linear-gradient(170deg, var(--aurum-auth-bg-0), var(--aurum-auth-bg-1));
 }
 
 .aurum-noise::before {

@@ -14,7 +14,11 @@ type SegmentedTabsProps = {
 
 export function SegmentedTabs({ items, activeKey }: SegmentedTabsProps) {
   return (
-    <div className='flex items-center gap-7 border-b border-aurum-border/70 pb-2' role='tablist' aria-label='Authentication mode'>
+    <div
+      className='flex items-center gap-10 border-b border-[color:var(--aurum-auth-border)] pb-2'
+      role='tablist'
+      aria-label='Authentication mode'
+    >
       {items.map((item) => {
         const active = item.key === activeKey;
         return (
@@ -24,14 +28,16 @@ export function SegmentedTabs({ items, activeKey }: SegmentedTabsProps) {
             role='tab'
             aria-selected={active}
             className={cn(
-              'relative py-1 text-[11px] font-semibold tracking-[0.16em] uppercase transition-colors',
+              'relative py-1 text-[11px] font-semibold tracking-[0.25em] uppercase transition-colors',
               active
-                ? 'text-aurum-text'
-                : 'text-aurum-muted/70 hover:text-aurum-muted',
+                ? 'text-[color:var(--aurum-auth-text)]'
+                : 'text-[color:var(--aurum-auth-muted)]/60 hover:text-[color:var(--aurum-auth-text)]',
             )}
           >
             {item.label}
-            {active ? <span className='absolute -bottom-[11px] left-0 h-[2px] w-full bg-aurum-primaryHover' /> : null}
+            {active ? (
+              <span className='absolute -bottom-[11px] left-0 h-[2px] w-full bg-[color:var(--aurum-auth-primary)]' />
+            ) : null}
           </Link>
         );
       })}

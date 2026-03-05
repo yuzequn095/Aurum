@@ -73,7 +73,7 @@ export default function LoginPage() {
           <div className='space-y-2'>
             <label
               htmlFor='email'
-              className='text-[11px] font-semibold uppercase tracking-[0.16em] text-aurum-muted'
+              className='text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--aurum-auth-muted)]'
             >
               Identity
             </label>
@@ -84,7 +84,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder='email@aurum.exclusive'
-              className='h-12 w-full border-0 border-b border-aurum-border bg-transparent px-0 text-base text-aurum-text outline-none transition placeholder:text-aurum-muted/40 focus:border-aurum-primaryHover'
+              className='h-12 w-full border-0 border-b border-[color:var(--aurum-auth-border)] bg-transparent px-0 text-sm font-light text-[color:var(--aurum-auth-text)] outline-none transition placeholder:text-[color:var(--aurum-auth-muted)]/30 focus:border-[color:var(--aurum-auth-primary)]'
               autoComplete='email'
               required
             />
@@ -93,7 +93,7 @@ export default function LoginPage() {
           <div className='space-y-2'>
             <label
               htmlFor='password'
-              className='text-[11px] font-semibold uppercase tracking-[0.16em] text-aurum-muted'
+              className='text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--aurum-auth-muted)]'
             >
               Credential
             </label>
@@ -104,7 +104,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder='••••••••'
-              className='h-12 w-full border-0 border-b border-aurum-border bg-transparent px-0 text-base text-aurum-text outline-none transition placeholder:text-aurum-muted/40 focus:border-aurum-primaryHover'
+              className='h-12 w-full border-0 border-b border-[color:var(--aurum-auth-border)] bg-transparent px-0 text-sm font-light text-[color:var(--aurum-auth-text)] outline-none transition placeholder:text-[color:var(--aurum-auth-muted)]/30 focus:border-[color:var(--aurum-auth-primary)]'
               autoComplete='current-password'
               required
             />
@@ -119,16 +119,19 @@ export default function LoginPage() {
 
             <button
               type='button'
-              className='text-[11px] font-semibold uppercase tracking-[0.14em] text-aurum-muted transition hover:text-aurum-text'
+              className='text-[10px] font-medium uppercase tracking-[0.3em] text-[color:var(--aurum-auth-muted)] transition hover:text-[color:var(--aurum-auth-text)]'
               aria-label='Recover password (coming soon)'
             >
               Recover
             </button>
           </div>
 
-          <p className='text-sm text-aurum-muted'>
+          <p className='text-sm text-[color:var(--aurum-auth-muted)]'>
             New to Aurum?{' '}
-            <Link href='/register' className='font-medium text-aurum-text underline underline-offset-4'>
+            <Link
+              href='/register'
+              className='font-medium text-[color:var(--aurum-auth-text)] underline underline-offset-4'
+            >
               Create Account
             </Link>
           </p>
