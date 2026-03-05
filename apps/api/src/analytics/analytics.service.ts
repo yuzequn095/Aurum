@@ -8,6 +8,11 @@ type RangeSummary = {
   netCents: number;
 };
 
+type YearMonth = {
+  year: number;
+  month: number;
+};
+
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -23,6 +28,22 @@ export class AnalyticsService {
       return { year: year - 1, month: 12 };
     }
     return { year, month: month - 1 };
+  }
+
+  private getYearMonthRange(
+    months: number,
+    endYear: number,
+    endMonth: number,
+  ): YearMonth[] {
+    const result: YearMonth[] = [];
+    for (let offset = months - 1; offset >= 0; offset -= 1) {
+      const date = new Date(Date.UTC(endYear, endMonth - 1 - offset, 1));
+      result.push({
+        year: date.getUTCFullYear(),
+        month: date.getUTCMonth() + 1,
+      });
+    }
+    return result;
   }
 
   private calcPercentChange(current: number, previous: number) {
@@ -167,6 +188,28 @@ export class AnalyticsService {
       year,
       month,
       totals,
+    };
+  }
+
+  async getSummarySeries(
+    userId: string,
+    months: number,
+    endYear: number,
+    endMonth: number,
+  ) {
+    const yearMonths = this.getYearMonthRange(months, endYear, endMonth);
+    const series = await Promise.all(
+      yearMonths.map(async ({ year, month }) => {
+        const { startDate, endDate } = this.getMonthRange(year, month);
+        const totals = await this.getRangeSummary(userId, startDate, endDate);
+        return { year, month, totals };
+      }),
+    );
+
+    return {
+      months,
+      end: { year: endYear, month: endMonth },
+      series,
     };
   }
 }

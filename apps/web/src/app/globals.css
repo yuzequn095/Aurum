@@ -1,9 +1,25 @@
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
+@import "../styles/tokens.css";
 
 :root {
   --background: #f6f8fa;
   --foreground: #0f172a;
+  --aurum-gold: #f5c542;
+  --aurum-gold-strong: #d9a92b;
+  --aurum-app-grad-start: #f5f7fb;
+  --aurum-app-grad-end: #efe8d8;
+  --aurum-auth-grad-start: #fbf8ef;
+  --aurum-auth-grad-end: #f1e6cf;
+  --aurum-card-bg: rgba(255, 255, 255, 0.86);
+  --aurum-card-border: rgba(226, 232, 240, 0.85);
+  --aurum-auth-primary: #c5a059;
+  --aurum-auth-primary-strong: #d4af37;
+  --aurum-auth-bg-0: #fdfdfd;
+  --aurum-auth-bg-1: #f6f6f6;
+  --aurum-auth-text: #1a1a1a;
+  --aurum-auth-muted: #888888;
+  --aurum-auth-border: #f0f0f0;
 }
 
 @theme inline {
@@ -14,7 +30,34 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px circle at 30% 10%, rgba(212, 175, 55, 0.1), transparent 60%),
+    var(--aurum-bg);
+  color: var(--aurum-text);
+  font-family: var(--aurum-font-sans);
+  line-height: var(--aurum-line-height-normal);
+}
+
+.aurum-app-bg {
+  background:
+    radial-gradient(1200px circle at 30% 10%, rgba(212, 175, 55, 0.1), transparent 60%),
+    radial-gradient(900px circle at 80% 30%, rgba(0, 0, 0, 0.04), transparent 55%),
+    var(--aurum-bg);
+}
+
+.aurum-auth-bg {
+  background:
+    radial-gradient(760px 420px at 50% -8%, rgba(197, 160, 89, 0.08), transparent 62%),
+    linear-gradient(170deg, var(--aurum-auth-bg-0), var(--aurum-auth-bg-1));
+}
+
+.aurum-noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: radial-gradient(#000 0.5px, transparent 0.5px);
+  background-size: 3px 3px;
 }

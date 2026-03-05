@@ -1,0 +1,37 @@
+:root {
+  /* color */
+  --aurum-bg: #f5f4f1;
+  --aurum-surface: #ffffff;
+  --aurum-surface-alt: #faf8f2;
+  --aurum-text: #1a1a1a;
+  --aurum-text-muted: #7f7f7f;
+  --aurum-border: #ece9df;
+  --aurum-shadow: 0 20px 45px -30px rgba(17, 24, 39, 0.35);
+  --aurum-accent: #c5a059;
+  --aurum-success: #1b9c64;
+  --aurum-danger: #d24b4b;
+  --aurum-warning: #b98519;
+
+  /* radii */
+  --aurum-radius-sm: 8px;
+  --aurum-radius-md: 12px;
+  --aurum-radius-lg: 18px;
+  --aurum-radius-xl: 28px;
+
+  /* spacing */
+  --aurum-space-xs: 4px;
+  --aurum-space-sm: 8px;
+  --aurum-space-md: 16px;
+  --aurum-space-lg: 24px;
+  --aurum-space-xl: 32px;
+
+  /* type */
+  --aurum-font-sans: 'Inter', 'Avenir Next', 'Segoe UI', sans-serif;
+  --aurum-font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --aurum-font-size-h1: 40px;
+  --aurum-font-size-h2: 28px;
+  --aurum-font-size-body: 16px;
+  --aurum-font-size-small: 13px;
+  --aurum-line-height-tight: 1.2;
+  --aurum-line-height-normal: 1.6;
+}

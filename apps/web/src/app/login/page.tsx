@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { PrimaryButton } from '@/components/auth/PrimaryButton';
 import { useToast } from '@/components/toast/ToastProvider';
+import { useAuthSession } from '@/lib/auth/session';
 import { apiPublicPost } from '@/lib/api';
-import { setAccessToken, setRefreshToken } from '@/lib/auth/tokens';
+import { setAccessToken, setRefreshToken, setUserEmail } from '@/lib/auth/tokens';
+import { useEffect } from 'react';
 
 type AuthResponse = {
   user: { id: string; email: string };
@@ -17,11 +19,20 @@ type AuthResponse = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
+  const { isHydrated, isAuthenticated } = useAuthSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const next = searchParams.get('next') || '/dashboard';
+
+  useEffect(() => {
+    if (isHydrated && isAuthenticated) {
+      router.replace(next);
+    }
+  }, [isAuthenticated, isHydrated, next, router]);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -35,8 +46,9 @@ export default function LoginPage() {
       });
       setAccessToken(payload.accessToken);
       setRefreshToken(payload.refreshToken);
+      setUserEmail(payload.user.email);
       toast.success('Logged in successfully.');
-      router.push('/transactions');
+      router.push(next);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setError(message);
@@ -47,46 +59,85 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center px-4">
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Login</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <label className="block text-sm">
-              Email
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded border px-3 py-2"
-                required
-              />
+    <AuthShell mode='login' heading='' subheading=''>
+      {!isHydrated ? (
+        <div className='rounded-aurum border border-aurum-border bg-white/85 p-4 text-sm text-aurum-muted'>
+          Preparing secure session...
+        </div>
+      ) : isAuthenticated ? (
+        <div className='flex items-center gap-3 rounded-aurum border border-aurum-border bg-white/85 p-4'>
+          <span className='h-4 w-4 animate-spin rounded-full border-2 border-aurum-primary border-t-aurum-primaryHover' />
+          <span className='text-sm text-aurum-muted'>Entering your suite...</span>
+        </div>
+      ) : (
+        <form onSubmit={onSubmit} className='space-y-7'>
+          <div className='space-y-2'>
+            <label
+              htmlFor='email'
+              className='text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--aurum-auth-muted)]'
+            >
+              Identity
             </label>
-            <label className="block text-sm">
-              Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded border px-3 py-2"
-                required
-              />
+            <input
+              id='email'
+              name='email'
+              type='email'
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder='email@aurum.exclusive'
+              className='h-12 w-full border-0 border-b border-[color:var(--aurum-auth-border)] bg-transparent px-0 text-sm font-light text-[color:var(--aurum-auth-text)] outline-none transition placeholder:text-[color:var(--aurum-auth-muted)]/30 focus:border-[color:var(--aurum-auth-primary)]'
+              autoComplete='email'
+              required
+            />
+          </div>
+
+          <div className='space-y-2'>
+            <label
+              htmlFor='password'
+              className='text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--aurum-auth-muted)]'
+            >
+              Credential
             </label>
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? 'Logging in...' : 'Login'}
-            </Button>
-          </form>
-          <p className="mt-4 text-sm">
-            No account?{' '}
-            <Link href="/register" className="underline">
-              Register
+            <input
+              id='password'
+              name='password'
+              type='password'
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder='********'
+              className='h-12 w-full border-0 border-b border-[color:var(--aurum-auth-border)] bg-transparent px-0 text-sm font-light text-[color:var(--aurum-auth-text)] outline-none transition placeholder:text-[color:var(--aurum-auth-muted)]/30 focus:border-[color:var(--aurum-auth-primary)]'
+              autoComplete='current-password'
+              required
+            />
+          </div>
+
+          {error ? <p className='text-sm text-red-600'>{error}</p> : null}
+
+          <div className='flex items-center gap-7 pt-2'>
+            <PrimaryButton type='submit' disabled={submitting}>
+              {submitting ? 'Entering...' : 'Enter Suite'}
+            </PrimaryButton>
+
+            <button
+              type='button'
+              className='text-[10px] font-medium uppercase tracking-[0.3em] text-[color:var(--aurum-auth-muted)] transition hover:text-[color:var(--aurum-auth-text)]'
+              aria-label='Recover password (coming soon)'
+            >
+              Recover
+            </button>
+          </div>
+
+          <p className='text-sm text-[color:var(--aurum-auth-muted)]'>
+            New to Aurum?{' '}
+            <Link
+              href='/register'
+              className='font-medium text-[color:var(--aurum-auth-text)] underline underline-offset-4'
+            >
+              Create Account
             </Link>
           </p>
-        </CardContent>
-      </Card>
-    </main>
+        </form>
+      )}
+    </AuthShell>
   );
 }

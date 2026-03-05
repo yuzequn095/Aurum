@@ -1,5 +1,6 @@
 const ACCESS_TOKEN_KEY = 'aurum.accessToken';
 const REFRESH_TOKEN_KEY = 'aurum.refreshToken';
+const USER_EMAIL_KEY = 'aurum.userEmail';
 
 function isBrowser() {
   return typeof window !== 'undefined';
@@ -17,6 +18,11 @@ function write(key: string, value: string | null) {
   } else {
     window.localStorage.setItem(key, value);
   }
+}
+
+function notifyAuthChanged() {
+  if (!isBrowser()) return;
+  window.dispatchEvent(new Event('aurum-auth-change'));
 }
 
 function setCookie(name: string, value: string | null) {
@@ -38,6 +44,7 @@ export function getAccessToken(): string | null {
 export function setAccessToken(token: string | null): void {
   write(ACCESS_TOKEN_KEY, token);
   setCookie('aurum_access_token', token);
+  notifyAuthChanged();
 }
 
 export function getRefreshToken(): string | null {
@@ -47,9 +54,20 @@ export function getRefreshToken(): string | null {
 export function setRefreshToken(token: string | null): void {
   write(REFRESH_TOKEN_KEY, token);
   setCookie('aurum_refresh_token', token);
+  notifyAuthChanged();
 }
 
 export function clearTokens(): void {
   setAccessToken(null);
   setRefreshToken(null);
+  setUserEmail(null);
+}
+
+export function getUserEmail(): string | null {
+  return read(USER_EMAIL_KEY);
+}
+
+export function setUserEmail(email: string | null): void {
+  write(USER_EMAIL_KEY, email);
+  notifyAuthChanged();
 }
