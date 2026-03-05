@@ -1,46 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   CategoryBreakdownPieChart,
   IncomeExpenseBarChart,
 } from '@/components/charts/DashboardCharts';
+import { useDashboardData } from '@/hooks/useDashboardData';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Section } from '@/components/ui/layout';
-import { fetchCategoryBreakdown, fetchMonthlySummary } from '@/lib/api';
 import { KpiCard } from './components/kpi-card';
-
-type DeltaMap = {
-  income?: number | null;
-  expense?: number | null;
-  net?: number | null;
-};
-
-type MonthlySummaryResponse = {
-  totals: {
-    incomeCents: number;
-    expenseCents: number;
-    netCents: number;
-  };
-  previousMonth?: {
-    totals?: {
-      incomeCents: number;
-      expenseCents: number;
-      netCents: number;
-    };
-  };
-  deltaPercent?: DeltaMap;
-  delta?: DeltaMap;
-};
-
-type CategoryBreakdownResponse = {
-  totals: Array<{
-    categoryId: string | null;
-    categoryName: string | null;
-    expenseCents: number;
-  }>;
-};
 
 function formatCents(cents: number) {
   return new Intl.NumberFormat('en-US', {
@@ -95,49 +64,16 @@ export default function DashboardPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [summary, setSummary] = useState<MonthlySummaryResponse | null>(null);
-  const [categoryBreakdownData, setCategoryBreakdownData] = useState<
-    Array<{ name: string; value: number }>
-  >([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+  const { summary, categoryBreakdown, loading, error } = useDashboardData(year, month);
   const yearOptions = useMemo(() => [year, year - 1, year - 2], [year]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [summaryData, categoryData] = await Promise.all([
-          fetchMonthlySummary(year, month) as Promise<MonthlySummaryResponse>,
-          fetchCategoryBreakdown(year, month) as Promise<CategoryBreakdownResponse>,
-        ]);
-        if (!cancelled) {
-          setSummary(summaryData);
-          setCategoryBreakdownData(
-            categoryData.totals.map((item) => ({
-              label: item.categoryName || 'Uncategorized',
-              value: item.expenseCents / 100,
-            })).map((item) => ({ name: item.label, value: item.value })),
-          );
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setSummary(null);
-          setCategoryBreakdownData([]);
-          setError(e instanceof Error ? e.message : String(e));
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [year, month]);
+  const categoryBreakdownData = useMemo(
+    () =>
+      (categoryBreakdown?.totals ?? []).map((item) => ({
+        name: item.categoryName || 'Uncategorized',
+        value: item.expenseCents / 100,
+      })),
+    [categoryBreakdown],
+  );
 
   const delta = summary?.deltaPercent ?? summary?.delta ?? {};
   const incomeCents = summary?.totals.incomeCents ?? 0;
