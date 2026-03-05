@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { DashboardDeltaMap } from '@/lib/api/analytics';
 import { formatMoney, formatPercent } from '@/lib/format';
 
@@ -63,7 +64,7 @@ export function KpiSection({
             <div className='space-y-2'>
               <p className='text-sm font-medium text-aurum-muted'>Monthly Net Cashflow</p>
               {loading ? (
-                <div className='h-14 w-64 animate-pulse rounded-[12px] bg-aurum-primarySoft/60' />
+                <Skeleton className='h-14 w-64 rounded-[12px]' />
               ) : (
                 <p
                   className={`text-[52px] leading-tight font-semibold ${
@@ -95,27 +96,27 @@ export function KpiSection({
             <Card>
               <CardContent className='pt-6'>
                 <div className='space-y-3'>
-                  <div className='h-4 w-24 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-9 w-40 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-4 w-28 animate-pulse rounded bg-aurum-primarySoft/50' />
+                  <Skeleton className='h-4 w-24' />
+                  <Skeleton className='h-9 w-40' />
+                  <Skeleton className='h-4 w-28' />
                 </div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className='pt-6'>
                 <div className='space-y-3'>
-                  <div className='h-4 w-24 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-9 w-40 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-4 w-28 animate-pulse rounded bg-aurum-primarySoft/50' />
+                  <Skeleton className='h-4 w-24' />
+                  <Skeleton className='h-9 w-40' />
+                  <Skeleton className='h-4 w-28' />
                 </div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className='pt-6'>
                 <div className='space-y-3'>
-                  <div className='h-4 w-24 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-9 w-40 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-4 w-28 animate-pulse rounded bg-aurum-primarySoft/50' />
+                  <Skeleton className='h-4 w-24' />
+                  <Skeleton className='h-9 w-40' />
+                  <Skeleton className='h-4 w-28' />
                 </div>
               </CardContent>
             </Card>

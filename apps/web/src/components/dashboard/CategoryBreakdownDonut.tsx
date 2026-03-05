@@ -4,6 +4,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { ChartCard } from '@/components/charts/ChartCard';
 import { ChartTooltip } from '@/components/charts/ChartTooltip';
 import { chartTheme } from '@/components/charts/chartTheme';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { CategoryBreakdownResponse } from '@/lib/api/analytics';
 import { formatMoney } from '@/lib/format';
 
@@ -16,7 +17,7 @@ export function CategoryBreakdownDonut({ totals, loading }: CategoryBreakdownDon
   if (loading) {
     return (
       <ChartCard title='Category Breakdown' subtitle='Selected month expenses'>
-        <div className='h-[320px] animate-pulse rounded-[var(--aurum-radius-lg)] bg-[var(--aurum-surface-alt)]' />
+        <Skeleton className='h-[320px] rounded-[var(--aurum-radius-lg)]' />
       </ChartCard>
     );
   }
