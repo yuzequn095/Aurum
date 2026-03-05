@@ -5,45 +5,11 @@ import {
   CategoryBreakdownPieChart,
   IncomeExpenseBarChart,
 } from '@/components/charts/DashboardCharts';
+import { KpiSection } from '@/components/dashboard/KpiSection';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Section } from '@/components/ui/layout';
-import { KpiCard } from './components/kpi-card';
-
-function formatCents(cents: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(cents / 100);
-}
-
-function formatPct(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value)) return '--';
-  const sign = value > 0 ? '+' : '';
-  return `${sign}${value.toFixed(1)}%`;
-}
-
-function toneFromPct(
-  value: number | null | undefined,
-): 'positive' | 'negative' | 'neutral' {
-  if (value == null || Number.isNaN(value) || value === 0) return 'neutral';
-  return value > 0 ? 'positive' : 'negative';
-}
-
-function getDeltaLabel(
-  deltaPercent: number | null | undefined,
-  currentCents: number,
-  previousCents: number | null | undefined,
-) {
-  if ((previousCents ?? null) === 0 && currentCents > 0) {
-    return 'New this month';
-  }
-  if (deltaPercent == null || Number.isNaN(deltaPercent)) {
-    return '-- vs last month';
-  }
-  return `${formatPct(deltaPercent)} vs last month`;
-}
 
 const monthNames = [
   'January',
@@ -66,14 +32,6 @@ export default function DashboardPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const { summary, categoryBreakdown, loading, error } = useDashboardData(year, month);
   const yearOptions = useMemo(() => [year, year - 1, year - 2], [year]);
-  const categoryBreakdownData = useMemo(
-    () =>
-      (categoryBreakdown?.totals ?? []).map((item) => ({
-        name: item.categoryName || 'Uncategorized',
-        value: item.expenseCents / 100,
-      })),
-    [categoryBreakdown],
-  );
 
   const delta = summary?.deltaPercent ?? summary?.delta ?? {};
   const incomeCents = summary?.totals.incomeCents ?? 0;
@@ -82,13 +40,20 @@ export default function DashboardPage() {
   const prevIncomeCents = summary?.previousMonth?.totals?.incomeCents;
   const prevExpenseCents = summary?.previousMonth?.totals?.expenseCents;
   const prevNetCents = summary?.previousMonth?.totals?.netCents;
-  const heroMessage =
-    netCents > 0
-      ? 'Strong inflow momentum this month.'
-      : netCents < 0
-        ? 'Spending exceeded income this month.'
-        : 'Balanced month.';
+  const hasNoCurrentMonthData =
+    incomeCents === 0 &&
+    expenseCents === 0 &&
+    netCents === 0 &&
+    (categoryBreakdown?.totals.length ?? 0) === 0;
   const selectedMonthName = monthNames[month - 1] ?? '';
+  const categoryBreakdownData = useMemo(
+    () =>
+      (categoryBreakdown?.totals ?? []).map((item) => ({
+        name: item.categoryName || 'Uncategorized',
+        value: item.expenseCents / 100,
+      })),
+    [categoryBreakdown],
+  );
   const incomeExpenseData = useMemo(
     () => [
       {
@@ -113,7 +78,7 @@ export default function DashboardPage() {
 
       {error ? (
         <div className='rounded-[14px] border border-aurum-danger/30 bg-aurum-card px-3 py-2 text-xs text-aurum-danger'>
-          Failed to load monthly summary: {error}
+          Dashboard data failed to load: {error}
         </div>
       ) : null}
 
@@ -155,101 +120,24 @@ export default function DashboardPage() {
         </Card>
       </Section>
 
-      <Card className='relative overflow-hidden rounded-[14px] border-0 shadow-aurumSm'>
-        <div className='absolute inset-0 bg-gradient-to-r from-aurum-primarySoft via-white to-white' />
-        <CardContent className='relative py-14'>
-          <div className='flex flex-col gap-6 md:flex-row md:items-end md:justify-between'>
-            <div className='space-y-2'>
-              <p className='text-sm font-medium text-aurum-muted'>
-                Monthly Net Cashflow
-              </p>
-              {loading ? (
-                <div className='h-14 w-64 animate-pulse rounded-[12px] bg-aurum-primarySoft/60' />
-              ) : (
-                <p
-                  className={`text-[52px] leading-tight font-semibold ${
-                    netCents > 0
-                      ? 'text-aurum-success'
-                      : netCents < 0
-                        ? 'text-aurum-danger/80'
-                        : 'text-aurum-muted'
-                  }`}
-                >
-                  {formatCents(netCents)}
-                </p>
-              )}
-              <p
-                className={`text-sm font-medium ${
-                  toneFromPct(delta.net) === 'positive'
-                    ? 'text-aurum-success'
-                    : toneFromPct(delta.net) === 'negative'
-                      ? 'text-aurum-danger'
-                      : 'text-aurum-muted'
-                }`}
-              >
-                {loading ? 'Loading...' : getDeltaLabel(delta.net, netCents, prevNetCents)}
-              </p>
-            </div>
-            <p className='max-w-xs text-xs text-aurum-muted'>{heroMessage}</p>
-          </div>
-        </CardContent>
-      </Card>
+      <KpiSection
+        loading={loading}
+        incomeCents={incomeCents}
+        expenseCents={expenseCents}
+        netCents={netCents}
+        prevIncomeCents={prevIncomeCents}
+        prevExpenseCents={prevExpenseCents}
+        prevNetCents={prevNetCents}
+        delta={delta}
+      />
 
-      <section className='grid grid-cols-1 gap-6 md:grid-cols-3'>
-        {loading ? (
-          <>
-            <Card className='rounded-[14px] shadow-aurumSm'>
-              <CardContent className='pt-6'>
-                <div className='space-y-3'>
-                  <div className='h-4 w-24 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-9 w-40 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-4 w-28 animate-pulse rounded bg-aurum-primarySoft/50' />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className='rounded-[14px] shadow-aurumSm'>
-              <CardContent className='pt-6'>
-                <div className='space-y-3'>
-                  <div className='h-4 w-24 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-9 w-40 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-4 w-28 animate-pulse rounded bg-aurum-primarySoft/50' />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className='rounded-[14px] shadow-aurumSm'>
-              <CardContent className='pt-6'>
-                <div className='space-y-3'>
-                  <div className='h-4 w-24 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-9 w-40 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-4 w-28 animate-pulse rounded bg-aurum-primarySoft/50' />
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        ) : (
-          <>
-            <KpiCard
-              title='Income'
-              value={formatCents(incomeCents)}
-              deltaText={getDeltaLabel(delta.income, incomeCents, prevIncomeCents)}
-              tone={toneFromPct(delta.income)}
-            />
-            <KpiCard
-              title='Expense'
-              value={formatCents(expenseCents)}
-              deltaText={getDeltaLabel(delta.expense, expenseCents, prevExpenseCents)}
-              tone={toneFromPct(delta.expense)}
-            />
-            <KpiCard
-              title='Net Cashflow'
-              value={formatCents(netCents)}
-              deltaText={getDeltaLabel(delta.net, netCents, prevNetCents)}
-              tone={toneFromPct(delta.net)}
-              emphasized
-            />
-          </>
-        )}
-      </section>
+      {hasNoCurrentMonthData && !loading ? (
+        <Card>
+          <CardContent className='py-10 text-center text-sm text-[var(--aurum-text-muted)]'>
+            No transactions found for this month yet. Add data to unlock trend and category insights.
+          </CardContent>
+        </Card>
+      ) : null}
 
       <section className='grid grid-cols-1 gap-6 md:grid-cols-2'>
         <Card className='rounded-[14px] shadow-aurumSm'>
