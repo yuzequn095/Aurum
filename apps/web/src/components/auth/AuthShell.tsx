@@ -30,10 +30,10 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
           <Image
             src='/brand/aurum-mark-cutout.png'
             alt='Aurum mark'
-            width={58}
-            height={58}
+            width={75}
+            height={75}
             priority
-            className='h-[58px] w-[58px] object-contain'
+            className='h-[75px] w-[75px] object-contain'
           />
         </div>
 
