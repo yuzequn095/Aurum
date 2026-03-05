@@ -3,6 +3,8 @@ export type AppNavItem = {
   href: '/dashboard' | '/portfolio' | '/transactions' | '/ai-insights';
 };
 
+export const SETTINGS_HREF = '/settings' as const;
+
 export const APP_NAV_ITEMS: AppNavItem[] = [
   { label: 'Dashboard', href: '/dashboard' },
   { label: 'Portfolio', href: '/portfolio' },
@@ -11,6 +13,10 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
 ];
 
 export function getNavTitle(pathname: string): string {
+  if (pathname === SETTINGS_HREF || pathname.startsWith(`${SETTINGS_HREF}/`)) {
+    return 'Settings';
+  }
+
   const exact = APP_NAV_ITEMS.find((item) => item.href === pathname);
   if (exact) return exact.label;
 

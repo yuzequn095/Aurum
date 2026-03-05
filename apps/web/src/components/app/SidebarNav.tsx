@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { APP_NAV_ITEMS } from '@/components/app/nav';
+import { APP_NAV_ITEMS, SETTINGS_HREF } from '@/components/app/nav';
 import { cn } from '@/lib/cn';
 
 function isActive(pathname: string, href: string) {
@@ -17,23 +17,13 @@ export function SidebarNav() {
     <aside className='hidden w-[274px] shrink-0 border-r border-aurum-border/80 bg-white/78 backdrop-blur lg:block'>
       <div className='sticky top-0 flex h-screen flex-col px-5 py-6'>
         <div className='mb-9 px-1'>
-          <div className='flex items-center gap-3'>
-            <Image
-              src='/brand/aurum-mark-cutout.png'
-              alt='Aurum mark'
-              width={40}
-              height={40}
-              className='h-[40px] w-[40px] object-contain'
-            />
-            <div>
-              <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-aurum-muted'>
-                AURUM
-              </p>
-              <h1 className='mt-0.5 text-[17px] font-semibold tracking-tight text-aurum-text'>
-                Wealth OS
-              </h1>
-            </div>
-          </div>
+          <Image
+            src='/aurum_logo_thin_horizontal.svg'
+            alt='Aurum'
+            width={170}
+            height={44}
+            className='h-[44px] w-[170px] object-contain'
+          />
           <p className='mt-4 text-xs leading-5 text-aurum-muted'>
             Private command center for wealth management.
           </p>
@@ -64,6 +54,29 @@ export function SidebarNav() {
             );
           })}
         </nav>
+
+        <div className='mt-auto border-t border-aurum-border/70 pt-4'>
+          <Link
+            href={SETTINGS_HREF}
+            className={cn(
+              'group flex items-center gap-3 rounded-[var(--aurum-radius-lg)] border px-3 py-3 transition',
+              isActive(pathname, SETTINGS_HREF)
+                ? 'border-[var(--aurum-accent)]/45 bg-[var(--aurum-surface-alt)]'
+                : 'border-[var(--aurum-border)] bg-[var(--aurum-surface)] hover:border-[var(--aurum-accent)]/35 hover:bg-[var(--aurum-surface-alt)]',
+            )}
+          >
+            <div className='flex h-10 w-10 items-center justify-center rounded-full border border-[var(--aurum-border)] bg-white text-xs font-semibold tracking-wide text-[var(--aurum-text)]'>
+              AU
+            </div>
+            <div className='min-w-0 flex-1'>
+              <p className='truncate text-sm font-medium text-[var(--aurum-text)]'>Profile</p>
+              <p className='truncate text-xs text-[var(--aurum-text-muted)]'>member@aurum.exclusive</p>
+            </div>
+            <span className='text-xs font-semibold uppercase tracking-[0.14em] text-[var(--aurum-text-muted)] group-hover:text-[var(--aurum-accent)]'>
+              Settings
+            </span>
+          </Link>
+        </div>
       </div>
     </aside>
   );
