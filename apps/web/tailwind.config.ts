@@ -10,16 +10,16 @@ const config: Config = {
     extend: {
       colors: {
         aurum: {
-          bg: '#F6F8FA',
-          card: '#FFFFFF',
-          border: '#E2E8F0',
-          text: '#0F172A',
-          muted: '#64748B',
-          primary: '#F5C542',
-          primaryHover: '#E3B233',
-          primarySoft: '#FDF3D1',
-          success: '#16A34A',
-          danger: '#DC2626',
+          bg: '#F5F4F1',
+          card: '#FFFEFB',
+          border: '#ECE9DF',
+          text: '#1A1A1A',
+          muted: '#8A857A',
+          primary: '#C5A059',
+          primaryHover: '#B58F48',
+          primarySoft: '#F3E9D6',
+          success: '#1B9C64',
+          danger: '#C94B4B',
         },
       },
       borderRadius: {

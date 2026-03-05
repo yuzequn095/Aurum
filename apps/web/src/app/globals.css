@@ -3,23 +3,23 @@
 @import "../styles/tokens.css";
 
 :root {
-  --background: #f6f8fa;
-  --foreground: #0f172a;
-  --aurum-gold: #f5c542;
-  --aurum-gold-strong: #d9a92b;
-  --aurum-app-grad-start: #f5f7fb;
-  --aurum-app-grad-end: #efe8d8;
-  --aurum-auth-grad-start: #fbf8ef;
-  --aurum-auth-grad-end: #f1e6cf;
-  --aurum-card-bg: rgba(255, 255, 255, 0.86);
-  --aurum-card-border: rgba(226, 232, 240, 0.85);
+  --background: #f5f4f1;
+  --foreground: #1a1a1a;
+  --aurum-gold: #c5a059;
+  --aurum-gold-strong: #b58f48;
+  --aurum-app-grad-start: #f8f6f1;
+  --aurum-app-grad-end: #efe7d6;
+  --aurum-auth-grad-start: #faf8f3;
+  --aurum-auth-grad-end: #f2ede2;
+  --aurum-card-bg: rgba(255, 254, 251, 0.9);
+  --aurum-card-border: rgba(236, 233, 223, 0.9);
   --aurum-auth-primary: #c5a059;
-  --aurum-auth-primary-strong: #d4af37;
-  --aurum-auth-bg-0: #fdfdfd;
-  --aurum-auth-bg-1: #f6f6f6;
+  --aurum-auth-primary-strong: #d0ab62;
+  --aurum-auth-bg-0: #f8f7f4;
+  --aurum-auth-bg-1: #f1efea;
   --aurum-auth-text: #1a1a1a;
-  --aurum-auth-muted: #888888;
-  --aurum-auth-border: #f0f0f0;
+  --aurum-auth-muted: #8b867c;
+  --aurum-auth-border: #e7e1d3;
 }
 
 @theme inline {
