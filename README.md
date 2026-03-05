@@ -7,7 +7,179 @@
 ![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)
 
-Aurum is a pnpm workspace + Turborepo monorepo for personal finance tracking and AI-assisted monthly insights.
+Aurum is a pnpm workspace + Turborepo monorepo for building an AI-driven Personal Wealth Operating System.
+
+## Table of Contents
+
+- [Vision](#vision)
+- [Core Product Modules](#core-product-modules)
+- [AI System Design](#ai-system-design)
+- [Mobile UX Concept](#mobile-ux-concept)
+- [Current Architecture](#current-architecture)
+- [Completed Milestones](#completed-milestones)
+- [Upcoming Roadmap](#upcoming-roadmap)
+- [Long-term Vision](#long-term-vision)
+- [Current Status](#current-status)
+- [Detailed Engineering Progress](#detailed-engineering-progress)
+- [Monorepo Structure](#monorepo-structure)
+- [Quickstart](#quickstart)
+- [Environment Variables](#environment-variables)
+- [API Reference](#api-reference)
+- [Auth and Session Notes](#auth-and-session-notes)
+- [Conventions](#conventions)
+
+## Vision
+
+Aurum is an **AI-driven Personal Wealth Operating System** designed to help individuals understand, manage, and optimize their financial lives.
+
+Unlike traditional budgeting apps, Aurum integrates:
+
+- transaction tracking
+- multi-account portfolio monitoring
+- financial analytics
+- AI-powered financial insights
+- long-term financial planning
+
+Aurum aims to become a **central financial intelligence layer** for users.
+
+## Core Product Modules
+
+Aurum V1 consists of four primary modules:
+
+### Dashboard
+
+High-level financial overview.
+
+Includes:
+
+- Net Worth
+- Assets / Liabilities
+- Monthly Income / Expense
+- Portfolio overview
+- Financial Health Score
+- AI Brief
+
+Purpose:
+Give users a quick snapshot of their financial status.
+
+### Portfolio
+
+Multi-account asset tracking.
+
+Tracks:
+
+- bank accounts
+- brokerage accounts
+- crypto accounts
+- asset allocation
+- account breakdown
+
+Future plans:
+
+- automatic account syncing (Plaid / brokerage APIs)
+- investment tracking
+- asset allocation analysis
+
+### Transactions
+
+Personal finance ledger.
+
+Features:
+
+- income and expense tracking
+- categories and subcategories
+- merchant information
+- account linking
+- filtering and search
+- CSV import/export
+
+Transactions represent **cash flow tracking**.
+
+### AI Insights
+
+AI-powered financial intelligence center.
+
+Includes:
+
+Reports:
+
+- Monthly financial report
+- Quarterly report
+- Yearly report
+
+Analysis:
+
+- spending breakdown
+- financial health score
+- trend analysis
+
+Planning:
+
+- budget tracking
+- financial goals
+
+Conversations:
+
+- saved AI conversations
+
+AI Insights will evolve into Aurum's **financial intelligence engine**.
+
+## AI System Design
+
+Aurum contains two layers of AI interaction.
+
+### 1. Quick AI (Ephemeral Chat)
+
+Accessible from the "+" action menu.
+
+Purpose:
+
+- quick financial questions
+- instant analysis
+
+Examples:
+
+- "How much did I spend on dining this month?"
+- "What was my biggest expense category?"
+
+Characteristics:
+
+- temporary
+- not saved by default
+- user may optionally save the conversation
+
+Saved conversations are stored in **AI Insights -> Conversations**.
+
+### 2. Insight AI (Persistent Conversations)
+
+Located inside the AI Insights module.
+
+These are structured AI conversations such as:
+
+- Monthly Report
+- Budget Analysis
+- Financial Health Score
+- Goal Tracking
+
+These conversations persist over time and act as **AI financial advisors**.
+
+## Mobile UX Concept
+
+Mobile navigation:
+
+- Home
+- Portfolio
+- Transactions
+- AI Insights
+
+Center action button "+" opens a quick command menu:
+
+- Add Transaction
+- Ask AI
+- Quick Chart
+- Quick Analysis
+
+This allows fast interactions without navigating across multiple pages.
 
 ## Current Status
 
@@ -21,7 +193,30 @@ Milestones 7, 8, 9.1, 9.2, 9.3, and 9.4 are complete.
 - Analytics + AI: monthly summary and category breakdown endpoints; AI monthly report is available via pluggable insight engine (`rules` / `llm` / `hybrid`).
 - LLM is optional and controlled by env flags to avoid cost in local/dev.
 
-## Architecture
+## Current Architecture
+
+Backend stack:
+
+- NestJS
+- Prisma ORM
+- PostgreSQL
+
+Frontend stack:
+
+- Next.js
+- TypeScript
+- Tailwind
+
+Key backend modules:
+
+- auth
+- accounts
+- transactions
+- categories / subcategories
+- analytics
+- AI insights
+- CSV import/export
+- backup / restore
 
 ```mermaid
 flowchart LR
@@ -43,7 +238,71 @@ flowchart LR
   H --> OUT[Insights Response]
 ```
 
-## Progress Table
+## Completed Milestones
+
+Phase 1 - Core Finance Infrastructure
+
+- authentication system
+- account model
+- category / subcategory taxonomy
+- transaction tracking
+- analytics APIs
+
+Phase 2 - AI Financial Intelligence
+
+- insight engine
+- monthly analysis
+- hybrid rule + AI system
+
+Phase 3 - Data Management
+
+- CSV import/export
+- backup system
+- restore tools
+- import idempotency
+
+## Upcoming Roadmap
+
+Milestone 10 - UX Implementation
+
+- responsive layout
+- dashboard UI
+- portfolio UI
+- transactions UI
+- insights UI
+
+Milestone 11 - Advanced AI
+
+- financial health score
+- proactive AI alerts
+- budget analysis
+- goal tracking
+
+Milestone 12 - Connected Finance
+
+- bank integrations
+- brokerage integrations
+- automated portfolio tracking
+
+Milestone 13 - Financial Execution Layer
+
+- investment tools
+- digital wallet functionality
+- financial product integrations
+
+## Long-term Vision
+
+Aurum aims to become a **financial operating system** where users:
+
+- monitor assets
+- track spending
+- receive AI guidance
+- plan financial goals
+- execute financial decisions
+
+All within one unified platform.
+
+## Detailed Engineering Progress
 
 | Phase | Milestones | Status | Notes |
 | --- | --- | --- | --- |
@@ -54,12 +313,6 @@ flowchart LR
 | Phase 5 - Ledger v2 | M8.1 Date-only occurredAt, M8.2 Income, M8.3 Category/Subcategory taxonomy | Done | API date-only, DB DateTime retained (Strategy A). |
 | Phase 6 - UX + List | M9.1 API errors/toasts/taxonomy UX, M9.2 list VM + filters + row edit | Done | Transactions list supports server-side filtering and fast in-place edit updates. |
 | Phase 7 - Import/Export + Backup | M9.3 CSV import/export, M9.4 idempotency + backup export + restore CLI | Done | End-to-end CSV workflow plus JSON backup/restore tooling for local/dev. |
-
-## Next Up
-
-- M10 Mobile UI and page structure upgrade: route/layout cleanup with stronger responsive behavior.
-- M12 AI cost-managed integration: prompt pack/copy, provider abstraction, optional self-hosted vLLM later.
-- M13 Observability and output: logging/metrics, caching strategy, PDF export.
 
 ## Monorepo Structure
 
