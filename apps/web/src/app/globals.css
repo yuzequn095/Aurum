@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
+@import "../styles/tokens.css";
 
 :root {
   --background: #f6f8fa;
@@ -29,16 +30,20 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Avenir Next', 'Manrope', 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px circle at 30% 10%, rgba(212, 175, 55, 0.1), transparent 60%),
+    var(--aurum-bg);
+  color: var(--aurum-text);
+  font-family: var(--aurum-font-sans);
+  line-height: var(--aurum-line-height-normal);
 }
 
 .aurum-app-bg {
   background:
-    radial-gradient(1100px 560px at 14% -10%, rgba(245, 197, 66, 0.18), transparent 58%),
-    radial-gradient(850px 460px at 100% 0%, rgba(255, 255, 255, 0.75), transparent 60%),
-    linear-gradient(160deg, var(--aurum-app-grad-start), var(--aurum-app-grad-end));
+    radial-gradient(1200px circle at 30% 10%, rgba(212, 175, 55, 0.1), transparent 60%),
+    radial-gradient(900px circle at 80% 30%, rgba(0, 0, 0, 0.04), transparent 55%),
+    var(--aurum-bg);
 }
 
 .aurum-auth-bg {
