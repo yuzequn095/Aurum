@@ -19,11 +19,11 @@ export function SidebarNav() {
         <div className='mb-9 px-1'>
           <div className='flex items-center gap-3'>
             <Image
-              src='/brand/aurum-mark.png'
+              src='/brand/aurum-mark-cutout.png'
               alt='Aurum mark'
-              width={34}
-              height={34}
-              className='h-[34px] w-[34px] object-contain'
+              width={40}
+              height={40}
+              className='h-[40px] w-[40px] object-contain'
             />
             <div>
               <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-aurum-muted'>

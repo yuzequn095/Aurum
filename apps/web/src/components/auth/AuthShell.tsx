@@ -28,12 +28,12 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
       <div className='relative mx-auto flex w-full max-w-[980px] flex-col items-center gap-6'>
         <div className='flex flex-col items-center gap-3 pt-1'>
           <Image
-            src='/brand/aurum-mark.png'
+            src='/brand/aurum-mark-cutout.png'
             alt='Aurum mark'
-            width={34}
-            height={34}
+            width={58}
+            height={58}
             priority
-            className='h-[34px] w-[34px] object-contain'
+            className='h-[58px] w-[58px] object-contain'
           />
         </div>
 
