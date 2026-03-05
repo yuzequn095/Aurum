@@ -23,6 +23,7 @@ This document serves as both a product overview and developer reference for Auru
 - [Long-term Vision](#long-term-vision)
 - [Current Status](#current-status)
 - [Detailed Engineering Progress](#detailed-engineering-progress)
+- [Architecture Documents](#architecture-documents)
 - [Monorepo Structure](#monorepo-structure)
 - [Quickstart](#quickstart)
 - [Environment Variables](#environment-variables)
@@ -192,6 +193,8 @@ Milestones 7, 8, 9.1, 9.2, 9.3, and 9.4 are complete.
 - Restore tooling: development backup restore CLI (`wipe|append`) with ID-preserving upserts.
 - Analytics + AI: monthly summary and category breakdown endpoints; AI monthly report is available via pluggable insight engine (`rules` / `llm` / `hybrid`).
 - LLM is optional and controlled by env flags to avoid cost in local/dev.
+- Milestone 10.2 foundation is active on web: premium app shell, full-bleed canvas, reusable UI primitives (Card/Button/Badge/Skeleton), KPI section, chart foundation, 6-month trend chart, category donut chart, settings + logout flow.
+- Analytics now includes monthly summary time series endpoint for trend visualizations: `GET /v1/analytics/summary-series`.
 
 ## Current Architecture
 
@@ -317,6 +320,15 @@ All within one unified platform.
 | Phase 5 - Ledger v2 | M8.1 Date-only occurredAt, M8.2 Income, M8.3 Category/Subcategory taxonomy | Done | API date-only, DB DateTime retained (Strategy A). |
 | Phase 6 - UX + List | M9.1 API errors/toasts/taxonomy UX, M9.2 list VM + filters + row edit | Done | Transactions list supports server-side filtering and fast in-place edit updates. |
 | Phase 7 - Import/Export + Backup | M9.3 CSV import/export, M9.4 idempotency + backup export + restore CLI | Done | End-to-end CSV workflow plus JSON backup/restore tooling for local/dev. |
+| Phase 8 - Web UX Foundation | M10.1 app shell + route group, M10.2 design tokens + UI primitives + dashboard KPI/charts + settings/logout | In Progress | Premium layout baseline landed; dashboard now includes KPI + trend + category visuals with loading/empty states. |
+
+## Architecture Documents
+
+- [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md) - backend modules, AI layer, data flow, extensibility.
+- [PRODUCT_ARCHITECTURE.md](./PRODUCT_ARCHITECTURE.md) - information architecture, UX structure, AI interaction model.
+- [AI_ARCHITECTURE.md](./AI_ARCHITECTURE.md) - insight engine modes, prompt architecture, AI pipeline.
+- [FINANCIAL_DOMAIN_MODEL.md](./FINANCIAL_DOMAIN_MODEL.md) - financial entities, relationships, domain concepts.
+- [ROADMAP.md](./ROADMAP.md) - long-term product and platform evolution.
 
 ## Monorepo Structure
 
@@ -439,6 +451,7 @@ Base URL: `http://localhost:3001`
 | `/v1/import/transactions/dry-run` | POST (multipart) | Yes | Parse/validate CSV and return preview + errors (no DB writes). |
 | `/v1/import/transactions` | POST (multipart) | Yes | Import CSV with taxonomy/account auto-create and idempotency protection. |
 | `/v1/analytics/monthly-summary` | GET | Yes | Income/expense/net monthly summary. |
+| `/v1/analytics/summary-series` | GET | Yes | Monthly summary series (`months`, `endYear`, `endMonth`) ordered oldest -> newest. |
 | `/v1/analytics/category-breakdown` | GET | Yes | Monthly expense breakdown by category. |
 | `/v1/ai/monthly-report` | GET | Yes | Monthly AI report payload with generated insights. |
 
