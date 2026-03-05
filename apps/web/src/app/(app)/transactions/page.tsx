@@ -161,6 +161,7 @@ export default function TransactionsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [selectedTx, setSelectedTx] = useState<Tx | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editMerchant, setEditMerchant] = useState('');
   const [editNote, setEditNote] = useState('');
@@ -409,6 +410,7 @@ export default function TransactionsPage() {
       });
       toast.success('Transaction created.');
       await refreshTransactions();
+      setCreateOpen(false);
       setAmountCents('100');
       setCreateType('EXPENSE');
       setMerchant('');
@@ -492,20 +494,30 @@ export default function TransactionsPage() {
     }
   };
 
-  const onLogout = () => {
-    clearTokens();
-    router.push('/login');
-  };
-
   return (
-    <Container className="min-h-screen bg-aurum-bg text-aurum-text py-8 space-y-10">
-      <main className="space-y-10">
-        <div className="flex items-center justify-between gap-4">
-          <h1 style={{ fontSize: 24, fontWeight: 600 }}>Transactions</h1>
-          <Button type="button" variant="secondary" onClick={onLogout}>
-            Logout
-          </Button>
-        </div>
+    <Container className="w-full max-w-6xl space-y-6 py-2 text-aurum-text">
+      <main className="space-y-6">
+        <section className="flex flex-col gap-4 rounded-aurum border border-aurum-border bg-white p-5 shadow-aurumSm sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-aurum-text">Transactions</h1>
+            <p className="mt-1 text-sm text-aurum-muted">
+              Track, filter, and manage your transaction ledger.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void refreshTransactions()}
+              disabled={refreshing}
+            >
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            <Button type="button" variant="primary" onClick={() => setCreateOpen(true)}>
+              Add Transaction
+            </Button>
+          </div>
+        </section>
 
         <Section title="Filters">
           <Card>
@@ -588,154 +600,7 @@ export default function TransactionsPage() {
           </Card>
         </Section>
 
-        <Section title="Create Transaction">
-          <Card>
-            <CardContent className="pt-4">
-              <form onSubmit={onSubmit} className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <label>
-                  Account
-                  <select
-                    value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
-                    required
-                  >
-                    {accounts.length === 0 && <option value="">No accounts</option>}
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({a.currency})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  Type
-                  <select
-                    value={createType}
-                    onChange={(e) =>
-                      setCreateType(e.target.value as 'EXPENSE' | 'INCOME' | 'TRANSFER')
-                    }
-                    style={{ width: '100%', marginTop: 4 }}
-                    required
-                  >
-                    <option value="EXPENSE">Expense</option>
-                    <option value="INCOME">Income</option>
-                    <option value="TRANSFER">Transfer</option>
-                  </select>
-                </label>
-
-                <label>
-                  Category
-                  <select
-                    value={categoryId ?? ''}
-                    onChange={(e) => void onCategoryChange(e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
-                    required={createType === 'INCOME' || createType === 'EXPENSE'}
-                  >
-                    <option value="">Select category</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                    <option value={CREATE_NEW_OPTION}>+ Create new...</option>
-                  </select>
-                </label>
-
-                <label>
-                  Subcategory
-                  <input
-                    type="text"
-                    value={subcategorySearch}
-                    onChange={(e) => setSubcategorySearch(e.target.value)}
-                    style={{ width: '100%', marginTop: 4, marginBottom: 4 }}
-                    placeholder="Search subcategories..."
-                    disabled={!categoryId}
-                  />
-                  <select
-                    value={subcategoryId ?? ''}
-                    onChange={(e) => void onSubcategoryChange(e.target.value)}
-                    style={{ width: '100%', marginTop: 0 }}
-                    required={createType === 'INCOME' || createType === 'EXPENSE'}
-                    disabled={!categoryId}
-                  >
-                    <option value="">
-                      {categoryId ? 'Select subcategory' : 'Select category first'}
-                    </option>
-                    {filteredSubcategories.map((sub) => (
-                      <option key={sub.id} value={sub.id}>
-                        {sub.name}
-                      </option>
-                    ))}
-                    {categoryId ? <option value={CREATE_NEW_OPTION}>+ Create new...</option> : null}
-                  </select>
-                </label>
-
-                <label>
-                  Amount (cents)
-                  <input
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={amountCents}
-                    onChange={(e) => setAmountCents(e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
-                    required
-                  />
-                </label>
-
-                <label>
-                  Occurred At
-                  <input
-                    type="date"
-                    value={occurredAtDate}
-                    onChange={(e) => setOccurredAtDate(e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
-                    required
-                  />
-                </label>
-
-                <label>
-                  Merchant
-                  <input
-                    type="text"
-                    value={merchant}
-                    onChange={(e) => setMerchant(e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
-                    placeholder="Starbucks"
-                  />
-                </label>
-
-                <label>
-                  Note
-                  <input
-                    type="text"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
-                    placeholder="optional"
-                  />
-                </label>
-
-                {submitErr && <p className="m-0 text-red-600 md:col-span-2">Error: {submitErr}</p>}
-
-                <div className="flex justify-end gap-3 pt-4 md:col-span-2">
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={submitting || accounts.length === 0}
-                    className="w-[160px]"
-                  >
-                    {submitting ? 'Creating...' : 'Create Transaction'}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </Section>
-
-        {loadErr && <p style={{ color: 'crimson' }}>Error: {loadErr}</p>}
+        {loadErr && <p className="text-sm text-aurum-danger">Error: {loadErr}</p>}
         {!loadErr && refreshing && items.length === 0 && <p>Loading...</p>}
 
         <Section>
@@ -863,6 +728,171 @@ export default function TransactionsPage() {
               </Button>
               <Button type="submit" disabled={editSubmitting || !selectedTx}>
                 {editSubmitting ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+
+        <Modal
+          open={createOpen}
+          onClose={() => {
+            if (!submitting) {
+              setCreateOpen(false);
+              setSubmitErr(null);
+            }
+          }}
+          title="Add Transaction"
+        >
+          <form onSubmit={onSubmit} className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <label>
+              Account
+              <select
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+                required
+              >
+                {accounts.length === 0 && <option value="">No accounts</option>}
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.currency})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Type
+              <select
+                value={createType}
+                onChange={(e) =>
+                  setCreateType(e.target.value as 'EXPENSE' | 'INCOME' | 'TRANSFER')
+                }
+                style={{ width: '100%', marginTop: 4 }}
+                required
+              >
+                <option value="EXPENSE">Expense</option>
+                <option value="INCOME">Income</option>
+                <option value="TRANSFER">Transfer</option>
+              </select>
+            </label>
+
+            <label>
+              Category
+              <select
+                value={categoryId ?? ''}
+                onChange={(e) => void onCategoryChange(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+                required={createType === 'INCOME' || createType === 'EXPENSE'}
+              >
+                <option value="">Select category</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+                <option value={CREATE_NEW_OPTION}>+ Create new...</option>
+              </select>
+            </label>
+
+            <label>
+              Subcategory
+              <input
+                type="text"
+                value={subcategorySearch}
+                onChange={(e) => setSubcategorySearch(e.target.value)}
+                style={{ width: '100%', marginTop: 4, marginBottom: 4 }}
+                placeholder="Search subcategories..."
+                disabled={!categoryId}
+              />
+              <select
+                value={subcategoryId ?? ''}
+                onChange={(e) => void onSubcategoryChange(e.target.value)}
+                style={{ width: '100%', marginTop: 0 }}
+                required={createType === 'INCOME' || createType === 'EXPENSE'}
+                disabled={!categoryId}
+              >
+                <option value="">
+                  {categoryId ? 'Select subcategory' : 'Select category first'}
+                </option>
+                {filteredSubcategories.map((sub) => (
+                  <option key={sub.id} value={sub.id}>
+                    {sub.name}
+                  </option>
+                ))}
+                {categoryId ? <option value={CREATE_NEW_OPTION}>+ Create new...</option> : null}
+              </select>
+            </label>
+
+            <label>
+              Amount (cents)
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={amountCents}
+                onChange={(e) => setAmountCents(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+                required
+              />
+            </label>
+
+            <label>
+              Occurred At
+              <input
+                type="date"
+                value={occurredAtDate}
+                onChange={(e) => setOccurredAtDate(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+                required
+              />
+            </label>
+
+            <label>
+              Merchant
+              <input
+                type="text"
+                value={merchant}
+                onChange={(e) => setMerchant(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+                placeholder="Starbucks"
+              />
+            </label>
+
+            <label>
+              Note
+              <input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+                placeholder="optional"
+              />
+            </label>
+
+            {submitErr && <p className="m-0 text-red-600 md:col-span-2">Error: {submitErr}</p>}
+
+            <div className="flex justify-end gap-3 pt-4 md:col-span-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  if (!submitting) {
+                    setCreateOpen(false);
+                    setSubmitErr(null);
+                  }
+                }}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={submitting || accounts.length === 0}
+                className="w-[170px]"
+              >
+                {submitting ? 'Creating...' : 'Create Transaction'}
               </Button>
             </div>
           </form>
