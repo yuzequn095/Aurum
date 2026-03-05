@@ -28,7 +28,7 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
       <div className='relative mx-auto flex w-full max-w-[980px] flex-col items-center gap-6'>
         <div className='flex flex-col items-center gap-3 pt-1'>
           <Image
-            src='/brand/aurum-mark-cutout.png'
+            src='/brand/aurum-symbol.svg'
             alt='Aurum mark'
             width={75}
             height={75}
