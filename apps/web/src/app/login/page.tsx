@@ -58,7 +58,7 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthShell mode='login' heading='Sign In' subheading='Access your private wealth suite.'>
+    <AuthShell mode='login' heading='' subheading=''>
       {!isHydrated ? (
         <div className='rounded-aurum border border-aurum-border bg-white/85 p-4 text-sm text-aurum-muted'>
           Preparing secure session...
@@ -69,10 +69,13 @@ export default function LoginPage() {
           <span className='text-sm text-aurum-muted'>Entering your suite...</span>
         </div>
       ) : (
-        <form onSubmit={onSubmit} className='space-y-5'>
-          <div className='space-y-1.5'>
-            <label htmlFor='email' className='text-sm font-medium text-aurum-text'>
-              Email
+        <form onSubmit={onSubmit} className='space-y-7'>
+          <div className='space-y-2'>
+            <label
+              htmlFor='email'
+              className='text-[11px] font-semibold uppercase tracking-[0.16em] text-aurum-muted'
+            >
+              Identity
             </label>
             <input
               id='email'
@@ -80,15 +83,19 @@ export default function LoginPage() {
               type='email'
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className='h-12 w-full rounded-aurum border border-aurum-border bg-white px-4 text-base text-aurum-text outline-none transition focus:border-aurum-primaryHover focus:ring-2 focus:ring-aurum-primarySoft'
+              placeholder='email@aurum.exclusive'
+              className='h-12 w-full border-0 border-b border-aurum-border bg-transparent px-0 text-base text-aurum-text outline-none transition placeholder:text-aurum-muted/40 focus:border-aurum-primaryHover'
               autoComplete='email'
               required
             />
           </div>
 
-          <div className='space-y-1.5'>
-            <label htmlFor='password' className='text-sm font-medium text-aurum-text'>
-              Password
+          <div className='space-y-2'>
+            <label
+              htmlFor='password'
+              className='text-[11px] font-semibold uppercase tracking-[0.16em] text-aurum-muted'
+            >
+              Credential
             </label>
             <input
               id='password'
@@ -96,30 +103,35 @@ export default function LoginPage() {
               type='password'
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className='h-12 w-full rounded-aurum border border-aurum-border bg-white px-4 text-base text-aurum-text outline-none transition focus:border-aurum-primaryHover focus:ring-2 focus:ring-aurum-primarySoft'
+              placeholder='••••••••'
+              className='h-12 w-full border-0 border-b border-aurum-border bg-transparent px-0 text-base text-aurum-text outline-none transition placeholder:text-aurum-muted/40 focus:border-aurum-primaryHover'
               autoComplete='current-password'
               required
             />
           </div>
 
-          <div className='flex items-center justify-between text-sm'>
-            <Link href='/register' className='text-aurum-muted transition hover:text-aurum-text'>
-              Create account
-            </Link>
+          {error ? <p className='text-sm text-red-600'>{error}</p> : null}
+
+          <div className='flex items-center gap-7 pt-2'>
+            <PrimaryButton type='submit' disabled={submitting}>
+              {submitting ? 'Entering...' : 'Enter Suite'}
+            </PrimaryButton>
+
             <button
               type='button'
-              className='text-aurum-muted transition hover:text-aurum-text'
+              className='text-[11px] font-semibold uppercase tracking-[0.14em] text-aurum-muted transition hover:text-aurum-text'
               aria-label='Recover password (coming soon)'
             >
-              Forgot password?
+              Recover
             </button>
           </div>
 
-          {error ? <p className='text-sm text-red-600'>{error}</p> : null}
-
-          <PrimaryButton type='submit' disabled={submitting}>
-            {submitting ? 'Signing in...' : 'Sign In'}
-          </PrimaryButton>
+          <p className='text-sm text-aurum-muted'>
+            New to Aurum?{' '}
+            <Link href='/register' className='font-medium text-aurum-text underline underline-offset-4'>
+              Create Account
+            </Link>
+          </p>
         </form>
       )}
     </AuthShell>

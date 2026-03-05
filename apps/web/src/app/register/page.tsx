@@ -56,11 +56,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <AuthShell
-      mode='register'
-      heading='Create Account'
-      subheading='Set up your Aurum suite in under a minute.'
-    >
+    <AuthShell mode='register' heading='Create Account' subheading='Set up your private suite.'>
       {!isHydrated ? (
         <div className='rounded-aurum border border-aurum-border bg-white/85 p-4 text-sm text-aurum-muted'>
           Preparing secure session...
@@ -71,10 +67,13 @@ export default function RegisterPage() {
           <span className='text-sm text-aurum-muted'>Opening dashboard...</span>
         </div>
       ) : (
-        <form onSubmit={onSubmit} className='space-y-5'>
-          <div className='space-y-1.5'>
-            <label htmlFor='register-email' className='text-sm font-medium text-aurum-text'>
-              Email
+        <form onSubmit={onSubmit} className='space-y-7'>
+          <div className='space-y-2'>
+            <label
+              htmlFor='register-email'
+              className='text-[11px] font-semibold uppercase tracking-[0.16em] text-aurum-muted'
+            >
+              Identity
             </label>
             <input
               id='register-email'
@@ -82,15 +81,19 @@ export default function RegisterPage() {
               type='email'
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className='h-12 w-full rounded-aurum border border-aurum-border bg-white px-4 text-base text-aurum-text outline-none transition focus:border-aurum-primaryHover focus:ring-2 focus:ring-aurum-primarySoft'
+              placeholder='email@aurum.exclusive'
+              className='h-12 w-full border-0 border-b border-aurum-border bg-transparent px-0 text-base text-aurum-text outline-none transition placeholder:text-aurum-muted/40 focus:border-aurum-primaryHover'
               autoComplete='email'
               required
             />
           </div>
 
-          <div className='space-y-1.5'>
-            <label htmlFor='register-password' className='text-sm font-medium text-aurum-text'>
-              Password
+          <div className='space-y-2'>
+            <label
+              htmlFor='register-password'
+              className='text-[11px] font-semibold uppercase tracking-[0.16em] text-aurum-muted'
+            >
+              Credential
             </label>
             <input
               id='register-password'
@@ -98,7 +101,8 @@ export default function RegisterPage() {
               type='password'
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className='h-12 w-full rounded-aurum border border-aurum-border bg-white px-4 text-base text-aurum-text outline-none transition focus:border-aurum-primaryHover focus:ring-2 focus:ring-aurum-primarySoft'
+              placeholder='At least 8 characters'
+              className='h-12 w-full border-0 border-b border-aurum-border bg-transparent px-0 text-base text-aurum-text outline-none transition placeholder:text-aurum-muted/40 focus:border-aurum-primaryHover'
               minLength={8}
               autoComplete='new-password'
               required
