@@ -37,6 +37,7 @@ model User {
   categories    Category[]
   subcategories Subcategory[]
   transactions  Transaction[]
+  importLogs    ImportLog[]
 }
 
 model AuthIdentity {
@@ -156,4 +157,17 @@ model Transaction {
   @@index([categoryId])
   @@index([subcategoryId])
   @@index([transferId])
+}
+
+model ImportLog {
+  id          String   @id @default(cuid())
+  userId      String
+  kind        String
+  contentHash String
+  importedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, contentHash])
+  @@index([userId, importedAt])
 }

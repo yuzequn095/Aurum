@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsEnum,
   IsDateString,
   IsInt,
   IsOptional,
@@ -7,6 +8,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { TransactionType } from '@prisma/client';
 
 export class GetTransactionsQueryDto {
   @IsOptional()
@@ -14,8 +16,30 @@ export class GetTransactionsQueryDto {
   include?: string;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1970)
+  @Max(3000)
+  year?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  month?: number;
+
+  @IsOptional()
   @IsString()
   accountId?: string;
+
+  @IsOptional()
+  @IsEnum(TransactionType)
+  type?: TransactionType;
+
+  @IsOptional()
+  @IsString()
+  q?: string;
 
   @IsOptional()
   @IsString()
