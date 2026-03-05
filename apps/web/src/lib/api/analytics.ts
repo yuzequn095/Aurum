@@ -31,6 +31,25 @@ export type CategoryBreakdownResponse = {
   }>;
 };
 
+export type SummarySeriesPoint = {
+  year: number;
+  month: number;
+  totals: {
+    incomeCents: number;
+    expenseCents: number;
+    netCents: number;
+  };
+};
+
+export type SummarySeriesResponse = {
+  months: number;
+  end: {
+    year: number;
+    month: number;
+  };
+  series: SummarySeriesPoint[];
+};
+
 export async function getMonthlySummary(
   year: number,
   month: number,
@@ -53,7 +72,15 @@ export async function getCategoryBreakdown(
   return apiGet<CategoryBreakdownResponse>(`/v1/analytics/category-breakdown?${qs.toString()}`);
 }
 
-export async function getSummarySeries(..._args: number[]): Promise<never> {
-  void _args;
-  throw new Error('getSummarySeries is not implemented yet.');
+export async function getSummarySeries(
+  months: number,
+  endYear: number,
+  endMonth: number,
+): Promise<SummarySeriesResponse> {
+  const qs = new URLSearchParams({
+    months: String(months),
+    endYear: String(endYear),
+    endMonth: String(endMonth),
+  });
+  return apiGet<SummarySeriesResponse>(`/v1/analytics/summary-series?${qs.toString()}`);
 }
