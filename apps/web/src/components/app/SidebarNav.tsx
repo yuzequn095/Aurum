@@ -16,8 +16,8 @@ export function SidebarNav() {
   const { userEmail } = useAuthSession();
 
   return (
-    <aside className='hidden w-[274px] shrink-0 border-r border-aurum-border/80 bg-white/78 backdrop-blur lg:block'>
-      <div className='sticky top-0 flex h-screen flex-col px-5 py-6'>
+    <aside className='hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:w-[274px] lg:shrink-0 lg:border-r lg:border-aurum-border/80 lg:bg-white/78 lg:backdrop-blur'>
+      <div className='flex h-full flex-col px-5 py-6'>
         <div className='mb-9 px-1'>
           <Image
             src='/aurum_logo_thin_horizontal.svg'

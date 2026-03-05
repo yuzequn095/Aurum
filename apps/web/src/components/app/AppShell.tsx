@@ -8,7 +8,7 @@ export function AppShell({ children }: PropsWithChildren) {
       <div className='absolute inset-0 aurum-app-bg' />
       <div className='relative flex min-h-screen w-full'>
         <SidebarNav />
-        <div className='min-w-0 flex-1'>
+        <div className='min-w-0 flex-1 lg:pl-[274px]'>
           <Topbar />
           <main className='min-h-[calc(100vh-74px)] w-full'>{children}</main>
         </div>

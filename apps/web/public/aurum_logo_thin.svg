@@ -1,0 +1,9 @@
+<svg width="240" height="120" viewBox="0 0 240 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#C5A059" stroke-width="2">
+    <circle cx="108" cy="44" r="20" />
+    <circle cx="132" cy="44" r="20" />
+  </g>
+  <text x="120" y="92" text-anchor="middle" fill="#1A1A1A" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="300" letter-spacing="0.28em">
+    AURUM
+  </text>
+</svg>
