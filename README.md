@@ -9,6 +9,8 @@
 
 Aurum is a pnpm workspace + Turborepo monorepo for building an AI-driven Personal Wealth Operating System.
 
+This document serves as both a product overview and developer reference for Aurum.
+
 ## Table of Contents
 
 - [Vision](#vision)
@@ -50,7 +52,7 @@ Aurum V1 consists of four primary modules:
 
 High-level financial overview.
 
-Includes:
+**Includes:**
 
 - Net Worth
 - Assets / Liabilities
@@ -59,14 +61,14 @@ Includes:
 - Financial Health Score
 - AI Brief
 
-Purpose:
+**Purpose:**
 Give users a quick snapshot of their financial status.
 
 ### Portfolio
 
 Multi-account asset tracking.
 
-Tracks:
+**Tracks:**
 
 - bank accounts
 - brokerage accounts
@@ -74,7 +76,7 @@ Tracks:
 - asset allocation
 - account breakdown
 
-Future plans:
+**Future plans:**
 
 - automatic account syncing (Plaid / brokerage APIs)
 - investment tracking
@@ -84,7 +86,7 @@ Future plans:
 
 Personal finance ledger.
 
-Features:
+**Features:**
 
 - income and expense tracking
 - categories and subcategories
@@ -99,26 +101,24 @@ Transactions represent **cash flow tracking**.
 
 AI-powered financial intelligence center.
 
-Includes:
-
-Reports:
+**Reports:**
 
 - Monthly financial report
 - Quarterly report
 - Yearly report
 
-Analysis:
+**Analysis:**
 
 - spending breakdown
 - financial health score
 - trend analysis
 
-Planning:
+**Planning:**
 
 - budget tracking
 - financial goals
 
-Conversations:
+**Conversations:**
 
 - saved AI conversations
 
@@ -132,23 +132,23 @@ Aurum contains two layers of AI interaction.
 
 Accessible from the "+" action menu.
 
-Purpose:
+**Purpose:**
 
 - quick financial questions
 - instant analysis
 
-Examples:
+**Examples:**
 
 - "How much did I spend on dining this month?"
 - "What was my biggest expense category?"
 
-Characteristics:
+**Characteristics:**
 
 - temporary
 - not saved by default
 - user may optionally save the conversation
 
-Saved conversations are stored in **AI Insights -> Conversations**.
+Saved conversations are stored in **AI Insights > Conversations**.
 
 ### 2. Insight AI (Persistent Conversations)
 
@@ -165,14 +165,14 @@ These conversations persist over time and act as **AI financial advisors**.
 
 ## Mobile UX Concept
 
-Mobile navigation:
+**Mobile navigation:**
 
 - Home
 - Portfolio
 - Transactions
 - AI Insights
 
-Center action button "+" opens a quick command menu:
+**Center action button `+` opens a quick command menu:**
 
 - Add Transaction
 - Ask AI
@@ -195,19 +195,19 @@ Milestones 7, 8, 9.1, 9.2, 9.3, and 9.4 are complete.
 
 ## Current Architecture
 
-Backend stack:
+**Backend stack:**
 
 - NestJS
 - Prisma ORM
 - PostgreSQL
 
-Frontend stack:
+**Frontend stack:**
 
 - Next.js
 - TypeScript
 - Tailwind
 
-Key backend modules:
+**Key backend modules:**
 
 - auth
 - accounts
@@ -218,6 +218,8 @@ Key backend modules:
 - CSV import/export
 - backup / restore
 
+**Application architecture overview:**
+
 ```mermaid
 flowchart LR
   B[Browser] --> W[Next.js Web<br/>apps/web]
@@ -226,6 +228,8 @@ flowchart LR
   W -.->|refresh token in localStorage<br/>dev mode| W
   A -->|issue/verify access + refresh| A
 ```
+
+**AI insight generation flow:**
 
 ```mermaid
 flowchart LR
@@ -240,7 +244,7 @@ flowchart LR
 
 ## Completed Milestones
 
-Phase 1 - Core Finance Infrastructure
+### Phase 1 - Core Finance Infrastructure
 
 - authentication system
 - account model
@@ -248,13 +252,13 @@ Phase 1 - Core Finance Infrastructure
 - transaction tracking
 - analytics APIs
 
-Phase 2 - AI Financial Intelligence
+### Phase 2 - AI Financial Intelligence
 
 - insight engine
 - monthly analysis
 - hybrid rule + AI system
 
-Phase 3 - Data Management
+### Phase 3 - Data Management
 
 - CSV import/export
 - backup system
@@ -263,7 +267,7 @@ Phase 3 - Data Management
 
 ## Upcoming Roadmap
 
-Milestone 10 - UX Implementation
+### Milestone 10 - UX Implementation
 
 - responsive layout
 - dashboard UI
@@ -271,20 +275,20 @@ Milestone 10 - UX Implementation
 - transactions UI
 - insights UI
 
-Milestone 11 - Advanced AI
+### Milestone 11 - Advanced AI
 
 - financial health score
 - proactive AI alerts
 - budget analysis
 - goal tracking
 
-Milestone 12 - Connected Finance
+### Milestone 12 - Connected Finance
 
 - bank integrations
 - brokerage integrations
 - automated portfolio tracking
 
-Milestone 13 - Financial Execution Layer
+### Milestone 13 - Financial Execution Layer
 
 - investment tools
 - digital wallet functionality
