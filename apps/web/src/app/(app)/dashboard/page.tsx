@@ -3,8 +3,8 @@
 import { useMemo, useState } from 'react';
 import {
   CategoryBreakdownPieChart,
-  IncomeExpenseBarChart,
 } from '@/components/charts/DashboardCharts';
+import { IncomeExpenseTrendChart } from '@/components/dashboard/IncomeExpenseTrendChart';
 import { KpiSection } from '@/components/dashboard/KpiSection';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -30,7 +30,7 @@ export default function DashboardPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const { summary, categoryBreakdown, loading, error } = useDashboardData(year, month);
+  const { summary, categoryBreakdown, summarySeries, loading, error } = useDashboardData(year, month);
   const yearOptions = useMemo(() => [year, year - 1, year - 2], [year]);
 
   const delta = summary?.deltaPercent ?? summary?.delta ?? {};
@@ -45,7 +45,6 @@ export default function DashboardPage() {
     expenseCents === 0 &&
     netCents === 0 &&
     (categoryBreakdown?.totals.length ?? 0) === 0;
-  const selectedMonthName = monthNames[month - 1] ?? '';
   const categoryBreakdownData = useMemo(
     () =>
       (categoryBreakdown?.totals ?? []).map((item) => ({
@@ -53,16 +52,6 @@ export default function DashboardPage() {
         value: item.expenseCents / 100,
       })),
     [categoryBreakdown],
-  );
-  const incomeExpenseData = useMemo(
-    () => [
-      {
-        label: `${selectedMonthName} ${year}`,
-        income: incomeCents,
-        expense: expenseCents,
-      },
-    ],
-    [selectedMonthName, year, incomeCents, expenseCents],
   );
 
   return (
@@ -140,16 +129,7 @@ export default function DashboardPage() {
       ) : null}
 
       <section className='grid grid-cols-1 gap-6 md:grid-cols-2'>
-        <Card className='rounded-[14px] shadow-aurumSm'>
-          <CardHeader>
-            <CardTitle>Income vs Expense</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='h-[200px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner'>
-              <IncomeExpenseBarChart data={incomeExpenseData} />
-            </div>
-          </CardContent>
-        </Card>
+        <IncomeExpenseTrendChart data={summarySeries?.series ?? []} loading={loading} />
 
         <Card className='rounded-[14px] shadow-aurumSm'>
           <CardHeader>
