@@ -8,7 +8,7 @@ import { PrimaryButton } from '@/components/auth/PrimaryButton';
 import { useToast } from '@/components/toast/ToastProvider';
 import { useAuthSession } from '@/lib/auth/session';
 import { apiPublicPost } from '@/lib/api';
-import { setAccessToken, setRefreshToken } from '@/lib/auth/tokens';
+import { setAccessToken, setRefreshToken, setUserEmail } from '@/lib/auth/tokens';
 import { useEffect } from 'react';
 
 type AuthResponse = {
@@ -46,6 +46,7 @@ export default function LoginPage() {
       });
       setAccessToken(payload.accessToken);
       setRefreshToken(payload.refreshToken);
+      setUserEmail(payload.user.email);
       toast.success('Logged in successfully.');
       router.push(next);
     } catch (e) {
@@ -103,7 +104,7 @@ export default function LoginPage() {
               type='password'
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder='••••••••'
+              placeholder='********'
               className='h-12 w-full border-0 border-b border-[color:var(--aurum-auth-border)] bg-transparent px-0 text-sm font-light text-[color:var(--aurum-auth-text)] outline-none transition placeholder:text-[color:var(--aurum-auth-muted)]/30 focus:border-[color:var(--aurum-auth-primary)]'
               autoComplete='current-password'
               required

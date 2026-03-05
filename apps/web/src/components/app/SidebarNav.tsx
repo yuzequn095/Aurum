@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { APP_NAV_ITEMS, SETTINGS_HREF } from '@/components/app/nav';
+import { useAuthSession } from '@/lib/auth/session';
 import { cn } from '@/lib/cn';
 
 function isActive(pathname: string, href: string) {
@@ -12,6 +13,7 @@ function isActive(pathname: string, href: string) {
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const { userEmail } = useAuthSession();
 
   return (
     <aside className='hidden w-[274px] shrink-0 border-r border-aurum-border/80 bg-white/78 backdrop-blur lg:block'>
@@ -70,7 +72,9 @@ export function SidebarNav() {
             </div>
             <div className='min-w-0 flex-1'>
               <p className='truncate text-sm font-medium text-[var(--aurum-text)]'>Profile</p>
-              <p className='truncate text-xs text-[var(--aurum-text-muted)]'>member@aurum.exclusive</p>
+              <p className='truncate text-xs text-[var(--aurum-text-muted)]'>
+                {userEmail ?? 'member@aurum.exclusive'}
+              </p>
             </div>
             <span className='text-xs font-semibold uppercase tracking-[0.14em] text-[var(--aurum-text-muted)] group-hover:text-[var(--aurum-accent)]'>
               Settings

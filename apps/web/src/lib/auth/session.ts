@@ -1,12 +1,13 @@
 'use client';
 
 import { useMemo, useSyncExternalStore } from 'react';
-import { getRefreshToken } from '@/lib/auth/tokens';
+import { getRefreshToken, getUserEmail } from '@/lib/auth/tokens';
 
 type AuthSessionState = {
   isHydrated: boolean;
   isAuthenticated: boolean;
   refreshToken: string | null;
+  userEmail: string | null;
 };
 
 function subscribe(onStoreChange: () => void) {
@@ -24,6 +25,7 @@ function subscribe(onStoreChange: () => void) {
 
 export function useAuthSession(): AuthSessionState {
   const refreshToken = useSyncExternalStore(subscribe, getRefreshToken, () => null);
+  const userEmail = useSyncExternalStore(subscribe, getUserEmail, () => null);
   const isHydrated = useSyncExternalStore(
     () => () => undefined,
     () => true,
@@ -34,8 +36,9 @@ export function useAuthSession(): AuthSessionState {
     () => ({
       isHydrated,
       refreshToken,
+      userEmail,
       isAuthenticated: Boolean(refreshToken),
     }),
-    [isHydrated, refreshToken],
+    [isHydrated, refreshToken, userEmail],
   );
 }

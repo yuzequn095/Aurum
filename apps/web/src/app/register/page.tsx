@@ -9,7 +9,7 @@ import { PrimaryButton } from '@/components/auth/PrimaryButton';
 import { useToast } from '@/components/toast/ToastProvider';
 import { useAuthSession } from '@/lib/auth/session';
 import { apiPublicPost } from '@/lib/api';
-import { setAccessToken, setRefreshToken } from '@/lib/auth/tokens';
+import { setAccessToken, setRefreshToken, setUserEmail } from '@/lib/auth/tokens';
 
 type AuthResponse = {
   user: { id: string; email: string };
@@ -44,6 +44,7 @@ export default function RegisterPage() {
       });
       setAccessToken(payload.accessToken);
       setRefreshToken(payload.refreshToken);
+      setUserEmail(payload.user.email);
       toast.success('Account created successfully.');
       router.push('/dashboard');
     } catch (e) {

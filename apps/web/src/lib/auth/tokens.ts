@@ -1,5 +1,6 @@
 const ACCESS_TOKEN_KEY = 'aurum.accessToken';
 const REFRESH_TOKEN_KEY = 'aurum.refreshToken';
+const USER_EMAIL_KEY = 'aurum.userEmail';
 
 function isBrowser() {
   return typeof window !== 'undefined';
@@ -59,4 +60,14 @@ export function setRefreshToken(token: string | null): void {
 export function clearTokens(): void {
   setAccessToken(null);
   setRefreshToken(null);
+  setUserEmail(null);
+}
+
+export function getUserEmail(): string | null {
+  return read(USER_EMAIL_KEY);
+}
+
+export function setUserEmail(email: string | null): void {
+  write(USER_EMAIL_KEY, email);
+  notifyAuthChanged();
 }
