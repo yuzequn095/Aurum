@@ -19,6 +19,11 @@ function write(key: string, value: string | null) {
   }
 }
 
+function notifyAuthChanged() {
+  if (!isBrowser()) return;
+  window.dispatchEvent(new Event('aurum-auth-change'));
+}
+
 function setCookie(name: string, value: string | null) {
   if (!isBrowser()) return;
 
@@ -38,6 +43,7 @@ export function getAccessToken(): string | null {
 export function setAccessToken(token: string | null): void {
   write(ACCESS_TOKEN_KEY, token);
   setCookie('aurum_access_token', token);
+  notifyAuthChanged();
 }
 
 export function getRefreshToken(): string | null {
@@ -47,6 +53,7 @@ export function getRefreshToken(): string | null {
 export function setRefreshToken(token: string | null): void {
   write(REFRESH_TOKEN_KEY, token);
   setCookie('aurum_refresh_token', token);
+  notifyAuthChanged();
 }
 
 export function clearTokens(): void {

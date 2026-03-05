@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect } from 'react';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { PrimaryButton } from '@/components/auth/PrimaryButton';
 import { useToast } from '@/components/toast/ToastProvider';
+import { useAuthSession } from '@/lib/auth/session';
 import { apiPublicPost } from '@/lib/api';
 import { setAccessToken, setRefreshToken } from '@/lib/auth/tokens';
 
@@ -18,10 +20,17 @@ type AuthResponse = {
 export default function RegisterPage() {
   const router = useRouter();
   const toast = useToast();
+  const { isHydrated, isAuthenticated } = useAuthSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isHydrated && isAuthenticated) {
+      router.replace('/dashboard');
+    }
+  }, [isAuthenticated, isHydrated, router]);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -36,7 +45,7 @@ export default function RegisterPage() {
       setAccessToken(payload.accessToken);
       setRefreshToken(payload.refreshToken);
       toast.success('Account created successfully.');
-      router.push('/transactions');
+      router.push('/dashboard');
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setError(message);
@@ -47,47 +56,69 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center px-4">
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Register</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <label className="block text-sm">
+    <AuthShell
+      mode='register'
+      heading='Create Account'
+      subheading='Set up your Aurum suite in under a minute.'
+    >
+      {!isHydrated ? (
+        <div className='rounded-aurum border border-aurum-border bg-white/85 p-4 text-sm text-aurum-muted'>
+          Preparing secure session...
+        </div>
+      ) : isAuthenticated ? (
+        <div className='flex items-center gap-3 rounded-aurum border border-aurum-border bg-white/85 p-4'>
+          <span className='h-4 w-4 animate-spin rounded-full border-2 border-aurum-primary border-t-aurum-primaryHover' />
+          <span className='text-sm text-aurum-muted'>Opening dashboard...</span>
+        </div>
+      ) : (
+        <form onSubmit={onSubmit} className='space-y-5'>
+          <div className='space-y-1.5'>
+            <label htmlFor='register-email' className='text-sm font-medium text-aurum-text'>
               Email
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded border px-3 py-2"
-                required
-              />
             </label>
-            <label className="block text-sm">
+            <input
+              id='register-email'
+              name='email'
+              type='email'
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className='h-12 w-full rounded-aurum border border-aurum-border bg-white px-4 text-base text-aurum-text outline-none transition focus:border-aurum-primaryHover focus:ring-2 focus:ring-aurum-primarySoft'
+              autoComplete='email'
+              required
+            />
+          </div>
+
+          <div className='space-y-1.5'>
+            <label htmlFor='register-password' className='text-sm font-medium text-aurum-text'>
               Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded border px-3 py-2"
-                minLength={8}
-                required
-              />
             </label>
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? 'Creating account...' : 'Register'}
-            </Button>
-          </form>
-          <p className="mt-4 text-sm">
-            Already have an account?{' '}
-            <Link href="/login" className="underline">
-              Login
+            <input
+              id='register-password'
+              name='password'
+              type='password'
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className='h-12 w-full rounded-aurum border border-aurum-border bg-white px-4 text-base text-aurum-text outline-none transition focus:border-aurum-primaryHover focus:ring-2 focus:ring-aurum-primarySoft'
+              minLength={8}
+              autoComplete='new-password'
+              required
+            />
+          </div>
+
+          <p className='text-sm text-aurum-muted'>
+            Already have access?{' '}
+            <Link href='/login' className='font-medium text-aurum-text underline underline-offset-4'>
+              Sign In
             </Link>
           </p>
-        </CardContent>
-      </Card>
-    </main>
+
+          {error ? <p className='text-sm text-red-600'>{error}</p> : null}
+
+          <PrimaryButton type='submit' disabled={submitting}>
+            {submitting ? 'Creating account...' : 'Enter Suite'}
+          </PrimaryButton>
+        </form>
+      )}
+    </AuthShell>
   );
 }

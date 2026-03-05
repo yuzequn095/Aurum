@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { PrimaryButton } from '@/components/auth/PrimaryButton';
 import { useToast } from '@/components/toast/ToastProvider';
+import { useAuthSession } from '@/lib/auth/session';
 import { apiPublicPost } from '@/lib/api';
 import { setAccessToken, setRefreshToken } from '@/lib/auth/tokens';
+import { useEffect } from 'react';
 
 type AuthResponse = {
   user: { id: string; email: string };
@@ -17,11 +19,20 @@ type AuthResponse = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
+  const { isHydrated, isAuthenticated } = useAuthSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const next = searchParams.get('next') || '/dashboard';
+
+  useEffect(() => {
+    if (isHydrated && isAuthenticated) {
+      router.replace(next);
+    }
+  }, [isAuthenticated, isHydrated, next, router]);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -36,7 +47,7 @@ export default function LoginPage() {
       setAccessToken(payload.accessToken);
       setRefreshToken(payload.refreshToken);
       toast.success('Logged in successfully.');
-      router.push('/transactions');
+      router.push(next);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setError(message);
@@ -47,46 +58,70 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center px-4">
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Login</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <label className="block text-sm">
+    <AuthShell mode='login' heading='Sign In' subheading='Access your private wealth suite.'>
+      {!isHydrated ? (
+        <div className='rounded-aurum border border-aurum-border bg-white/85 p-4 text-sm text-aurum-muted'>
+          Preparing secure session...
+        </div>
+      ) : isAuthenticated ? (
+        <div className='flex items-center gap-3 rounded-aurum border border-aurum-border bg-white/85 p-4'>
+          <span className='h-4 w-4 animate-spin rounded-full border-2 border-aurum-primary border-t-aurum-primaryHover' />
+          <span className='text-sm text-aurum-muted'>Entering your suite...</span>
+        </div>
+      ) : (
+        <form onSubmit={onSubmit} className='space-y-5'>
+          <div className='space-y-1.5'>
+            <label htmlFor='email' className='text-sm font-medium text-aurum-text'>
               Email
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded border px-3 py-2"
-                required
-              />
             </label>
-            <label className="block text-sm">
+            <input
+              id='email'
+              name='email'
+              type='email'
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className='h-12 w-full rounded-aurum border border-aurum-border bg-white px-4 text-base text-aurum-text outline-none transition focus:border-aurum-primaryHover focus:ring-2 focus:ring-aurum-primarySoft'
+              autoComplete='email'
+              required
+            />
+          </div>
+
+          <div className='space-y-1.5'>
+            <label htmlFor='password' className='text-sm font-medium text-aurum-text'>
               Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded border px-3 py-2"
-                required
-              />
             </label>
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? 'Logging in...' : 'Login'}
-            </Button>
-          </form>
-          <p className="mt-4 text-sm">
-            No account?{' '}
-            <Link href="/register" className="underline">
-              Register
+            <input
+              id='password'
+              name='password'
+              type='password'
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className='h-12 w-full rounded-aurum border border-aurum-border bg-white px-4 text-base text-aurum-text outline-none transition focus:border-aurum-primaryHover focus:ring-2 focus:ring-aurum-primarySoft'
+              autoComplete='current-password'
+              required
+            />
+          </div>
+
+          <div className='flex items-center justify-between text-sm'>
+            <Link href='/register' className='text-aurum-muted transition hover:text-aurum-text'>
+              Create account
             </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </main>
+            <button
+              type='button'
+              className='text-aurum-muted transition hover:text-aurum-text'
+              aria-label='Recover password (coming soon)'
+            >
+              Forgot password?
+            </button>
+          </div>
+
+          {error ? <p className='text-sm text-red-600'>{error}</p> : null}
+
+          <PrimaryButton type='submit' disabled={submitting}>
+            {submitting ? 'Signing in...' : 'Sign In'}
+          </PrimaryButton>
+        </form>
+      )}
+    </AuthShell>
   );
 }

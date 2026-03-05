@@ -4,6 +4,14 @@
 :root {
   --background: #f6f8fa;
   --foreground: #0f172a;
+  --aurum-gold: #f5c542;
+  --aurum-gold-strong: #d9a92b;
+  --aurum-app-grad-start: #f5f7fb;
+  --aurum-app-grad-end: #efe8d8;
+  --aurum-auth-grad-start: #fbf8ef;
+  --aurum-auth-grad-end: #f1e6cf;
+  --aurum-card-bg: rgba(255, 255, 255, 0.86);
+  --aurum-card-border: rgba(226, 232, 240, 0.85);
 }
 
 @theme inline {
@@ -16,5 +24,28 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Avenir Next', 'Manrope', 'Segoe UI', sans-serif;
+}
+
+.aurum-app-bg {
+  background:
+    radial-gradient(1100px 560px at 14% -10%, rgba(245, 197, 66, 0.18), transparent 58%),
+    radial-gradient(850px 460px at 100% 0%, rgba(255, 255, 255, 0.75), transparent 60%),
+    linear-gradient(160deg, var(--aurum-app-grad-start), var(--aurum-app-grad-end));
+}
+
+.aurum-auth-bg {
+  background:
+    radial-gradient(760px 420px at 50% -8%, rgba(245, 197, 66, 0.2), transparent 62%),
+    linear-gradient(160deg, var(--aurum-auth-grad-start), var(--aurum-auth-grad-end));
+}
+
+.aurum-noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: radial-gradient(#000 0.5px, transparent 0.5px);
+  background-size: 3px 3px;
 }

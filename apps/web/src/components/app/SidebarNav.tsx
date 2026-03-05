@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { APP_NAV_ITEMS } from '@/components/app/nav';
@@ -13,13 +14,29 @@ export function SidebarNav() {
   const pathname = usePathname();
 
   return (
-    <aside className='hidden w-64 shrink-0 border-r border-aurum-border bg-white lg:block'>
-      <div className='sticky top-0 flex h-screen flex-col px-4 py-6'>
-        <div className='mb-8 px-2'>
-          <p className='text-xs font-semibold uppercase tracking-[0.12em] text-aurum-muted'>
-            Aurum
+    <aside className='hidden w-[274px] shrink-0 border-r border-aurum-border/80 bg-white/78 backdrop-blur lg:block'>
+      <div className='sticky top-0 flex h-screen flex-col px-5 py-6'>
+        <div className='mb-9 px-1'>
+          <div className='flex items-center gap-3'>
+            <Image
+              src='/brand/aurum-mark.png'
+              alt='Aurum mark'
+              width={34}
+              height={34}
+              className='h-[34px] w-[34px] object-contain'
+            />
+            <div>
+              <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-aurum-muted'>
+                AURUM
+              </p>
+              <h1 className='mt-0.5 text-[17px] font-semibold tracking-tight text-aurum-text'>
+                Wealth OS
+              </h1>
+            </div>
+          </div>
+          <p className='mt-4 text-xs leading-5 text-aurum-muted'>
+            Private command center for wealth management.
           </p>
-          <h1 className='mt-1 text-lg font-semibold text-aurum-text'>Wealth OS</h1>
         </div>
 
         <nav className='space-y-1'>
@@ -32,8 +49,8 @@ export function SidebarNav() {
                 className={cn(
                   'group relative flex items-center rounded-aurum px-3 py-2.5 text-sm font-medium transition-colors',
                   active
-                    ? 'bg-aurum-primarySoft text-aurum-text'
-                    : 'text-aurum-muted hover:bg-aurum-bg hover:text-aurum-text',
+                    ? 'bg-aurum-primarySoft/80 text-aurum-text'
+                    : 'text-aurum-muted hover:bg-white hover:text-aurum-text',
                 )}
               >
                 <span
