@@ -1,14 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import {
-  CategoryBreakdownPieChart,
-} from '@/components/charts/DashboardCharts';
+import { CategoryBreakdownDonut } from '@/components/dashboard/CategoryBreakdownDonut';
 import { IncomeExpenseTrendChart } from '@/components/dashboard/IncomeExpenseTrendChart';
 import { KpiSection } from '@/components/dashboard/KpiSection';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Section } from '@/components/ui/layout';
 
 const monthNames = [
@@ -45,14 +43,6 @@ export default function DashboardPage() {
     expenseCents === 0 &&
     netCents === 0 &&
     (categoryBreakdown?.totals.length ?? 0) === 0;
-  const categoryBreakdownData = useMemo(
-    () =>
-      (categoryBreakdown?.totals ?? []).map((item) => ({
-        name: item.categoryName || 'Uncategorized',
-        value: item.expenseCents / 100,
-      })),
-    [categoryBreakdown],
-  );
 
   return (
     <PageContainer className='space-y-10'>
@@ -130,25 +120,7 @@ export default function DashboardPage() {
 
       <section className='grid grid-cols-1 gap-6 md:grid-cols-2'>
         <IncomeExpenseTrendChart data={summarySeries?.series ?? []} loading={loading} />
-
-        <Card className='rounded-[14px] shadow-aurumSm'>
-          <CardHeader>
-            <CardTitle>Category Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='h-[200px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner'>
-              {loading ? (
-                <div className='flex h-full items-center justify-center text-sm text-aurum-muted'>Loading...</div>
-              ) : categoryBreakdownData.length === 0 ? (
-                <div className='flex h-full items-center justify-center text-sm text-aurum-muted'>
-                  No expenses this month
-                </div>
-              ) : (
-                <CategoryBreakdownPieChart data={categoryBreakdownData} />
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <CategoryBreakdownDonut totals={categoryBreakdown?.totals ?? []} loading={loading} />
       </section>
     </PageContainer>
   );
