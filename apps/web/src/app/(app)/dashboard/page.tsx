@@ -5,8 +5,9 @@ import {
   CategoryBreakdownPieChart,
   IncomeExpenseBarChart,
 } from '@/components/charts/DashboardCharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Container, Section } from '@/components/ui/layout';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Section } from '@/components/ui/layout';
 import { fetchCategoryBreakdown, fetchMonthlySummary } from '@/lib/api';
 import { KpiCard } from './components/kpi-card';
 
@@ -164,7 +165,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <Container className='py-8 space-y-10'>
+    <PageContainer className='space-y-10'>
       <header className='space-y-2'>
         <h1 className='text-3xl font-semibold tracking-tight text-aurum-text'>
           Dashboard
@@ -345,6 +346,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </section>
-    </Container>
+    </PageContainer>
   );
 }

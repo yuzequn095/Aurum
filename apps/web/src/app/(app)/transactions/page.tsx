@@ -2,11 +2,12 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { Modal } from '@/components/Modal';
 import { useToast } from '@/components/toast/ToastProvider';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Container, Section } from '@/components/ui/layout';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Section } from '@/components/ui/layout';
 import { clearTokens } from '@/lib/auth/tokens';
 import {
   ApiError,
@@ -495,7 +496,7 @@ export default function TransactionsPage() {
   };
 
   return (
-    <Container className="w-full max-w-6xl space-y-6 py-2 text-aurum-text">
+    <PageContainer className="space-y-6 py-2 text-aurum-text">
       <main className="space-y-6">
         <section className="flex flex-col gap-4 rounded-aurum border border-aurum-border bg-white p-5 shadow-aurumSm sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -898,6 +899,6 @@ export default function TransactionsPage() {
           </form>
         </Modal>
       </main>
-    </Container>
+    </PageContainer>
   );
 }

@@ -1,8 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export default function AiInsightsPage() {
   return (
-    <div className='mx-auto w-full max-w-6xl space-y-6'>
+    <PageContainer className='space-y-6'>
       <Card>
         <CardHeader>
           <CardTitle>AI Insights</CardTitle>
@@ -14,6 +15,6 @@ export default function AiInsightsPage() {
           </p>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }
