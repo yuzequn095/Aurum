@@ -17,7 +17,7 @@ const tabs = [
 
 export function AuthShell({ mode, heading, subheading, children }: AuthShellProps) {
   return (
-    <main className='relative min-h-screen w-full overflow-hidden bg-[color:var(--aurum-auth-bg-0)] px-4 py-10 sm:px-6 lg:px-10'>
+    <main className='relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[color:var(--aurum-auth-bg-0)] px-4 py-8 sm:px-6 lg:px-10'>
       <div className='absolute inset-0 aurum-auth-bg' />
       <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(197,160,89,0.06),transparent_55%)]' />
       <div
@@ -25,7 +25,7 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
         className='pointer-events-none absolute left-1/2 top-1/2 h-[72vh] w-[72vh] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color:var(--aurum-auth-text)]/[0.03]'
       />
 
-      <div className='relative mx-auto flex w-full max-w-[980px] flex-col items-center gap-6'>
+      <div className='relative mx-auto flex w-full max-w-[980px] translate-y-2 flex-col items-center gap-6 md:translate-y-3 lg:translate-y-4'>
         <div className='flex flex-col items-center gap-3 pt-1'>
           <Image
             src='/aurum_logo_thin.svg'
