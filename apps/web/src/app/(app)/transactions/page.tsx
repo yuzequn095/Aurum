@@ -18,6 +18,8 @@ import {
   createAccount,
   createCategory,
   createSubcategory,
+  deleteCategory,
+  deleteSubcategory,
   getCategories,
   getSubcategories,
 } from '@/lib/api';
@@ -58,6 +60,8 @@ type UpdateTxPayload = {
   note?: string;
   amountCents?: number;
   occurredAt?: string;
+  categoryId?: string;
+  subcategoryId?: string;
 };
 
 const LIMIT = 20;
@@ -165,6 +169,10 @@ export default function TransactionsPage() {
   const [selectedTx, setSelectedTx] = useState<Tx | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [editCategoryId, setEditCategoryId] = useState<string | null>(null);
+  const [editSubcategoryId, setEditSubcategoryId] = useState<string | null>(null);
+  const [editSubcategories, setEditSubcategories] = useState<Subcategory[]>([]);
+  const [editSubcategorySearch, setEditSubcategorySearch] = useState('');
   const [editMerchant, setEditMerchant] = useState('');
   const [editNote, setEditNote] = useState('');
   const [editAmountDollars, setEditAmountDollars] = useState('0.00');
@@ -297,6 +305,120 @@ export default function TransactionsPage() {
     setSubcategoryId(value || null);
   };
 
+  const handleDeleteCategory = async (
+    id: string,
+    setFieldError: (message: string | null) => void = setSubmitErr,
+  ): Promise<void> => {
+    const category = categories.find((item) => item.id === id);
+    const confirmed = window.confirm(
+      `Delete category "${category?.name ?? 'this category'}"?`,
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteCategory(id);
+      setCategories((prev) => prev.filter((item) => item.id !== id));
+      setSubcategories((prev) => prev.filter((item) => item.categoryId !== id));
+      setEditSubcategories((prev) => prev.filter((item) => item.categoryId !== id));
+
+      if (filterCategoryId === id) setFilterCategoryId('');
+      if (categoryId === id) {
+        setCategoryId(null);
+        setSubcategoryId(null);
+        setSubcategorySearch('');
+      }
+      if (editCategoryId === id) {
+        setEditCategoryId(null);
+        setEditSubcategoryId(null);
+        setEditSubcategorySearch('');
+      }
+
+      toast.success('Category deleted.');
+      await refreshTransactions();
+    } catch (e) {
+      handleApiFailure(e, setFieldError);
+    }
+  };
+
+  const handleDeleteSubcategory = async (
+    id: string,
+    setFieldError: (message: string | null) => void = setSubmitErr,
+  ): Promise<void> => {
+    const subcategory =
+      subcategories.find((item) => item.id === id) ??
+      editSubcategories.find((item) => item.id === id);
+    const confirmed = window.confirm(
+      `Delete subcategory "${subcategory?.name ?? 'this subcategory'}"?`,
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteSubcategory(id);
+      setSubcategories((prev) => prev.filter((item) => item.id !== id));
+      setEditSubcategories((prev) => prev.filter((item) => item.id !== id));
+
+      if (subcategoryId === id) setSubcategoryId(null);
+      if (editSubcategoryId === id) setEditSubcategoryId(null);
+
+      toast.success('Subcategory deleted.');
+      await refreshTransactions();
+    } catch (e) {
+      handleApiFailure(e, setFieldError);
+    }
+  };
+
+  const onEditCategoryChange = async (value: string) => {
+    if (value === CREATE_NEW_OPTION) {
+      try {
+        const raw = window.prompt('New category name');
+        const name = raw?.trim();
+        if (!name) return;
+
+        const created = await createCategory(name);
+        setCategories((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+        setEditCategoryId(created.id);
+        setEditSubcategoryId(null);
+        setEditSubcategorySearch('');
+      } catch (e) {
+        handleApiFailure(e, setEditErr);
+      }
+      return;
+    }
+
+    setEditCategoryId(value || null);
+    setEditSubcategoryId(null);
+    setEditSubcategorySearch('');
+  };
+
+  const onEditSubcategoryChange = async (value: string) => {
+    if (value === CREATE_NEW_OPTION) {
+      if (!editCategoryId) {
+        setEditErr('Select a category first.');
+        return;
+      }
+
+      try {
+        const raw = window.prompt('New subcategory name');
+        const name = raw?.trim();
+        if (!name) return;
+
+        const created = await createSubcategory(editCategoryId, name);
+        setEditSubcategories((prev) =>
+          [...prev, created].sort((a, b) => a.name.localeCompare(b.name)),
+        );
+        setSubcategories((prev) =>
+          [...prev, created].sort((a, b) => a.name.localeCompare(b.name)),
+        );
+        setEditSubcategoryId(created.id);
+      } catch (e) {
+        handleApiFailure(e, setEditErr);
+      }
+      return;
+    }
+
+    setEditSubcategoryId(value || null);
+  };
+
   useEffect(() => {
     const loadSubcategories = async () => {
       if (!categoryId) {
@@ -324,6 +446,10 @@ export default function TransactionsPage() {
 
   const filteredSubcategories = subcategories.filter((sub) =>
     sub.name.toLowerCase().includes(subcategorySearch.trim().toLowerCase()),
+  );
+
+  const filteredEditSubcategories = editSubcategories.filter((sub) =>
+    sub.name.toLowerCase().includes(editSubcategorySearch.trim().toLowerCase()),
   );
 
   const handleApiFailure = (
@@ -378,6 +504,31 @@ export default function TransactionsPage() {
     void loadInitial();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const loadEditSubcategories = async () => {
+      if (!editOpen || !editCategoryId) {
+        setEditSubcategories([]);
+        setEditSubcategoryId(null);
+        return;
+      }
+
+      try {
+        const subs = await getSubcategories(editCategoryId);
+        const sorted = [...subs].sort((a, b) => a.name.localeCompare(b.name));
+        setEditSubcategories(sorted);
+        setEditSubcategoryId((current) =>
+          current && sorted.some((sub) => sub.id === current) ? current : null,
+        );
+      } catch (e) {
+        setEditErr(e instanceof Error ? e.message : String(e));
+        setEditSubcategories([]);
+        setEditSubcategoryId(null);
+      }
+    };
+
+    void loadEditSubcategories();
+  }, [editOpen, editCategoryId]);
 
   const onApplyFilters = async () => {
     await refreshTransactions();
@@ -456,6 +607,9 @@ export default function TransactionsPage() {
 
   const openEditModal = (tx: Tx) => {
     setSelectedTx(tx);
+    setEditCategoryId(tx.categoryId);
+    setEditSubcategoryId(tx.subcategoryId);
+    setEditSubcategorySearch('');
     setEditMerchant(tx.merchant ?? '');
     setEditNote(tx.note ?? '');
     setEditAmountDollars((tx.amountCents / 100).toFixed(2));
@@ -468,6 +622,10 @@ export default function TransactionsPage() {
     if (editSubmitting) return;
     setEditOpen(false);
     setSelectedTx(null);
+    setEditCategoryId(null);
+    setEditSubcategoryId(null);
+    setEditSubcategories([]);
+    setEditSubcategorySearch('');
     setEditErr(null);
   };
 
@@ -487,6 +645,14 @@ export default function TransactionsPage() {
       return;
     }
 
+    if (
+      (selectedTx.type === 'INCOME' || selectedTx.type === 'EXPENSE') &&
+      (!editCategoryId || !editSubcategoryId)
+    ) {
+      setEditErr('Category and subcategory are required for income/expense.');
+      return;
+    }
+
     try {
       setEditSubmitting(true);
       setEditErr(null);
@@ -496,6 +662,8 @@ export default function TransactionsPage() {
         note: editNote || undefined,
         amountCents: newAmountCents,
         occurredAt: editOccurredAtDate,
+        categoryId: editCategoryId || undefined,
+        subcategoryId: editSubcategoryId || undefined,
       };
 
       await apiPatch<Tx>(`/v1/transactions/${selectedTx.id}`, payload);
@@ -722,6 +890,81 @@ export default function TransactionsPage() {
             </label>
 
             <label>
+              Category
+              <select
+                value={editCategoryId ?? ''}
+                onChange={(e) => void onEditCategoryChange(e.target.value)}
+                style={{ width: '100%', marginTop: 4 }}
+                required={selectedTx?.type === 'INCOME' || selectedTx?.type === 'EXPENSE'}
+              >
+                <option value="">Select category</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+                <option value={CREATE_NEW_OPTION}>+ Create new...</option>
+              </select>
+              <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!editCategoryId || editSubmitting}
+                  onClick={() => {
+                    if (!editCategoryId) return;
+                    void handleDeleteCategory(editCategoryId, setEditErr);
+                  }}
+                >
+                  Delete Category
+                </Button>
+              </div>
+            </label>
+
+            <label>
+              Subcategory
+              <input
+                type="text"
+                value={editSubcategorySearch}
+                onChange={(e) => setEditSubcategorySearch(e.target.value)}
+                style={{ width: '100%', marginTop: 4, marginBottom: 4 }}
+                placeholder="Search subcategories..."
+                disabled={!editCategoryId}
+              />
+              <select
+                value={editSubcategoryId ?? ''}
+                onChange={(e) => void onEditSubcategoryChange(e.target.value)}
+                style={{ width: '100%', marginTop: 0 }}
+                required={selectedTx?.type === 'INCOME' || selectedTx?.type === 'EXPENSE'}
+                disabled={!editCategoryId}
+              >
+                <option value="">
+                  {editCategoryId ? 'Select subcategory' : 'Select category first'}
+                </option>
+                {filteredEditSubcategories.map((sub) => (
+                  <option key={sub.id} value={sub.id}>
+                    {sub.name}
+                  </option>
+                ))}
+                {editCategoryId ? <option value={CREATE_NEW_OPTION}>+ Create new...</option> : null}
+              </select>
+              <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!editSubcategoryId || editSubmitting}
+                  onClick={() => {
+                    if (!editSubcategoryId) return;
+                    void handleDeleteSubcategory(editSubcategoryId, setEditErr);
+                  }}
+                >
+                  Delete Subcategory
+                </Button>
+              </div>
+            </label>
+
+            <label>
               Amount (USD)
               <input
                 type="number"
@@ -826,6 +1069,20 @@ export default function TransactionsPage() {
                 ))}
                 <option value={CREATE_NEW_OPTION}>+ Create new...</option>
               </select>
+              <div className="mt-2 flex justify-end">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!categoryId || submitting}
+                  onClick={() => {
+                    if (!categoryId) return;
+                    void handleDeleteCategory(categoryId);
+                  }}
+                >
+                  Delete Category
+                </Button>
+              </div>
             </label>
 
             <label>
@@ -855,6 +1112,20 @@ export default function TransactionsPage() {
                 ))}
                 {categoryId ? <option value={CREATE_NEW_OPTION}>+ Create new...</option> : null}
               </select>
+              <div className="mt-2 flex justify-end">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!subcategoryId || submitting}
+                  onClick={() => {
+                    if (!subcategoryId) return;
+                    void handleDeleteSubcategory(subcategoryId);
+                  }}
+                >
+                  Delete Subcategory
+                </Button>
+              </div>
             </label>
 
             <label>

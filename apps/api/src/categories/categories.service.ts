@@ -102,16 +102,32 @@ export class CategoriesService {
   }
 
   async remove(userId: string, id: string) {
-    const result = await this.prisma.category.deleteMany({
-      where: { id, userId },
-    });
-    return result.count > 0;
+    try {
+      const result = await this.prisma.category.deleteMany({
+        where: { id, userId },
+      });
+      return result.count > 0;
+    } catch (error) {
+      if (this.isForeignKeyViolation(error)) {
+        throw new ConflictException(
+          'Category is used by existing transactions and cannot be deleted',
+        );
+      }
+      throw error;
+    }
   }
 
   private isUniqueViolation(error: unknown): boolean {
     return (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === 'P2002'
+    );
+  }
+
+  private isForeignKeyViolation(error: unknown): boolean {
+    return (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2003'
     );
   }
 }

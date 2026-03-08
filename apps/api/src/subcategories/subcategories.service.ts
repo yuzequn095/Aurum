@@ -56,6 +56,22 @@ export class SubcategoriesService {
     }
   }
 
+  async remove(userId: string, id: string) {
+    try {
+      const result = await this.prisma.subcategory.deleteMany({
+        where: { id, userId },
+      });
+      return result.count > 0;
+    } catch (error) {
+      if (this.isForeignKeyViolation(error)) {
+        throw new ConflictException(
+          'Subcategory is used by existing transactions and cannot be deleted',
+        );
+      }
+      throw error;
+    }
+  }
+
   private async assertCategoryOwnedByUser(userId: string, categoryId: string) {
     const category = await this.prisma.category.findFirst({
       where: {
@@ -74,6 +90,13 @@ export class SubcategoriesService {
     return (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === 'P2002'
+    );
+  }
+
+  private isForeignKeyViolation(error: unknown): boolean {
+    return (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2003'
     );
   }
 }

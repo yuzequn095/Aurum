@@ -307,6 +307,10 @@ export async function createCategory(name: string): Promise<CategoryOption> {
   return apiPost<CategoryOption>('/v1/categories', { name });
 }
 
+export async function deleteCategory(id: string): Promise<{ ok: boolean }> {
+  return apiDelete<{ ok: boolean }>(`/v1/categories/${id}`);
+}
+
 export async function createAccount(
   name: string,
   currency?: string,
@@ -330,4 +334,8 @@ export async function createSubcategory(
     categoryId,
     name,
   });
+}
+
+export async function deleteSubcategory(id: string): Promise<{ ok: boolean }> {
+  return apiDelete<{ ok: boolean }>(`/v1/subcategories/${id}`);
 }
