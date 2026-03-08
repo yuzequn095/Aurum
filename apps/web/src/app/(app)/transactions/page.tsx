@@ -15,6 +15,7 @@ import {
   apiGet,
   apiPatch,
   apiPost,
+  createAccount,
   createCategory,
   createSubcategory,
   getCategories,
@@ -248,6 +249,29 @@ export default function TransactionsPage() {
     setSubcategories((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
     setSubcategoryId(created.id);
     return created.id;
+  };
+
+  const handleCreateAccount = async (): Promise<string | null> => {
+    const raw = window.prompt('New account name');
+    const name = raw?.trim();
+    if (!name) return null;
+
+    const created = await createAccount(name);
+    setAccounts((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+    setAccountId(created.id);
+    return created.id;
+  };
+
+  const onAccountChange = async (value: string) => {
+    if (value === CREATE_NEW_OPTION) {
+      try {
+        await handleCreateAccount();
+      } catch (e) {
+        handleApiFailure(e, setSubmitErr);
+      }
+      return;
+    }
+    setAccountId(value);
   };
 
   const onCategoryChange = async (value: string) => {
@@ -749,16 +773,19 @@ export default function TransactionsPage() {
               Account
               <select
                 value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
+                onChange={(e) => void onAccountChange(e.target.value)}
                 style={{ width: '100%', marginTop: 4 }}
                 required
               >
-                {accounts.length === 0 && <option value="">No accounts</option>}
+                <option value="">
+                  {accounts.length === 0 ? 'No accounts, create one' : 'Select account'}
+                </option>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name} ({a.currency})
                   </option>
                 ))}
+                <option value={CREATE_NEW_OPTION}>+ Create new...</option>
               </select>
             </label>
 
@@ -890,7 +917,7 @@ export default function TransactionsPage() {
               <Button
                 type="submit"
                 variant="primary"
-                disabled={submitting || accounts.length === 0}
+                disabled={submitting}
                 className="w-[170px]"
               >
                 {submitting ? 'Creating...' : 'Create Transaction'}

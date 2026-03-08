@@ -86,6 +86,12 @@ export type SubcategoryOption = {
   name: string;
 };
 
+export type AccountOption = {
+  id: string;
+  name: string;
+  currency: string;
+};
+
 type RefreshResponse = {
   accessToken: string;
   refreshToken: string;
@@ -299,6 +305,16 @@ export async function getCategories(): Promise<CategoryOption[]> {
 
 export async function createCategory(name: string): Promise<CategoryOption> {
   return apiPost<CategoryOption>('/v1/categories', { name });
+}
+
+export async function createAccount(
+  name: string,
+  currency?: string,
+): Promise<AccountOption> {
+  return apiPost<AccountOption>('/v1/accounts', {
+    name,
+    currency,
+  });
 }
 
 export async function getSubcategories(categoryId: string): Promise<SubcategoryOption[]> {
