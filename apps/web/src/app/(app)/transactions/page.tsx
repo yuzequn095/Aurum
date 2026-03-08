@@ -154,7 +154,7 @@ export default function TransactionsPage() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [subcategoryId, setSubcategoryId] = useState<string | null>(null);
   const [subcategorySearch, setSubcategorySearch] = useState('');
-  const [amountCents, setAmountCents] = useState('100');
+  const [amountDollars, setAmountDollars] = useState('1.00');
   const [merchant, setMerchant] = useState('');
   const [note, setNote] = useState('');
   const [occurredAtDate, setOccurredAtDate] = useState(getTodayDateOnly());
@@ -400,13 +400,18 @@ export default function TransactionsPage() {
     event.preventDefault();
     setSubmitErr(null);
 
-    const parsedAmount = Number(amountCents);
+    const parsedAmountDollars = Number(amountDollars);
     if (!accountId) {
       setSubmitErr('Please select an account.');
       return;
     }
-    if (!Number.isInteger(parsedAmount) || parsedAmount < 1) {
-      setSubmitErr('amountCents must be an integer >= 1.');
+    if (!Number.isFinite(parsedAmountDollars) || parsedAmountDollars <= 0) {
+      setSubmitErr('Amount must be a positive number.');
+      return;
+    }
+    const parsedAmountCents = Math.round(parsedAmountDollars * 100);
+    if (parsedAmountCents < 1) {
+      setSubmitErr('Amount is too small.');
       return;
     }
     if ((createType === 'INCOME' || createType === 'EXPENSE') && (!categoryId || !subcategoryId)) {
@@ -419,7 +424,7 @@ export default function TransactionsPage() {
       const payload: CreateTxPayload = {
         accountId,
         type: createType,
-        amountCents: parsedAmount,
+        amountCents: parsedAmountCents,
         occurredAt: occurredAtDate,
         categoryId: categoryId || undefined,
         subcategoryId: subcategoryId || undefined,
@@ -436,7 +441,7 @@ export default function TransactionsPage() {
       toast.success('Transaction created.');
       await refreshTransactions();
       setCreateOpen(false);
-      setAmountCents('100');
+      setAmountDollars('1.00');
       setCreateType('EXPENSE');
       setMerchant('');
       setNote('');
@@ -853,13 +858,13 @@ export default function TransactionsPage() {
             </label>
 
             <label>
-              Amount (cents)
+              Amount (USD)
               <input
                 type="number"
-                min={1}
-                step={1}
-                value={amountCents}
-                onChange={(e) => setAmountCents(e.target.value)}
+                min={0.01}
+                step={0.01}
+                value={amountDollars}
+                onChange={(e) => setAmountDollars(e.target.value)}
                 style={{ width: '100%', marginTop: 4 }}
                 required
               />
