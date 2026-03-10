@@ -1,4 +1,5 @@
-import { manualChatGPTProvider } from '../providers';
+import { getAIProviderAdapter } from '../providers';
+import { DefaultAIRouter } from '../router';
 import type {
   AIExecutionMode,
   AIProviderKind,
@@ -18,12 +19,24 @@ export interface PreparedAIRunDraft {
 }
 
 export function prepareAIRun(input: AIRunInput): PreparedAIRunDraft {
-  const prepared = manualChatGPTProvider.prepareRun(input);
+  const router = new DefaultAIRouter();
+  const route = router.resolve(input.taskType);
+
+  const provider = getAIProviderAdapter(route.provider);
+  if (!provider) {
+    throw new Error(`No provider adapter found for provider: ${route.provider}`);
+  }
+
+  if (!provider.supports(input.taskType)) {
+    throw new Error(`Provider ${route.provider} does not support task type: ${input.taskType}`);
+  }
+
+  const prepared = provider.prepareRun(input);
 
   return {
     taskType: input.taskType,
-    provider: prepared.route.provider,
-    executionMode: prepared.route.executionMode,
+    provider: route.provider,
+    executionMode: route.executionMode,
     promptVersion: prepared.promptPack.promptVersion,
     status: 'prepared',
     inputSummary: prepared.inputSummary,
