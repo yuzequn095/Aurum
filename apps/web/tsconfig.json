@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@aurum/core": ["../../packages/core/src/index.ts"],
+      "@aurum/core/*": ["../../packages/core/src/*"]
     }
   },
   "include": [
