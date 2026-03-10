@@ -5,4 +5,5 @@ export * from './providers';
 export * from './router';
 export * from './repository';
 export * from './reports';
+export * from './score';
 export * from './application';
