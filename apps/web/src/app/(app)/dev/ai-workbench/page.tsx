@@ -4,11 +4,9 @@ import { useMemo, useState } from 'react';
 import {
   createPreparedAIRunRecord,
   getAIRunById,
-  InMemoryAIRunRepository,
   listAIRuns,
   submitManualResult,
   type AIRunRecord,
-  type PortfolioReportInput,
 } from '@aurum/core';
 import { PageContainer } from '@/components/layout/PageContainer';
 import {
@@ -19,50 +17,10 @@ import {
   CardTitle,
 } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { mockPortfolioReportInput } from '@/lib/ai/dev-seeds';
+import { aiRunRepository } from '@/lib/ai/repositories';
 
-const repository = new InMemoryAIRunRepository();
-
-const mockPortfolioInput: PortfolioReportInput = {
-  portfolioName: 'Aurum Validation Portfolio',
-  snapshotDate: '2026-03-09',
-  totalValue: 268450.22,
-  cashValue: 21450.22,
-  positions: [
-    {
-      symbol: 'VOO',
-      name: 'Vanguard S&P 500 ETF',
-      marketValue: 96400,
-      portfolioWeight: 35.9,
-      pnlPercent: 14.2,
-    },
-    {
-      symbol: 'QQQ',
-      name: 'Invesco QQQ Trust',
-      marketValue: 74250,
-      portfolioWeight: 27.7,
-      pnlPercent: 18.5,
-    },
-    {
-      symbol: 'AAPL',
-      name: 'Apple Inc.',
-      marketValue: 36800,
-      portfolioWeight: 13.7,
-      pnlPercent: 9.1,
-    },
-    {
-      symbol: 'MSFT',
-      name: 'Microsoft Corp.',
-      marketValue: 39550,
-      portfolioWeight: 14.7,
-      pnlPercent: 11.4,
-    },
-  ],
-  userContext: {
-    goal: 'Long-term growth with manageable concentration risk',
-    riskPreference: 'Moderate',
-    concerns: ['Overweight large-cap tech', 'Cash drag'],
-  },
-};
+const repository = aiRunRepository;
 
 function formatMoney(value: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -85,7 +43,7 @@ export default function AIWorkbenchPage() {
 
   const topPositions = useMemo(
     () =>
-      [...mockPortfolioInput.positions]
+      [...mockPortfolioReportInput.positions]
         .sort((a, b) => b.marketValue - a.marketValue)
         .slice(0, 3),
     [],
@@ -100,7 +58,7 @@ export default function AIWorkbenchPage() {
     try {
       const created = createPreparedAIRunRecord(repository, {
         taskType: 'portfolio_report_v1',
-        payload: mockPortfolioInput as unknown as Record<string, unknown>,
+        payload: mockPortfolioReportInput as unknown as Record<string, unknown>,
       });
       setSelectedRunId(created.id);
       setRawOutput('');
@@ -161,7 +119,7 @@ export default function AIWorkbenchPage() {
           Developer validation page for Milestone 11.1 manual AI workflow.
         </p>
         <p className='text-xs text-aurum-muted'>
-          Data is in-memory only and resets on full page refresh.
+          Data is persisted in browser localStorage and shared across AI pages.
         </p>
       </header>
 
@@ -179,18 +137,19 @@ export default function AIWorkbenchPage() {
           </CardHeader>
           <CardContent className='space-y-3 text-sm text-aurum-text'>
             <p>
-              <span className='font-medium'>Portfolio:</span> {mockPortfolioInput.portfolioName}
+              <span className='font-medium'>Portfolio:</span> {mockPortfolioReportInput.portfolioName}
             </p>
             <p>
-              <span className='font-medium'>Snapshot Date:</span> {mockPortfolioInput.snapshotDate}
+              <span className='font-medium'>Snapshot Date:</span>{' '}
+              {mockPortfolioReportInput.snapshotDate}
             </p>
             <p>
               <span className='font-medium'>Total Value:</span>{' '}
-              {formatMoney(mockPortfolioInput.totalValue)}
+              {formatMoney(mockPortfolioReportInput.totalValue)}
             </p>
             <p>
               <span className='font-medium'>Cash:</span>{' '}
-              {formatMoney(mockPortfolioInput.cashValue ?? 0)}
+              {formatMoney(mockPortfolioReportInput.cashValue ?? 0)}
             </p>
             <div>
               <p className='font-medium'>Top Positions:</p>
