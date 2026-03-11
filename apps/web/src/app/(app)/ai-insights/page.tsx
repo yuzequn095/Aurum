@@ -7,15 +7,11 @@ import {
   createPreparedAIRunRecord,
   createReportFromCompletedRun,
   getAIReportById,
-  InMemoryAIReportRepository,
-  InMemoryAIRunRepository,
   listAIReports,
   submitManualResult,
   type AIReportArtifact,
   type FinancialHealthInsight,
-  type FinancialHealthScoreInput,
   type FinancialHealthScoreResult,
-  type PortfolioReportInput,
 } from '@aurum/core';
 import { PageContainer } from '@/components/layout/PageContainer';
 import {
@@ -26,102 +22,15 @@ import {
   CardTitle,
 } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import {
+  mockFinancialHealthScoreInput,
+  mockPortfolioReportInput,
+  mockPortfolioReportManualOutput,
+} from '@/lib/ai/dev-seeds';
+import { aiReportRepository, aiRunRepository } from '@/lib/ai/repositories';
 
-const runRepository = new InMemoryAIRunRepository();
-const reportRepository = new InMemoryAIReportRepository();
-
-const mockPortfolioInput: PortfolioReportInput = {
-  portfolioName: 'Aurum Core Growth',
-  snapshotDate: '2026-03-09',
-  totalValue: 412860.73,
-  cashValue: 36840.73,
-  positions: [
-    {
-      symbol: 'VOO',
-      name: 'Vanguard S&P 500 ETF',
-      marketValue: 142400,
-      portfolioWeight: 34.5,
-      pnlPercent: 15.6,
-    },
-    {
-      symbol: 'QQQ',
-      name: 'Invesco QQQ Trust',
-      marketValue: 116220,
-      portfolioWeight: 28.1,
-      pnlPercent: 19.4,
-    },
-    {
-      symbol: 'MSFT',
-      name: 'Microsoft Corp.',
-      marketValue: 54990,
-      portfolioWeight: 13.3,
-      pnlPercent: 12.1,
-    },
-    {
-      symbol: 'BRK.B',
-      name: 'Berkshire Hathaway',
-      marketValue: 62410,
-      portfolioWeight: 15.1,
-      pnlPercent: 7.2,
-    },
-  ],
-  userContext: {
-    goal: 'Long-term growth with moderate volatility tolerance',
-    riskPreference: 'Moderate',
-    concerns: ['Large-cap concentration', 'Deploying excess cash'],
-  },
-};
-
-const mockManualOutput = `## Overall assessment
-The portfolio is growth-oriented with strong large-cap quality exposure and a healthy cash buffer. Current positioning supports long-term appreciation, but concentration in broad U.S. equity beta is notable.
-
-## Key strengths
-- Core exposure is anchored by diversified index ETFs with durable long-term return characteristics.
-- Position quality is high, with meaningful allocations to profitable, large-cap businesses.
-- Cash allocation provides optionality for staged deployment during market pullbacks.
-
-## Key risks
-- Portfolio sensitivity to U.S. mega-cap drawdowns remains elevated.
-- Correlation across top holdings may reduce diversification benefits during risk-off periods.
-- A prolonged rally could create opportunity cost if cash is not deployed gradually.
-
-## Concentration observations
-- The top two ETF positions account for a majority of invested assets.
-- Equity style bias leans toward growth and technology-linked earnings.
-- Consider whether this concentration aligns with downside tolerance.
-
-## Suggested next actions
-1. Define a cash deployment schedule over the next 8-12 weeks.
-2. Add one diversifying sleeve (international or defensive value exposure).
-3. Re-check target weights monthly and rebalance if concentration thresholds are exceeded.`;
-
-const mockFinancialHealthScoreInput: FinancialHealthScoreInput = {
-  snapshotDate: '2026-03-09',
-  totalAssets: 412860.73,
-  cashValue: 36840.73,
-  positions: [
-    {
-      symbol: 'VOO',
-      marketValue: 142400,
-      category: 'broad_market_equity',
-    },
-    {
-      symbol: 'QQQ',
-      marketValue: 116220,
-      category: 'growth_equity',
-    },
-    {
-      symbol: 'MSFT',
-      marketValue: 54990,
-      category: 'technology_equity',
-    },
-    {
-      symbol: 'BRK.B',
-      marketValue: 62410,
-      category: 'value_equity',
-    },
-  ],
-};
+const runRepository = aiRunRepository;
+const reportRepository = aiReportRepository;
 
 function formatDateTime(value: string): string {
   const date = new Date(value);
@@ -181,10 +90,10 @@ export default function AiInsightsPage() {
     try {
       const preparedRun = createPreparedAIRunRecord(runRepository, {
         taskType: 'portfolio_report_v1',
-        payload: mockPortfolioInput as unknown as Record<string, unknown>,
+        payload: mockPortfolioReportInput as unknown as Record<string, unknown>,
       });
 
-      submitManualResult(runRepository, preparedRun.id, mockManualOutput);
+      submitManualResult(runRepository, preparedRun.id, mockPortfolioReportManualOutput);
 
       const report = createReportFromCompletedRun(
         reportRepository,
@@ -234,7 +143,7 @@ export default function AiInsightsPage() {
               {isGenerating ? 'Generating...' : 'Generate Demo Report'}
             </Button>
             <span className='text-xs text-aurum-muted'>
-              In-memory repositories are used in this phase and reset on page refresh.
+              Run/report data is persisted in browser localStorage and shared across AI pages.
             </span>
           </div>
           {statusMessage ? (
