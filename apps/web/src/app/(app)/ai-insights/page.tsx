@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import {
+  buildFinancialHealthInsight,
+  calculateFinancialHealthScore,
   createPreparedAIRunRecord,
   createReportFromCompletedRun,
   getAIReportById,
@@ -10,6 +12,9 @@ import {
   listAIReports,
   submitManualResult,
   type AIReportArtifact,
+  type FinancialHealthInsight,
+  type FinancialHealthScoreInput,
+  type FinancialHealthScoreResult,
   type PortfolioReportInput,
 } from '@aurum/core';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -90,6 +95,34 @@ The portfolio is growth-oriented with strong large-cap quality exposure and a he
 2. Add one diversifying sleeve (international or defensive value exposure).
 3. Re-check target weights monthly and rebalance if concentration thresholds are exceeded.`;
 
+const mockFinancialHealthScoreInput: FinancialHealthScoreInput = {
+  snapshotDate: '2026-03-09',
+  totalAssets: 412860.73,
+  cashValue: 36840.73,
+  positions: [
+    {
+      symbol: 'VOO',
+      marketValue: 142400,
+      category: 'broad_market_equity',
+    },
+    {
+      symbol: 'QQQ',
+      marketValue: 116220,
+      category: 'growth_equity',
+    },
+    {
+      symbol: 'MSFT',
+      marketValue: 54990,
+      category: 'technology_equity',
+    },
+    {
+      symbol: 'BRK.B',
+      marketValue: 62410,
+      category: 'value_equity',
+    },
+  ],
+};
+
 function formatDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -117,11 +150,21 @@ function getStringMetadataValue(
   return typeof value === 'string' ? value : undefined;
 }
 
+function formatDimensionName(value: string): string {
+  return value
+    .split('_')
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+}
+
 export default function AiInsightsPage() {
   const [reports, setReports] = useState<AIReportArtifact[]>(() => listAIReports(reportRepository));
   const [selectedReportId, setSelectedReportId] = useState<string | null>(reports[0]?.id ?? null);
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [scoreStatusMessage, setScoreStatusMessage] = useState<string>('');
+  const [scoreResult, setScoreResult] = useState<FinancialHealthScoreResult | null>(null);
+  const [scoreInsight, setScoreInsight] = useState<FinancialHealthInsight | null>(null);
 
   const selectedReport = selectedReportId
     ? getAIReportById(reportRepository, selectedReportId)
@@ -161,6 +204,19 @@ export default function AiInsightsPage() {
 
   const selectedPortfolioName = getStringMetadataValue(selectedReport, 'portfolioName');
   const selectedSnapshotDate = getStringMetadataValue(selectedReport, 'snapshotDate');
+
+  const onGenerateDemoScore = () => {
+    try {
+      const result = calculateFinancialHealthScore(mockFinancialHealthScoreInput);
+      const insight = buildFinancialHealthInsight(result);
+
+      setScoreResult(result);
+      setScoreInsight(insight);
+      setScoreStatusMessage(`Demo score generated at ${formatDateTime(result.createdAt)}`);
+    } catch (error) {
+      setScoreStatusMessage(error instanceof Error ? error.message : 'Failed to generate demo score');
+    }
+  };
 
   return (
     <PageContainer className='space-y-6'>
@@ -278,6 +334,153 @@ export default function AiInsightsPage() {
             )}
           </CardContent>
         </Card>
+      </section>
+
+      <section className='space-y-6'>
+        <Card>
+          <CardHeader className='space-y-3'>
+            <div className='space-y-1'>
+              <CardTitle>Financial Health Score v1</CardTitle>
+              <CardDescription>
+                Deterministic score and deterministic insight generated from shared core logic.
+              </CardDescription>
+            </div>
+            <div className='flex flex-wrap items-center gap-2'>
+              <Button variant='primary' onClick={onGenerateDemoScore}>
+                Generate Demo Score
+              </Button>
+              <span className='text-xs text-aurum-muted'>
+                Uses mock score input and in-memory component state only.
+              </span>
+            </div>
+            {scoreStatusMessage ? (
+              <p className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+                {scoreStatusMessage}
+              </p>
+            ) : null}
+          </CardHeader>
+          <CardContent>
+            {!scoreResult || !scoreInsight ? (
+              <p className='text-sm text-aurum-muted'>
+                Click "Generate Demo Score" to run the deterministic Financial Health Score flow.
+              </p>
+            ) : (
+              <div className='grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4'>
+                <div>
+                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Total Score</p>
+                  <p className='text-lg font-semibold text-aurum-text'>
+                    {scoreResult.totalScore}/{scoreResult.maxScore}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Grade</p>
+                  <p className='text-lg font-semibold capitalize text-aurum-text'>
+                    {scoreResult.grade.replace('_', ' ')}
+                  </p>
+                </div>
+                <div className='md:col-span-2'>
+                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Headline</p>
+                  <p className='text-aurum-text'>{scoreInsight.headline}</p>
+                </div>
+                <div className='md:col-span-2 xl:col-span-4'>
+                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Summary</p>
+                  <p className='text-aurum-text'>{scoreInsight.summary}</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Dimension Breakdown</CardTitle>
+            <CardDescription>
+              Per-dimension deterministic scores, labels, and reasoning from the score engine.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='space-y-3'>
+            {!scoreResult ? (
+              <p className='text-sm text-aurum-muted'>No score result yet.</p>
+            ) : (
+              scoreResult.breakdown.map((item) => (
+                <div
+                  key={item.dimension}
+                  className='rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3 text-sm'
+                >
+                  <div className='flex flex-wrap items-center justify-between gap-2'>
+                    <p className='font-medium text-aurum-text'>
+                      {formatDimensionName(item.dimension)}
+                    </p>
+                    <p className='text-xs text-aurum-muted'>
+                      {item.score}/{item.maxScore}
+                    </p>
+                  </div>
+                  <p className='mt-1 text-xs font-medium text-aurum-text'>{item.label}</p>
+                  <p className='mt-1 text-xs text-aurum-muted'>{item.reason}</p>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <section className='grid grid-cols-1 gap-6 xl:grid-cols-3'>
+          <Card>
+            <CardHeader>
+              <CardTitle>Strengths</CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-2'>
+              {!scoreInsight ? (
+                <p className='text-sm text-aurum-muted'>No insight yet.</p>
+              ) : scoreInsight.strengths.length === 0 ? (
+                <p className='text-sm text-aurum-muted'>No standout strengths identified.</p>
+              ) : (
+                scoreInsight.strengths.map((item) => (
+                  <p key={item} className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+                    {item}
+                  </p>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Concerns</CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-2'>
+              {!scoreInsight ? (
+                <p className='text-sm text-aurum-muted'>No insight yet.</p>
+              ) : scoreInsight.concerns.length === 0 ? (
+                <p className='text-sm text-aurum-muted'>No major concerns identified.</p>
+              ) : (
+                scoreInsight.concerns.map((item) => (
+                  <p key={item} className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+                    {item}
+                  </p>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Next Actions</CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-2'>
+              {!scoreInsight ? (
+                <p className='text-sm text-aurum-muted'>No insight yet.</p>
+              ) : scoreInsight.nextActions.length === 0 ? (
+                <p className='text-sm text-aurum-muted'>No urgent action required.</p>
+              ) : (
+                scoreInsight.nextActions.map((item) => (
+                  <p key={item} className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+                    {item}
+                  </p>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </section>
       </section>
     </PageContainer>
   );
