@@ -26,6 +26,22 @@ enum AuthProvider {
   PHONE
 }
 
+enum PortfolioSnapshotSourceType {
+  MANUAL
+  CSV_IMPORT
+  BROKER_SYNC
+  OTHER
+}
+
+enum PortfolioAssetCategoryType {
+  CASH
+  EQUITY
+  ETF
+  CRYPTO
+  FUND
+  OTHER
+}
+
 model User {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
@@ -170,4 +186,42 @@ model ImportLog {
 
   @@unique([userId, kind, contentHash])
   @@index([userId, importedAt])
+}
+
+model PortfolioSnapshotRecord {
+  id                String                     @id @default(cuid())
+  portfolioName     String?
+  sourceType        PortfolioSnapshotSourceType?
+  sourceLabel       String?
+  snapshotDate      DateTime
+  valuationCurrency String?
+  totalValue        Decimal
+  cashValue         Decimal?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  positions PortfolioPositionRecord[]
+
+  @@index([snapshotDate])
+  @@index([createdAt])
+}
+
+model PortfolioPositionRecord {
+  id              String                    @id @default(cuid())
+  snapshotId      String
+  symbol          String
+  name            String?
+  quantity        Decimal?
+  marketValue     Decimal
+  portfolioWeight Decimal?
+  costBasis       Decimal?
+  pnlPercent      Decimal?
+  category        PortfolioAssetCategoryType?
+  sourceAccountId String?
+  notes           String?
+
+  snapshot PortfolioSnapshotRecord @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@index([snapshotId])
+  @@index([symbol])
 }

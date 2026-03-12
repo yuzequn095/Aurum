@@ -14,6 +14,10 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    "paths": {
+      "@aurum/core": ["../../packages/core/src/index.ts"],
+      "@aurum/core/*": ["../../packages/core/src/*"]
+    },
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,

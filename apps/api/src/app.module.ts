@@ -11,6 +11,7 @@ import { AuthModule } from './auth/auth.module';
 import { SubcategoriesModule } from './subcategories/subcategories.module';
 import { ExportModule } from './export/export.module';
 import { ImportModule } from './import/import.module';
+import { PortfolioSnapshotsModule } from './portfolio-snapshots/portfolio-snapshots.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ImportModule } from './import/import.module';
     AiModule,
     ExportModule,
     ImportModule,
+    PortfolioSnapshotsModule,
   ],
   controllers: [AppController],
 })
