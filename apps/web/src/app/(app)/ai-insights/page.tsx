@@ -5,6 +5,7 @@ import {
   buildFinancialHealthInsight,
   calculateFinancialHealthScore,
   CsvPortfolioSnapshotAdapter,
+  portfolioSnapshotToReportInput,
   createPreparedAIRunRecord,
   createReportFromCompletedRun,
   getAIReportById,
@@ -27,7 +28,6 @@ import { Button } from '@/components/ui/Button';
 import {
   mockFinancialHealthScoreInput,
   mockPortfolioCsvImportInput,
-  mockPortfolioReportInput,
   mockPortfolioReportManualOutput,
 } from '@/lib/ai/dev-seeds';
 import { aiReportRepository, aiRunRepository } from '@/lib/ai/repositories';
@@ -144,9 +144,15 @@ export default function AiInsightsPage() {
     setStatusMessage('');
 
     try {
+      if (!selectedSnapshot) {
+        setStatusMessage('Select a portfolio snapshot before generating a report.');
+        return;
+      }
+
+      const reportInput = portfolioSnapshotToReportInput(selectedSnapshot);
       const preparedRun = createPreparedAIRunRecord(runRepository, {
         taskType: 'portfolio_report_v1',
-        payload: mockPortfolioReportInput as unknown as Record<string, unknown>,
+        payload: reportInput as unknown as Record<string, unknown>,
       });
 
       submitManualResult(runRepository, preparedRun.id, mockPortfolioReportManualOutput);
@@ -159,7 +165,7 @@ export default function AiInsightsPage() {
 
       refreshReports();
       setSelectedReportId(report.id);
-      setStatusMessage(`Demo report generated: ${report.id}`);
+      setStatusMessage(`Snapshot-driven demo report generated: ${report.id}`);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Failed to generate demo report');
     } finally {
@@ -219,7 +225,7 @@ export default function AiInsightsPage() {
           </div>
           <div className='flex flex-wrap items-center gap-2'>
             <Button variant='primary' onClick={onGenerateDemoReport} disabled={isGenerating}>
-              {isGenerating ? 'Generating...' : 'Generate Demo Report'}
+              {isGenerating ? 'Generating...' : 'Generate Report from Selected Snapshot'}
             </Button>
             <span className='text-xs text-aurum-muted'>
               Run/report data is persisted in browser localStorage and shared across AI pages.
