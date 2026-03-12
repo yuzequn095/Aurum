@@ -5,4 +5,5 @@ export interface AIReportRepository {
   update(report: AIReportArtifact): AIReportArtifact;
   getById(id: string): AIReportArtifact | undefined;
   list(): AIReportArtifact[];
+  listBySourceSnapshotId(sourceSnapshotId: string): AIReportArtifact[];
 }

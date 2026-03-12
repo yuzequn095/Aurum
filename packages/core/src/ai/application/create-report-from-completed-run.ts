@@ -50,6 +50,9 @@ export function createReportFromCompletedRun(
   reportRepository: AIReportRepository,
   runRepository: AIRunRepository,
   runId: string,
+  options?: {
+    sourceSnapshotId?: string;
+  },
 ): AIReportArtifact {
   const run = runRepository.getById(runId);
 
@@ -74,6 +77,7 @@ export function createReportFromCompletedRun(
     reportType: deriveReportType(run.taskType),
     taskType: run.taskType,
     sourceRunId: run.id,
+    sourceSnapshotId: options?.sourceSnapshotId,
     title: deriveReportTitle(run),
     contentMarkdown: run.rawOutput,
     promptVersion: run.promptVersion,

@@ -7,6 +7,7 @@ export interface AIReportArtifact {
   reportType: AIReportType;
   taskType: AITaskType;
   sourceRunId: string;
+  sourceSnapshotId?: string;
   title: string;
   contentMarkdown: string;
   promptVersion: string;

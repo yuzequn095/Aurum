@@ -77,4 +77,10 @@ export class LocalStorageAIReportRepository implements AIReportRepository {
       return bCreatedAt.localeCompare(aCreatedAt);
     });
   }
+
+  listBySourceSnapshotId(sourceSnapshotId: string): AIReportArtifact[] {
+    return this.list().filter(
+      (report) => report.sourceSnapshotId === sourceSnapshotId,
+    );
+  }
 }
