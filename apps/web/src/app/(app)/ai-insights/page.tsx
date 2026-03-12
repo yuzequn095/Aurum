@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   buildFinancialHealthInsight,
   calculateFinancialHealthScore,
@@ -12,6 +12,7 @@ import {
   type AIReportArtifact,
   type FinancialHealthInsight,
   type FinancialHealthScoreResult,
+  type PortfolioSnapshot,
 } from '@aurum/core';
 import { PageContainer } from '@/components/layout/PageContainer';
 import {
@@ -28,9 +29,17 @@ import {
   mockPortfolioReportManualOutput,
 } from '@/lib/ai/dev-seeds';
 import { aiReportRepository, aiRunRepository } from '@/lib/ai/repositories';
+import { listPortfolioSnapshots } from '@/lib/api/portfolio-snapshots';
 
 const runRepository = aiRunRepository;
 const reportRepository = aiReportRepository;
+
+function formatMoney(value: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(value);
+}
 
 function formatDateTime(value: string): string {
   const date = new Date(value);
@@ -67,6 +76,10 @@ function formatDimensionName(value: string): string {
 }
 
 export default function AiInsightsPage() {
+  const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null);
+  const [isSnapshotsLoading, setIsSnapshotsLoading] = useState(false);
+  const [snapshotsStatusMessage, setSnapshotsStatusMessage] = useState('');
   const [reports, setReports] = useState<AIReportArtifact[]>(() => listAIReports(reportRepository));
   const [selectedReportId, setSelectedReportId] = useState<string | null>(reports[0]?.id ?? null);
   const [statusMessage, setStatusMessage] = useState<string>('');
@@ -78,6 +91,43 @@ export default function AiInsightsPage() {
   const selectedReport = selectedReportId
     ? getAIReportById(reportRepository, selectedReportId)
     : undefined;
+  const selectedSnapshot = selectedSnapshotId
+    ? snapshots.find((snapshot) => snapshot.id === selectedSnapshotId)
+    : undefined;
+
+  const loadSnapshots = async () => {
+    setIsSnapshotsLoading(true);
+    setSnapshotsStatusMessage('');
+
+    try {
+      const nextSnapshots = await listPortfolioSnapshots();
+      setSnapshots(nextSnapshots);
+
+      if (nextSnapshots.length === 0) {
+        setSelectedSnapshotId(null);
+        setSnapshotsStatusMessage('No persisted snapshots found yet.');
+        return;
+      }
+
+      setSelectedSnapshotId((currentSelectedId) => {
+        const hasCurrent = currentSelectedId
+          ? nextSnapshots.some((snapshot) => snapshot.id === currentSelectedId)
+          : false;
+        return hasCurrent ? currentSelectedId : nextSnapshots[0].id ?? null;
+      });
+      setSnapshotsStatusMessage(`Loaded ${nextSnapshots.length} persisted snapshots.`);
+    } catch (error) {
+      setSnapshotsStatusMessage(
+        error instanceof Error ? error.message : 'Failed to load snapshots from API.',
+      );
+    } finally {
+      setIsSnapshotsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadSnapshots();
+  }, []);
 
   const refreshReports = () => {
     setReports(listAIReports(reportRepository));
@@ -113,6 +163,8 @@ export default function AiInsightsPage() {
 
   const selectedPortfolioName = getStringMetadataValue(selectedReport, 'portfolioName');
   const selectedSnapshotDate = getStringMetadataValue(selectedReport, 'snapshotDate');
+  const selectedSnapshotPortfolioName =
+    selectedSnapshot?.metadata.portfolioName ?? 'Untitled Portfolio';
 
   const onGenerateDemoScore = () => {
     try {
@@ -153,6 +205,102 @@ export default function AiInsightsPage() {
           ) : null}
         </CardHeader>
       </Card>
+
+      <section className='grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]'>
+        <Card>
+          <CardHeader className='space-y-3'>
+            <div className='space-y-1'>
+              <CardTitle>Portfolio Snapshots</CardTitle>
+              <CardDescription>
+                Persisted canonical snapshots from API, used as upcoming analysis source.
+              </CardDescription>
+            </div>
+            <div className='flex items-center gap-2'>
+              <Button
+                variant='secondary'
+                onClick={() => void loadSnapshots()}
+                disabled={isSnapshotsLoading}
+              >
+                {isSnapshotsLoading ? 'Loading...' : 'Refresh Snapshots'}
+              </Button>
+            </div>
+            {snapshotsStatusMessage ? (
+              <p className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+                {snapshotsStatusMessage}
+              </p>
+            ) : null}
+          </CardHeader>
+          <CardContent className='space-y-2'>
+            {snapshots.length === 0 ? (
+              <p className='text-sm text-aurum-muted'>No snapshots available.</p>
+            ) : (
+              snapshots.map((snapshot) => (
+                <button
+                  key={snapshot.id ?? `${snapshot.metadata.snapshotDate}-${snapshot.totalValue}`}
+                  type='button'
+                  onClick={() => setSelectedSnapshotId(snapshot.id ?? null)}
+                  className={`w-full rounded-[12px] border px-3 py-2 text-left text-xs transition ${
+                    snapshot.id === selectedSnapshotId
+                      ? 'border-[var(--aurum-accent)] bg-[var(--aurum-accent)]/10'
+                      : 'border-[var(--aurum-border)] bg-[var(--aurum-surface)] hover:bg-[var(--aurum-surface-alt)]'
+                  }`}
+                >
+                  <p className='font-medium text-aurum-text'>
+                    {snapshot.metadata.portfolioName ?? 'Untitled Portfolio'}
+                  </p>
+                  <p className='text-aurum-muted'>date: {snapshot.metadata.snapshotDate}</p>
+                  <p className='text-aurum-muted'>positions: {snapshot.positions.length}</p>
+                </button>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Selected Snapshot Summary</CardTitle>
+            <CardDescription>
+              Snapshot selection foundation for upcoming snapshot-driven report/score flow.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            {!selectedSnapshot ? (
+              <p className='text-sm text-aurum-muted'>
+                Select a snapshot from the list.
+              </p>
+            ) : (
+              <div className='grid grid-cols-1 gap-3 text-sm md:grid-cols-2'>
+                <div>
+                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>
+                    Portfolio Name
+                  </p>
+                  <p className='text-aurum-text'>{selectedSnapshotPortfolioName}</p>
+                </div>
+                <div>
+                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Snapshot Date</p>
+                  <p className='text-aurum-text'>{selectedSnapshot.metadata.snapshotDate}</p>
+                </div>
+                <div>
+                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Total Value</p>
+                  <p className='text-aurum-text'>{formatMoney(selectedSnapshot.totalValue)}</p>
+                </div>
+                <div>
+                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Cash Value</p>
+                  <p className='text-aurum-text'>
+                    {selectedSnapshot.cashValue === undefined
+                      ? 'N/A'
+                      : formatMoney(selectedSnapshot.cashValue)}
+                  </p>
+                </div>
+                <div>
+                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Positions Count</p>
+                  <p className='text-aurum-text'>{selectedSnapshot.positions.length}</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
 
       <section className='grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]'>
         <Card>
