@@ -5,6 +5,7 @@ import {
   buildFinancialHealthInsight,
   calculateFinancialHealthScore,
   CsvPortfolioSnapshotAdapter,
+  portfolioSnapshotToFinancialHealthScoreInput,
   portfolioSnapshotToReportInput,
   createPreparedAIRunRecord,
   createReportFromCompletedRun,
@@ -26,7 +27,6 @@ import {
 } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import {
-  mockFinancialHealthScoreInput,
   mockPortfolioCsvImportInput,
   mockPortfolioReportManualOutput,
 } from '@/lib/ai/dev-seeds';
@@ -201,12 +201,20 @@ export default function AiInsightsPage() {
 
   const onGenerateDemoScore = () => {
     try {
-      const result = calculateFinancialHealthScore(mockFinancialHealthScoreInput);
+      if (!selectedSnapshot) {
+        setScoreStatusMessage('Select a portfolio snapshot before generating a score.');
+        return;
+      }
+
+      const scoreInput = portfolioSnapshotToFinancialHealthScoreInput(selectedSnapshot);
+      const result = calculateFinancialHealthScore(scoreInput);
       const insight = buildFinancialHealthInsight(result);
 
       setScoreResult(result);
       setScoreInsight(insight);
-      setScoreStatusMessage(`Demo score generated at ${formatDateTime(result.createdAt)}`);
+      setScoreStatusMessage(
+        `Snapshot-driven score generated at ${formatDateTime(result.createdAt)}`,
+      );
     } catch (error) {
       setScoreStatusMessage(error instanceof Error ? error.message : 'Failed to generate demo score');
     }
@@ -444,10 +452,10 @@ export default function AiInsightsPage() {
             </div>
             <div className='flex flex-wrap items-center gap-2'>
               <Button variant='primary' onClick={onGenerateDemoScore}>
-                Generate Demo Score
+                Generate Score from Selected Snapshot
               </Button>
               <span className='text-xs text-aurum-muted'>
-                Uses mock score input and in-memory component state only.
+                Uses selected persisted snapshot and in-memory component state only.
               </span>
             </div>
             {scoreStatusMessage ? (
