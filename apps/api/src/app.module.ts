@@ -12,6 +12,7 @@ import { SubcategoriesModule } from './subcategories/subcategories.module';
 import { ExportModule } from './export/export.module';
 import { ImportModule } from './import/import.module';
 import { PortfolioSnapshotsModule } from './portfolio-snapshots/portfolio-snapshots.module';
+import { AIReportsModule } from './ai-reports/ai-reports.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { PortfolioSnapshotsModule } from './portfolio-snapshots/portfolio-snapsh
     ExportModule,
     ImportModule,
     PortfolioSnapshotsModule,
+    AIReportsModule,
   ],
   controllers: [AppController],
 })

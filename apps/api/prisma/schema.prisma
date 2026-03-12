@@ -201,6 +201,7 @@ model PortfolioSnapshotRecord {
   updatedAt         DateTime                   @updatedAt
 
   positions PortfolioPositionRecord[]
+  reports   AIReportRecord[]
 
   @@index([snapshotDate])
   @@index([createdAt])
@@ -224,4 +225,24 @@ model PortfolioPositionRecord {
 
   @@index([snapshotId])
   @@index([symbol])
+}
+
+model AIReportRecord {
+  id               String   @id @default(cuid())
+  reportType       String
+  taskType         String
+  sourceRunId      String
+  sourceSnapshotId String?
+  title            String
+  contentMarkdown  String
+  promptVersion    String
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  sourceSnapshot PortfolioSnapshotRecord? @relation(fields: [sourceSnapshotId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([sourceRunId])
+  @@index([sourceSnapshotId])
 }
