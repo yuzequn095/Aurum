@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   buildFinancialHealthInsight,
   calculateFinancialHealthScore,
+  CsvPortfolioSnapshotAdapter,
   createPreparedAIRunRecord,
   createReportFromCompletedRun,
   getAIReportById,
@@ -25,11 +26,15 @@ import {
 import { Button } from '@/components/ui/Button';
 import {
   mockFinancialHealthScoreInput,
+  mockPortfolioCsvImportInput,
   mockPortfolioReportInput,
   mockPortfolioReportManualOutput,
 } from '@/lib/ai/dev-seeds';
 import { aiReportRepository, aiRunRepository } from '@/lib/ai/repositories';
-import { listPortfolioSnapshots } from '@/lib/api/portfolio-snapshots';
+import {
+  createPortfolioSnapshot,
+  listPortfolioSnapshots,
+} from '@/lib/api/portfolio-snapshots';
 
 const runRepository = aiRunRepository;
 const reportRepository = aiReportRepository;
@@ -79,6 +84,7 @@ export default function AiInsightsPage() {
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null);
   const [isSnapshotsLoading, setIsSnapshotsLoading] = useState(false);
+  const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
   const [snapshotsStatusMessage, setSnapshotsStatusMessage] = useState('');
   const [reports, setReports] = useState<AIReportArtifact[]>(() => listAIReports(reportRepository));
   const [selectedReportId, setSelectedReportId] = useState<string | null>(reports[0]?.id ?? null);
@@ -166,6 +172,27 @@ export default function AiInsightsPage() {
   const selectedSnapshotPortfolioName =
     selectedSnapshot?.metadata.portfolioName ?? 'Untitled Portfolio';
 
+  const onCreateDemoSnapshot = async () => {
+    setIsCreatingSnapshot(true);
+    setSnapshotsStatusMessage('');
+
+    try {
+      const adapter = new CsvPortfolioSnapshotAdapter();
+      const snapshot = adapter.toSnapshot(mockPortfolioCsvImportInput);
+      const created = await createPortfolioSnapshot(snapshot);
+
+      await loadSnapshots();
+      setSelectedSnapshotId(created.id ?? null);
+      setSnapshotsStatusMessage(`Demo snapshot created: ${created.id}`);
+    } catch (error) {
+      setSnapshotsStatusMessage(
+        error instanceof Error ? error.message : 'Failed to create demo snapshot.',
+      );
+    } finally {
+      setIsCreatingSnapshot(false);
+    }
+  };
+
   const onGenerateDemoScore = () => {
     try {
       const result = calculateFinancialHealthScore(mockFinancialHealthScoreInput);
@@ -217,9 +244,16 @@ export default function AiInsightsPage() {
             </div>
             <div className='flex items-center gap-2'>
               <Button
+                variant='primary'
+                onClick={() => void onCreateDemoSnapshot()}
+                disabled={isCreatingSnapshot || isSnapshotsLoading}
+              >
+                {isCreatingSnapshot ? 'Creating...' : 'Create Demo Snapshot'}
+              </Button>
+              <Button
                 variant='secondary'
                 onClick={() => void loadSnapshots()}
-                disabled={isSnapshotsLoading}
+                disabled={isSnapshotsLoading || isCreatingSnapshot}
               >
                 {isSnapshotsLoading ? 'Loading...' : 'Refresh Snapshots'}
               </Button>
