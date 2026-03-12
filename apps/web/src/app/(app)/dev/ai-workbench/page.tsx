@@ -2,10 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import {
+  calculateFinancialHealthScore,
+  CsvPortfolioSnapshotAdapter,
   createReportFromCompletedRun,
   createPreparedAIRunRecord,
   getAIRunById,
   listAIRuns,
+  portfolioSnapshotToFinancialHealthScoreInput,
+  portfolioSnapshotToReportInput,
   submitManualResult,
   type AIRunRecord,
 } from '@aurum/core';
@@ -18,10 +22,25 @@ import {
   CardTitle,
 } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { mockPortfolioReportInput } from '@/lib/ai/dev-seeds';
+import {
+  mockPortfolioCsvImportInput,
+  mockPortfolioReportInput,
+} from '@/lib/ai/dev-seeds';
 import { aiReportRepository, aiRunRepository } from '@/lib/ai/repositories';
 
 const repository = aiRunRepository;
+
+interface IngestionValidationResult {
+  sourceType: string;
+  snapshotDate: string;
+  positionCount: number;
+  totalValue: number;
+  cashValue?: number;
+  mappedReportPortfolioName: string;
+  mappedScoreTotalAssets: number;
+  scoreTotal: number;
+  scoreGrade: string;
+}
 
 function formatMoney(value: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -35,6 +54,8 @@ export default function AIWorkbenchPage() {
   const [selectedRunId, setSelectedRunId] = useState<string | null>(runs[0]?.id ?? null);
   const [rawOutput, setRawOutput] = useState('');
   const [statusMessage, setStatusMessage] = useState<string>('');
+  const [ingestionValidation, setIngestionValidation] =
+    useState<IngestionValidationResult | null>(null);
 
   const selectedRun = selectedRunId ? getAIRunById(repository, selectedRunId) : undefined;
   const systemMessage =
@@ -138,6 +159,31 @@ export default function AIWorkbenchPage() {
       setStatusMessage(`Report generated from run ${selectedRunId}: ${report.id}`);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Failed to generate report');
+    }
+  };
+
+  const onRunIngestionValidation = () => {
+    try {
+      const adapter = new CsvPortfolioSnapshotAdapter();
+      const snapshot = adapter.toSnapshot(mockPortfolioCsvImportInput);
+      const reportInput = portfolioSnapshotToReportInput(snapshot);
+      const scoreInput = portfolioSnapshotToFinancialHealthScoreInput(snapshot);
+      const scoreResult = calculateFinancialHealthScore(scoreInput);
+
+      setIngestionValidation({
+        sourceType: snapshot.metadata.sourceType ?? adapter.sourceType,
+        snapshotDate: snapshot.metadata.snapshotDate,
+        positionCount: snapshot.positions.length,
+        totalValue: snapshot.totalValue,
+        cashValue: snapshot.cashValue,
+        mappedReportPortfolioName: reportInput.portfolioName,
+        mappedScoreTotalAssets: scoreInput.totalAssets,
+        scoreTotal: scoreResult.totalScore,
+        scoreGrade: scoreResult.grade,
+      });
+      setStatusMessage('Ingestion validation completed successfully.');
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : 'Failed to run ingestion validation');
     }
   };
 
@@ -312,6 +358,62 @@ export default function AIWorkbenchPage() {
               </pre>
             </div>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>5. Ingestion Validation</CardTitle>
+          <CardDescription>
+            Validate adapter and mapper chain: CSV-shaped input to snapshot, report input, and
+            score input.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='space-y-3'>
+          <Button variant='secondary' onClick={onRunIngestionValidation}>
+            Run Ingestion Validation
+          </Button>
+
+          {!ingestionValidation ? (
+            <p className='text-sm text-aurum-muted'>
+              No ingestion validation result yet.
+            </p>
+          ) : (
+            <div className='grid grid-cols-1 gap-2 text-sm md:grid-cols-2 xl:grid-cols-4'>
+              <p>
+                <span className='font-medium'>Source Type:</span>{' '}
+                {ingestionValidation.sourceType}
+              </p>
+              <p>
+                <span className='font-medium'>Snapshot Date:</span>{' '}
+                {ingestionValidation.snapshotDate}
+              </p>
+              <p>
+                <span className='font-medium'>Position Count:</span>{' '}
+                {ingestionValidation.positionCount}
+              </p>
+              <p>
+                <span className='font-medium'>Total Value:</span>{' '}
+                {formatMoney(ingestionValidation.totalValue)}
+              </p>
+              <p>
+                <span className='font-medium'>Cash Value:</span>{' '}
+                {formatMoney(ingestionValidation.cashValue ?? 0)}
+              </p>
+              <p>
+                <span className='font-medium'>Mapped Report Name:</span>{' '}
+                {ingestionValidation.mappedReportPortfolioName}
+              </p>
+              <p>
+                <span className='font-medium'>Mapped Score Total Assets:</span>{' '}
+                {formatMoney(ingestionValidation.mappedScoreTotalAssets)}
+              </p>
+              <p>
+                <span className='font-medium'>Score Result:</span>{' '}
+                {ingestionValidation.scoreTotal} ({ingestionValidation.scoreGrade})
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </PageContainer>

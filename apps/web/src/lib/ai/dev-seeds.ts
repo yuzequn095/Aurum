@@ -1,4 +1,8 @@
-import type { FinancialHealthScoreInput, PortfolioReportInput } from '@aurum/core';
+import type {
+  FinancialHealthScoreInput,
+  PortfolioCsvImportInput,
+  PortfolioReportInput,
+} from '@aurum/core';
 
 export const mockPortfolioReportInput: PortfolioReportInput = {
   portfolioName: 'Aurum Core Growth',
@@ -89,6 +93,48 @@ export const mockFinancialHealthScoreInput: FinancialHealthScoreInput = {
       symbol: 'BRK.B',
       marketValue: 62410,
       category: 'value_equity',
+    },
+  ],
+};
+
+export const mockPortfolioCsvImportInput: PortfolioCsvImportInput = {
+  portfolioName: 'Aurum Core Growth',
+  sourceLabel: 'Demo CSV Portfolio Export',
+  snapshotDate: '2026-03-09',
+  valuationCurrency: 'USD',
+  cashValue: 36840.73,
+  rows: [
+    {
+      symbol: 'VOO',
+      name: 'Vanguard S&P 500 ETF',
+      quantity: 270.1,
+      marketValue: 142400,
+      portfolioWeight: 34.5,
+      category: 'etf',
+    },
+    {
+      symbol: 'QQQ',
+      name: 'Invesco QQQ Trust',
+      quantity: 236.4,
+      marketValue: 116220,
+      portfolioWeight: 28.1,
+      category: 'etf',
+    },
+    {
+      symbol: 'MSFT',
+      name: 'Microsoft Corp.',
+      quantity: 143.5,
+      marketValue: 54990,
+      portfolioWeight: 13.3,
+      category: 'equity',
+    },
+    {
+      symbol: 'BRK.B',
+      name: 'Berkshire Hathaway',
+      quantity: 132.8,
+      marketValue: 62410,
+      portfolioWeight: 15.1,
+      category: 'equity',
     },
   ],
 };
