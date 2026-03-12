@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import {
+  createReportFromCompletedRun,
   createPreparedAIRunRecord,
   getAIRunById,
   listAIRuns,
@@ -18,7 +19,7 @@ import {
 } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { mockPortfolioReportInput } from '@/lib/ai/dev-seeds';
-import { aiRunRepository } from '@/lib/ai/repositories';
+import { aiReportRepository, aiRunRepository } from '@/lib/ai/repositories';
 
 const repository = aiRunRepository;
 
@@ -108,6 +109,35 @@ export default function AIWorkbenchPage() {
       refreshRuns();
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Failed to submit result');
+    }
+  };
+
+  const onGenerateReportFromRun = () => {
+    if (!selectedRunId) {
+      setStatusMessage('Select a run first.');
+      return;
+    }
+
+    const run = getAIRunById(repository, selectedRunId);
+    if (!run) {
+      setStatusMessage(`AI run not found for id: ${selectedRunId}`);
+      return;
+    }
+
+    if (run.status !== 'completed') {
+      setStatusMessage('Run must be completed before generating a report.');
+      return;
+    }
+
+    try {
+      const report = createReportFromCompletedRun(
+        aiReportRepository,
+        repository,
+        selectedRunId,
+      );
+      setStatusMessage(`Report generated from run ${selectedRunId}: ${report.id}`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : 'Failed to generate report');
     }
   };
 
@@ -269,6 +299,9 @@ export default function AIWorkbenchPage() {
           <div className='flex gap-2'>
             <Button variant='primary' onClick={onSubmitManualResult}>
               Submit Manual Result
+            </Button>
+            <Button variant='secondary' onClick={onGenerateReportFromRun}>
+              Generate Report from Run
             </Button>
           </div>
           {selectedRun?.rawOutput ? (
