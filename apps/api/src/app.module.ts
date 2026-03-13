@@ -13,6 +13,7 @@ import { ExportModule } from './export/export.module';
 import { ImportModule } from './import/import.module';
 import { PortfolioSnapshotsModule } from './portfolio-snapshots/portfolio-snapshots.module';
 import { AIReportsModule } from './ai-reports/ai-reports.module';
+import { FinancialHealthScoresModule } from './financial-health-scores/financial-health-scores.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AIReportsModule } from './ai-reports/ai-reports.module';
     ImportModule,
     PortfolioSnapshotsModule,
     AIReportsModule,
+    FinancialHealthScoresModule,
   ],
   controllers: [AppController],
 })
