@@ -9,8 +9,6 @@ import {
   portfolioSnapshotToReportInput,
   createPreparedAIRunRecord,
   createReportFromCompletedRun,
-  getAIReportById,
-  listAIReports,
   submitManualResult,
   type AIReportArtifact,
   type FinancialHealthInsight,
@@ -35,6 +33,11 @@ import {
   createPortfolioSnapshot,
   listPortfolioSnapshots,
 } from '@/lib/api/portfolio-snapshots';
+import {
+  createAIReport,
+  getAIReportById,
+  listAIReportsBySourceSnapshotId,
+} from '@/lib/api/ai-reports';
 
 const runRepository = aiRunRepository;
 const reportRepository = aiReportRepository;
@@ -86,17 +89,17 @@ export default function AiInsightsPage() {
   const [isSnapshotsLoading, setIsSnapshotsLoading] = useState(false);
   const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
   const [snapshotsStatusMessage, setSnapshotsStatusMessage] = useState('');
-  const [reports, setReports] = useState<AIReportArtifact[]>(() => listAIReports(reportRepository));
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(reports[0]?.id ?? null);
+  const [reports, setReports] = useState<AIReportArtifact[]>([]);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [isReportsLoading, setIsReportsLoading] = useState(false);
+  const [reportsStatusMessage, setReportsStatusMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [scoreStatusMessage, setScoreStatusMessage] = useState<string>('');
   const [scoreResult, setScoreResult] = useState<FinancialHealthScoreResult | null>(null);
   const [scoreInsight, setScoreInsight] = useState<FinancialHealthInsight | null>(null);
 
-  const selectedReport = selectedReportId
-    ? getAIReportById(reportRepository, selectedReportId)
-    : undefined;
+  const selectedReport = reports.find((report) => report.id === selectedReportId);
   const selectedSnapshot = selectedSnapshotId
     ? snapshots.find((snapshot) => snapshot.id === selectedSnapshotId)
     : undefined;
@@ -131,21 +134,59 @@ export default function AiInsightsPage() {
     }
   };
 
+  const loadReportsForSelectedSnapshot = async (sourceSnapshotId: string | null) => {
+    if (!sourceSnapshotId) {
+      setReports([]);
+      setSelectedReportId(null);
+      setReportsStatusMessage('Select a portfolio snapshot to view report history.');
+      return;
+    }
+
+    setIsReportsLoading(true);
+    setReportsStatusMessage('');
+
+    try {
+      const nextReports = await listAIReportsBySourceSnapshotId(sourceSnapshotId);
+      setReports(nextReports);
+      setSelectedReportId((currentSelectedId) => {
+        const hasCurrent = currentSelectedId
+          ? nextReports.some((report) => report.id === currentSelectedId)
+          : false;
+        return hasCurrent ? currentSelectedId : nextReports[0]?.id ?? null;
+      });
+      if (nextReports.length === 0) {
+        setReportsStatusMessage('No reports found for the selected snapshot yet.');
+      } else {
+        setReportsStatusMessage(`Loaded ${nextReports.length} reports for selected snapshot.`);
+      }
+    } catch (error) {
+      setReportsStatusMessage(
+        error instanceof Error ? error.message : 'Failed to load reports from API.',
+      );
+    } finally {
+      setIsReportsLoading(false);
+    }
+  };
+
   useEffect(() => {
     void loadSnapshots();
   }, []);
 
-  const refreshReports = () => {
-    setReports(listAIReports(reportRepository));
-  };
+  useEffect(() => {
+    void loadReportsForSelectedSnapshot(selectedSnapshotId);
+  }, [selectedSnapshotId]);
 
-  const onGenerateDemoReport = () => {
+  const onGenerateDemoReport = async () => {
     setIsGenerating(true);
     setStatusMessage('');
 
     try {
       if (!selectedSnapshot) {
         setStatusMessage('Select a portfolio snapshot before generating a report.');
+        return;
+      }
+      if (!selectedSnapshot.id) {
+        setStatusMessage('Selected snapshot is missing an id and cannot load API report history.');
         return;
       }
 
@@ -161,11 +202,14 @@ export default function AiInsightsPage() {
         reportRepository,
         runRepository,
         preparedRun.id,
+        { sourceSnapshotId: selectedSnapshot.id },
       );
 
-      refreshReports();
-      setSelectedReportId(report.id);
-      setStatusMessage(`Snapshot-driven demo report generated: ${report.id}`);
+      const createdReport = await createAIReport(report);
+      await loadReportsForSelectedSnapshot(selectedSnapshot.id);
+      const latestReport = await getAIReportById(createdReport.id);
+      setSelectedReportId(latestReport.id);
+      setStatusMessage(`Snapshot-scoped report generated via API: ${latestReport.id}`);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Failed to generate demo report');
     } finally {
@@ -236,7 +280,7 @@ export default function AiInsightsPage() {
               {isGenerating ? 'Generating...' : 'Generate Report from Selected Snapshot'}
             </Button>
             <span className='text-xs text-aurum-muted'>
-              Run/report data is persisted in browser localStorage and shared across AI pages.
+              Report history is loaded from API, scoped by selected snapshot.
             </span>
           </div>
           {statusMessage ? (
@@ -357,7 +401,14 @@ export default function AiInsightsPage() {
             <CardDescription>Select a report artifact to inspect details.</CardDescription>
           </CardHeader>
           <CardContent className='space-y-2'>
-            {reports.length === 0 ? (
+            {reportsStatusMessage ? (
+              <p className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+                {reportsStatusMessage}
+              </p>
+            ) : null}
+            {isReportsLoading ? (
+              <p className='text-sm text-aurum-muted'>Loading snapshot-scoped report history...</p>
+            ) : reports.length === 0 ? (
               <p className='text-sm text-aurum-muted'>
                 No reports yet. Click "Generate Demo Report" to create one.
               </p>
