@@ -92,7 +92,7 @@ export class AIReportsService {
     const snapshotDate = snapshot.metadata.snapshotDate;
 
     const title = portfolioName
-      ? `${portfolioName} — Portfolio Report`
+      ? `${portfolioName} - Portfolio Report`
       : 'Portfolio Report';
 
     const sourceRunId = command.sourceRunId?.trim()
