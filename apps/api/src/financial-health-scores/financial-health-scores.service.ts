@@ -1,7 +1,15 @@
-import type { FinancialHealthScoreArtifact } from '@aurum/core';
-import { Injectable } from '@nestjs/common';
+import {
+  buildFinancialHealthInsight,
+  calculateFinancialHealthScore,
+  portfolioSnapshotToFinancialHealthScoreInput,
+  type FinancialHealthScoreArtifact,
+} from '@aurum/core';
+import { randomUUID } from 'node:crypto';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { PortfolioSnapshotsService } from '../portfolio-snapshots/portfolio-snapshots.service';
 import { PrismaService } from '../prisma/prisma.service';
+import type { CreateScoreArtifactFromSnapshotCommand } from './commands/create-score-artifact-from-snapshot.command';
 import { mapFinancialHealthScoreRecordToArtifact } from './financial-health-score.mapper';
 
 function mapToPrismaJson(value: unknown): Prisma.InputJsonValue {
@@ -20,7 +28,10 @@ function mapMetadataToPrisma(
 
 @Injectable()
 export class FinancialHealthScoresService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly portfolioSnapshotsService: PortfolioSnapshotsService,
+  ) {}
 
   async createScoreArtifact(
     artifact: FinancialHealthScoreArtifact,
@@ -72,5 +83,45 @@ export class FinancialHealthScoresService {
     });
 
     return records.map(mapFinancialHealthScoreRecordToArtifact);
+  }
+
+  async createScoreArtifactFromSnapshot(
+    command: CreateScoreArtifactFromSnapshotCommand,
+  ): Promise<FinancialHealthScoreArtifact> {
+    const snapshot = await this.portfolioSnapshotsService.getSnapshotById(
+      command.sourceSnapshotId,
+    );
+    if (!snapshot) {
+      throw new NotFoundException(
+        `Portfolio snapshot not found: ${command.sourceSnapshotId}`,
+      );
+    }
+
+    const scoreInput = portfolioSnapshotToFinancialHealthScoreInput(snapshot);
+    const result = calculateFinancialHealthScore(scoreInput);
+    const insight = buildFinancialHealthInsight(result);
+
+    const now = new Date().toISOString();
+    const scoringVersion = command.scoringVersion?.trim() || '1.0.0';
+    const portfolioName = snapshot.metadata.portfolioName?.trim() || undefined;
+
+    const metadata: Record<string, unknown> = {
+      sourceSnapshotId: command.sourceSnapshotId,
+      snapshotDate: snapshot.metadata.snapshotDate,
+    };
+    if (portfolioName) {
+      metadata.portfolioName = portfolioName;
+    }
+
+    return this.createScoreArtifact({
+      id: randomUUID(),
+      sourceSnapshotId: command.sourceSnapshotId,
+      scoringVersion,
+      result,
+      insight,
+      createdAt: now,
+      updatedAt: now,
+      metadata,
+    });
   }
 }
