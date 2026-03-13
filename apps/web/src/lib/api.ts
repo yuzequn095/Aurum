@@ -6,7 +6,39 @@ import {
   setRefreshToken,
 } from '@/lib/auth/tokens';
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+function resolveApiBase(): string {
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const browserDefault =
+    typeof window !== 'undefined'
+      ? `${window.location.protocol}//${window.location.hostname}:3001`
+      : 'http://localhost:3001';
+
+  if (!configured) {
+    return browserDefault;
+  }
+
+  if (typeof window === 'undefined') {
+    return configured;
+  }
+
+  try {
+    const url = new URL(configured);
+    if (isLoopbackHost(url.hostname) && isLoopbackHost(window.location.hostname)) {
+      url.hostname = window.location.hostname;
+      return url.toString().replace(/\/$/, '');
+    }
+  } catch {
+    return configured;
+  }
+
+  return configured;
+}
+
+export const API_BASE = resolveApiBase();
 
 export class ApiError extends Error {
   readonly status: number;
