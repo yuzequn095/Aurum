@@ -1,4 +1,12 @@
-import { Body, Controller, Get, NotFoundException, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+} from '@nestjs/common';
 import type { PortfolioSnapshot } from '@aurum/core';
 import { PortfolioSnapshotsService } from './portfolio-snapshots.service';
 
@@ -24,5 +32,15 @@ export class PortfolioSnapshotsController {
     }
 
     return snapshot;
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string): Promise<{ ok: true }> {
+    const ok = await this.service.deleteSnapshot(id);
+    if (!ok) {
+      throw new NotFoundException('Portfolio snapshot not found');
+    }
+
+    return { ok: true };
   }
 }

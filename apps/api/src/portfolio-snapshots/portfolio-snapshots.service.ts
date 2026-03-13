@@ -7,7 +7,7 @@ import {
   PortfolioAssetCategoryType,
   PortfolioSnapshotSourceType,
 } from '@prisma/client';
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { parseDateOnly } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
 import { mapPortfolioSnapshotRecordToSnapshot } from './portfolio-snapshot.mapper';
@@ -117,5 +117,30 @@ export class PortfolioSnapshotsService {
     });
 
     return records.map(mapPortfolioSnapshotRecordToSnapshot);
+  }
+
+  async deleteSnapshot(id: string): Promise<boolean> {
+    const existing = await this.prisma.portfolioSnapshotRecord.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) {
+      return false;
+    }
+
+    const linkedReportCount = await this.prisma.aIReportRecord.count({
+      where: { sourceSnapshotId: id },
+    });
+    if (linkedReportCount > 0) {
+      throw new ConflictException(
+        `Portfolio snapshot cannot be deleted because ${linkedReportCount} linked report(s) exist.`,
+      );
+    }
+
+    await this.prisma.portfolioSnapshotRecord.delete({
+      where: { id },
+    });
+
+    return true;
   }
 }
