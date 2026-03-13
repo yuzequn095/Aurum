@@ -19,18 +19,26 @@ function buildAllowedOrigins(): Set<string> {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const allowedOrigins = buildAllowedOrigins();
+  const isProduction = process.env.NODE_ENV === 'production';
 
-  app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.has(origin)) {
-        callback(null, true);
-        return;
-      }
+  if (isProduction) {
+    app.enableCors({
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.has(origin)) {
+          callback(null, true);
+          return;
+        }
 
-      callback(new Error(`CORS origin not allowed: ${origin}`), false);
-    },
-    credentials: true,
-  });
+        callback(new Error(`CORS origin not allowed: ${origin}`), false);
+      },
+      credentials: true,
+    });
+  } else {
+    app.enableCors({
+      origin: true,
+      credentials: true,
+    });
+  }
 
   app.useGlobalPipes(
     new ValidationPipe({
