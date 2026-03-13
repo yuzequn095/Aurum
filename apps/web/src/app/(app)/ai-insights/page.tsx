@@ -8,7 +8,6 @@ import {
   portfolioSnapshotToFinancialHealthScoreInput,
   portfolioSnapshotToReportInput,
   createPreparedAIRunRecord,
-  createReportFromCompletedRun,
   submitManualResult,
   type AIReportArtifact,
   type FinancialHealthInsight,
@@ -28,19 +27,17 @@ import {
   mockPortfolioCsvImportInput,
   mockPortfolioReportManualOutput,
 } from '@/lib/ai/dev-seeds';
-import { aiReportRepository, aiRunRepository } from '@/lib/ai/repositories';
+import { aiRunRepository } from '@/lib/ai/repositories';
 import {
   createPortfolioSnapshot,
   listPortfolioSnapshots,
 } from '@/lib/api/portfolio-snapshots';
 import {
-  createAIReport,
-  getAIReportById,
+  createReportForSnapshot,
   listAIReportsBySourceSnapshotId,
 } from '@/lib/api/ai-reports';
 
 const runRepository = aiRunRepository;
-const reportRepository = aiReportRepository;
 
 function formatMoney(value: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -196,20 +193,21 @@ export default function AiInsightsPage() {
         payload: reportInput as unknown as Record<string, unknown>,
       });
 
-      submitManualResult(runRepository, preparedRun.id, mockPortfolioReportManualOutput);
-
-      const report = createReportFromCompletedRun(
-        reportRepository,
+      const completedRun = submitManualResult(
         runRepository,
         preparedRun.id,
-        { sourceSnapshotId: selectedSnapshot.id },
+        mockPortfolioReportManualOutput,
       );
 
-      const createdReport = await createAIReport(report);
+      const createdReport = await createReportForSnapshot(selectedSnapshot.id, {
+        contentMarkdown: completedRun.rawOutput ?? mockPortfolioReportManualOutput,
+        promptVersion: preparedRun.promptVersion,
+        sourceRunId: preparedRun.id,
+      });
+
       await loadReportsForSelectedSnapshot(selectedSnapshot.id);
-      const latestReport = await getAIReportById(createdReport.id);
-      setSelectedReportId(latestReport.id);
-      setStatusMessage(`Snapshot-scoped report generated via API: ${latestReport.id}`);
+      setSelectedReportId(createdReport.id);
+      setStatusMessage(`Server-created snapshot report generated: ${createdReport.id}`);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Failed to generate demo report');
     } finally {
