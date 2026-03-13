@@ -13,9 +13,17 @@ From repo root:
 
 ```bash
 pnpm --filter api dev
+# or
+pnpm -C apps/api start:dev
 ```
 
 API listens on `http://localhost:3001`.
+
+Health check:
+
+```bash
+curl.exe "http://localhost:3001/v1/health"
+```
 
 ## Environment
 

@@ -4,6 +4,9 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "turbo run dev --parallel",
+    "dev:web": "pnpm -C apps/web dev",
+    "dev:api": "pnpm -C apps/api start:dev",
+    "dev:app": "turbo run dev --parallel --filter=web --filter=api",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck"

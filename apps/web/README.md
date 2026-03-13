@@ -14,9 +14,17 @@ From repo root:
 
 ```bash
 pnpm --filter web dev
+# or
+pnpm -C apps/web dev
 ```
 
 Open: `http://localhost:3000`
+
+If you also need API for local product pages, start it in another terminal:
+
+```bash
+pnpm -C apps/api start:dev
+```
 
 ## Environment
 

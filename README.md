@@ -365,6 +365,27 @@ Install and run:
 
 ```bash
 pnpm install
+```
+
+Recommended local startup (web + api only):
+
+```bash
+# Terminal A
+pnpm dev:api
+
+# Terminal B
+pnpm dev:web
+```
+
+One-command startup (web + api):
+
+```bash
+pnpm dev:app
+```
+
+Full monorepo dev (all packages/tasks):
+
+```bash
 pnpm dev
 ```
 
@@ -380,6 +401,12 @@ Common ports:
 - Web: `http://localhost:3000`
 - API: `http://localhost:3001`
 - Prisma Studio: dynamic port (shown in terminal after `prisma studio`)
+
+API health check:
+
+```bash
+curl http://localhost:3001/v1/health
+```
 
 Prisma (v7) commands:
 
