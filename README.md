@@ -17,12 +17,11 @@ This document serves as both a product overview and developer reference for Auru
 - [Core Product Modules](#core-product-modules)
 - [AI System Design](#ai-system-design)
 - [Mobile UX Concept](#mobile-ux-concept)
-- [Current Architecture](#current-architecture)
-- [Completed Milestones](#completed-milestones)
-- [Upcoming Roadmap](#upcoming-roadmap)
-- [Long-term Vision](#long-term-vision)
 - [Current Status](#current-status)
-- [Detailed Engineering Progress](#detailed-engineering-progress)
+- [Milestone Summary](#milestone-summary)
+- [What Milestone 11 Changed](#what-milestone-11-changed)
+- [Current Architecture](#current-architecture)
+- [Long-term Vision](#long-term-vision)
 - [Architecture Documents](#architecture-documents)
 - [Monorepo Structure](#monorepo-structure)
 - [Quickstart](#quickstart)
@@ -42,6 +41,8 @@ Unlike traditional budgeting apps, Aurum integrates:
 - financial analytics
 - AI-powered financial insights
 - long-term financial planning
+
+Aurum is not just a bookkeeping app. It is a finance platform that combines ledger operations, analytics, portfolio tracking, and AI analysis into a single operating layer.
 
 Aurum aims to become a **central financial intelligence layer** for users.
 
@@ -102,67 +103,54 @@ Transactions represent **cash flow tracking**.
 
 AI-powered financial intelligence center.
 
-**Reports:**
+- snapshot-driven portfolio report generation
+- financial health score generation
+- persisted report and score history
+- future planning, budgeting, and goal-oriented AI workflows
+- future conversation and advisor-style experiences
 
-- Monthly financial report
-- Quarterly report
-- Yearly report
-
-**Analysis:**
-
-- spending breakdown
-- financial health score
-- trend analysis
-
-**Planning:**
-
-- budget tracking
-- financial goals
-
-**Conversations:**
-
-- saved AI conversations
-
-AI Insights will evolve into Aurum's **financial intelligence engine**.
+AI Insights is the product surface where Aurum's analysis artifacts and future AI workflows come together.
 
 ## AI System Design
 
-Aurum contains two layers of AI interaction.
+Aurum's AI architecture now has a clearer split between long-term product vision and currently shipped analysis infrastructure.
 
-### 1. Quick AI (Ephemeral Chat)
+### 1. Quick AI (Long-term Product Layer)
 
-Accessible from the "+" action menu.
+Quick AI is the future ephemeral interaction layer for:
 
-**Purpose:**
+- fast financial questions
+- instant contextual analysis
+- command-menu driven actions
 
-- quick financial questions
-- instant analysis
-
-**Examples:**
+Example intents:
 
 - "How much did I spend on dining this month?"
-- "What was my biggest expense category?"
+- "What changed in my portfolio this week?"
 
-**Characteristics:**
+This remains part of the product direction, but it is not yet the primary implemented AI surface.
 
-- temporary
-- not saved by default
-- user may optionally save the conversation
+### 2. AI Insights (Current Productized Analysis Layer)
 
-Saved conversations are stored in **AI Insights > Conversations**.
+The current implemented AI foundation is centered on snapshot-driven analysis.
 
-### 2. Insight AI (Persistent Conversations)
+- `PortfolioSnapshot` is the canonical upstream object for portfolio analysis.
+- Portfolio reports are persisted as `AIReportArtifact` records linked to a snapshot.
+- Financial health assessments are persisted as `FinancialHealthScoreArtifact` records linked to a snapshot.
+- Report creation and score creation are now server-backed flows.
+- `/ai-insights` operates on snapshot-scoped report and score history instead of only local transient state.
 
-Located inside the AI Insights module.
+This means the current AI system is no longer just prompt generation or model text. It is an artifact-oriented analysis pipeline with explicit upstream data, persistence, and history.
 
-These are structured AI conversations such as:
+### 3. Insight Engine Baseline
 
-- Monthly Report
-- Budget Analysis
-- Financial Health Score
-- Goal Tracking
+For broader AI text generation, Aurum already has a pluggable insight engine baseline:
 
-These conversations persist over time and act as **AI financial advisors**.
+- `rules`
+- `llm`
+- `hybrid`
+
+That engine remains available as a foundation for future AI product layers, while Milestone 11 established the snapshot-driven report and score architecture.
 
 ## Mobile UX Concept
 
@@ -184,115 +172,107 @@ This allows fast interactions without navigating across multiple pages.
 
 ## Current Status
 
-Milestones 7, 8, 9.x, 10 foundation, and Milestone 11 are complete. Milestone 12 is the next active focus.
+Milestone 1-10 are completed as foundation work. Milestone 11 is also completed as the AI foundation and snapshot-driven analysis foundation. The current focus is Milestone 12: Connected Finance & Real Ingestion.
 
-- Auth + Ledger baseline: email/password auth, JWT access/refresh rotation, user-scoped ledger APIs, income support, taxonomy model, server-side filters, and transaction edit flows.
-- Data tooling: CSV import/export, idempotent import logs, backup export + restore CLI.
-- Analytics + AI baseline: monthly summary/category breakdown + pluggable AI insight engine (`rules` / `llm` / `hybrid`).
-- Milestone 10 web foundation: app shell, premium design tokens/primitives, dashboard KPI/trend/category visuals, settings/logout flow.
-- Milestone 11.1-11.4: shared AI contracts/provider/router foundations, run/report repositories, dev workbench + `/ai-insights` validation, localStorage persistence and shared web repository access.
-- Milestone 11.5-11.6: canonical `PortfolioSnapshot` domain + adapters/mappers, first DB-backed snapshot persistence slice, and snapshot selection/ingestion/report/score snapshot-driven flows in `/ai-insights`.
-- Milestone 11.7-11.8: server-backed AI report persistence, snapshot-scoped report history/query, lifecycle guard (block snapshot delete if linked reports), and server-owned snapshot-based report creation API path.
-- Milestone 11.9: persisted Financial Health Score artifact contracts + DB/API/web integration foundations landed; `/ai-insights` now calls server-backed score creation/history paths.
+- Foundation status: Aurum now has stable monorepo, API, web, auth, ledger, taxonomy, analytics, import/export, and dashboard foundations.
+- AI foundation status: snapshot-driven report and score generation is implemented end-to-end with persistence, history, and server-backed creation flows.
+- Current execution focus: move from demo and validation ingestion toward real connected finance ingestion, normalization, and sync pipelines.
+
+## Milestone Summary
+
+| Milestone | Name | Status | Outcome |
+| --- | --- | --- | --- |
+| 1-5 | Core Finance Infrastructure | Done | Monorepo, web/api foundations, auth baseline, accounts, transactions, category/subcategory taxonomy baseline, analytics baseline. |
+| 6 | Insight Engine Foundation | Done | `rules` / `llm` / `hybrid` insight engine baseline, prompt validation, and pluggable AI generation foundation. |
+| 7 | Auth & Productization | Done | JWT auth, refresh token rotation, reuse detection, logout-all, and user isolation. |
+| 8 | Ledger v2 | Done | Date-only `occurredAt`, income support, and category/subcategory enforcement. |
+| 9 | Transactions UX + Data Tooling | Done | Transaction list UX, filtering/editing, CSV import/export, backup/restore, and import idempotency. |
+| 10 | Web UX Foundation | Done | App shell, page structure, settings/logout, design tokens/primitives, and dashboard foundation. |
+| 11 | AI Foundation / Snapshot-Driven Analysis | Done | Shared AI contracts, prompt/task/provider/router/run foundations, workbench validation, canonical `PortfolioSnapshot`, snapshot-driven report/score flows, report persistence, score persistence, and snapshot-linked history with server-backed creation. |
+| 12 | Connected Finance & Real Ingestion | Current Focus | Bank integrations, brokerage integrations, production-grade ingestion workflows, snapshot ingestion hardening, and provider normalization/sync pipeline. |
+| 13 | AI Product Layer | Planned | Prompt pack expansion, conversation model, AI Insights templates, planning/budgeting/goals, and richer AI workflows. |
+| 14 | Experience Layer (Desktop + Mobile UX) | Planned | Desktop UX refinement, mobile implementation aligned with Aurum-Mobile-UX-Demo, cross-platform design consistency, command menu UX, and AI-first interaction polish. |
+| 15 | Connected Finance Expansion / Financial OS Direction | Future | Deeper portfolio and institution modeling, financial execution experiments, and broader Financial OS exploration. |
+
+**Milestone 11 delivered:**
+
+- shared AI domain contracts, task definition abstraction, prompt pack foundation, provider adapter abstraction, manual ChatGPT provider foundation, and router foundation
+- AI run repository, AI workbench validation, and local/web persistence foundation
+- `AIReportArtifact` foundation, `FinancialHealthScoreArtifact` foundation, and deterministic financial health score foundation
+- canonical `PortfolioSnapshot` contract, CSV snapshot adapter, snapshot-to-report input mapper, and snapshot-to-score input mapper
+- API-side snapshot persistence, snapshot verification endpoints, and web-side snapshot create/list demo ingestion
+- `/ai-insights` snapshot-driven flow, report persistence plus snapshot-linked history, and score persistence plus snapshot-linked history
+- server-backed report creation, server-backed score creation, and snapshot deletion lifecycle v1 that blocks deletion when linked artifacts exist
+
+## What Milestone 11 Changed
+
+Milestone 11 changed Aurum from an AI-demo-oriented foundation into a snapshot-driven analysis architecture.
+
+- `PortfolioSnapshot` is now the canonical upstream truth for portfolio analysis.
+- Reports are no longer just generated text; they are persisted report artifacts linked to snapshots.
+- Financial health scores are no longer just transient calculations; they are persisted score artifacts linked to snapshots.
+- Final report and score creation is server-backed rather than client-assembled.
+- `/ai-insights` now works against snapshot-scoped report and score history.
+- Snapshot lifecycle rules now recognize downstream analysis artifacts, including deletion blocking when linked reports exist.
+
+In practical terms, this means Aurum now has an analysis system with upstream source objects, persistent downstream artifacts, and explicit resource relationships across web, API, and database layers.
 
 ## Current Architecture
 
 **Backend stack:**
 
 - NestJS
-- Prisma ORM
+- Prisma ORM v7
 - PostgreSQL
 
 **Frontend stack:**
 
-- Next.js
+- Next.js App Router
 - TypeScript
-- Tailwind
+- Tailwind CSS
 
-**Key backend modules:**
+**Shared-core stack:**
 
-- auth
-- accounts
-- transactions
-- categories / subcategories
-- analytics
-- AI insights
-- CSV import/export
-- backup / restore
+- `packages/core` for canonical portfolio, AI, report, and score domain contracts
+- shared adapters and mappers for snapshot ingestion and snapshot-driven analysis inputs
+
+**Key platform surfaces:**
+
+- ledger APIs for accounts, categories, subcategories, transactions, import/export, and analytics
+- snapshot persistence and verification APIs for canonical `PortfolioSnapshot`
+- snapshot-scoped report creation and report history APIs
+- snapshot-scoped financial health score creation and score history APIs
+- lifecycle protection that blocks snapshot deletion when persisted linked report artifacts exist
 
 **Application architecture overview:**
 
 ```mermaid
 flowchart LR
-  B[Browser] --> W[Next.js Web<br/>apps/web]
-  W -->|REST /v1 + Bearer access token| A[NestJS API<br/>apps/api]
+  B[Browser] --> W[Next.js Web apps/web]
+  W -->|REST /v1 + bearer access token| A[NestJS API apps/api]
   A -->|Prisma ORM v7| P[(PostgreSQL)]
-  W -.->|refresh token in localStorage<br/>dev mode| W
-  A -->|issue/verify access + refresh| A
+  C[Shared Core packages/core] --> W
+  C --> A
 ```
 
-**AI insight generation flow:**
+**Snapshot-driven analysis flow:**
 
 ```mermaid
 flowchart LR
-  MS[Monthly Summary] --> AIS[AiService]
-  CB[Category Breakdown] --> AIS
-  AIS --> IE[Insight Engine]
-  IE --> R[Rule Engine]
-  IE --> L[LLM Engine]
-  IE --> H[Hybrid Merge]
-  H --> OUT[Insights Response]
+  CSV[CSV-shaped input or future provider input]
+  CSV --> ADAPTER[Snapshot adapter]
+  ADAPTER --> SNAPSHOT[Canonical PortfolioSnapshot]
+  SNAPSHOT --> API[Portfolio snapshot API]
+  API --> DB[(PostgreSQL)]
+  SNAPSHOT --> REPORTMAP[Snapshot to report input mapper]
+  SNAPSHOT --> SCOREMAP[Snapshot to score input mapper]
+  REPORTMAP --> REPORTCMD[Server-backed report creation]
+  SCOREMAP --> SCORECMD[Server-backed score creation]
+  REPORTCMD --> REPORTS[AIReportArtifact history]
+  SCORECMD --> SCORES[FinancialHealthScoreArtifact history]
+  REPORTS --> INSIGHTS[AI Insights web surface]
+  SCORES --> INSIGHTS
 ```
-
-## Completed Milestones
-
-### Phase 1 - Core Finance Infrastructure
-
-- authentication system
-- account model
-- category / subcategory taxonomy
-- transaction tracking
-- analytics APIs
-
-### Phase 2 - AI Financial Intelligence
-
-- insight engine
-- monthly analysis
-- hybrid rule + AI system
-
-### Phase 3 - Data Management
-
-- CSV import/export
-- backup system
-- restore tools
-- import idempotency
-
-## Upcoming Roadmap
-
-### Milestone 10 - UX Implementation
-
-- stabilize and polish app-shell level UX foundations
-- continue improving dashboard / transactions / AI insights consistency
-
-### Milestone 11 - Snapshot-Driven AI Platform (Completed)
-
-- 11.1-11.4: shared AI contracts, provider/router/repository foundations, dev validation flows
-- 11.5-11.6: canonical `PortfolioSnapshot`, CSV-shaped adapter/mappers, DB snapshot slice, snapshot-driven `/ai-insights`
-- 11.7-11.8: snapshot-linked server-backed report persistence + snapshot-scoped report creation APIs
-- 11.9: persisted Financial Health Score artifacts + snapshot-scoped creation/history APIs
-- outcome: snapshot-driven report/score lifecycle is established with server-backed persistence paths
-
-### Milestone 12 - Connected Finance & Real Ingestion (Current Focus)
-
-- bank integrations
-- brokerage integrations
-- production-grade ingestion workflows and automation
-
-### Milestone 13 - Financial Execution Layer
-
-- investment tools
-- digital wallet functionality
-- financial product integrations
 
 ## Long-term Vision
 
@@ -305,24 +285,6 @@ Aurum aims to become a **financial operating system** where users:
 - execute financial decisions
 
 All within one unified platform.
-
-## Detailed Engineering Progress
-
-| Phase | Milestones | Status | Notes |
-| --- | --- | --- | --- |
-| Phase 1 - Foundation | M1 Monorepo setup, M2 DB schema (Prisma v7 + Postgres), M3 Transactions CRUD, M4 Analytics Dashboard | Done | Core stack and ledger/analytics baseline landed. |
-| Phase 2 - AI Report Baseline | M5 AI monthly report (rule-based baseline + UI states) | Done | Stable rule-based report and UI handling for loading/error/empty. |
-| Phase 3 - Insight Engine | M6 refactor + LLM scaffold + hybrid merge + tests | Done | `rules`/`llm`/`hybrid` modes available; LLM path optional by env. |
-| Phase 4 - Auth & Productization | M7 Auth (email/password, identities, refresh tokens, guards, user scoping) | Done | Refresh rotation + reuse detection + logout-all implemented. |
-| Phase 5 - Ledger v2 | M8.1 Date-only occurredAt, M8.2 Income, M8.3 Category/Subcategory taxonomy | Done | API date-only, DB DateTime retained (Strategy A). |
-| Phase 6 - UX + List | M9.1 API errors/toasts/taxonomy UX, M9.2 list VM + filters + row edit | Done | Transactions list supports server-side filtering and fast in-place edit updates. |
-| Phase 7 - Import/Export + Backup | M9.3 CSV import/export, M9.4 idempotency + backup export + restore CLI | Done | End-to-end CSV workflow plus JSON backup/restore tooling for local/dev. |
-| Phase 8 - Web UX Foundation | M10.1 app shell + route group, M10.2 design tokens + UI primitives + dashboard KPI/charts + settings/logout | In Progress | Premium layout baseline landed; dashboard includes KPI + trend + category visuals with loading/empty states. |
-| Phase 9 - AI Core Foundations | M11.1-M11.4 contracts/task/provider/router/run/report foundations + local persistence + validation pages | Done | Manual-provider-first architecture established in `packages/core`; web validation shells landed. |
-| Phase 10 - Snapshot Canonicalization | M11.5-M11.6 canonical `PortfolioSnapshot`, source adapters, mappers, first DB snapshot slice + web snapshot selection/ingestion | Done | Persisted snapshots are now the upstream analysis object in `/ai-insights`. |
-| Phase 11 - Server-backed Report Lifecycle | M11.7-M11.8 snapshot-linked report contracts, DB/API persistence/query, snapshot-scoped creation flow | Done | Report history and creation moved toward server-owned snapshot-scoped flows. |
-| Phase 12 - Server-backed Score Lifecycle | M11.9 score artifact contracts + DB/API/web migration | Done | Snapshot-scoped score artifact persistence and API integration landed in core/API/web paths. |
-| Phase 13 - Connected Finance & Ingestion Hardening | M12 connected integrations + production ingestion workflows | In Progress | Next focus: move from demo/validation ingestion toward production-ready connected finance flows. |
 
 ## Architecture Documents
 
@@ -461,6 +423,13 @@ Troubleshooting:
 ## API Reference
 
 Base URL: `http://localhost:3001`
+
+Key API surfaces:
+
+- ledger and analytics for the finance system of record
+- canonical portfolio snapshot create, list, get, and lifecycle-protected delete
+- snapshot-scoped report creation and snapshot-linked report history queries
+- snapshot-scoped financial health score creation and snapshot-linked score history queries
 
 | Endpoint | Method | Auth | Description |
 | --- | --- | --- | --- |
