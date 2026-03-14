@@ -383,6 +383,12 @@ One-command startup (web + api):
 pnpm dev:app
 ```
 
+One-click clean restart (Windows, kills old listeners on 3000/3001 first):
+
+```bash
+pnpm dev:restart
+```
+
 Full monorepo dev (all packages/tasks):
 
 ```bash
@@ -419,6 +425,7 @@ pnpm --filter api exec prisma studio
 Troubleshooting:
 
 - If Prisma Studio or DB introspection fails, first ensure PostgreSQL is up via Docker Compose.
+- If you repeatedly hit `Failed to fetch` / `Cannot POST ...` during local dev, run `pnpm dev:restart` to clear stale web/api listeners and relaunch both services.
 
 ## Environment Variables
 
