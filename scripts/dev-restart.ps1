@@ -1,6 +1,7 @@
 param(
   [int[]]$Ports = @(3000, 3001),
-  [switch]$NoStart
+  [switch]$NoStart,
+  [switch]$SkipMigrate
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,6 +47,11 @@ foreach ($port in $Ports) {
 if ($NoStart) {
   Write-Host "NoStart enabled. Skipping dev startup."
   exit 0
+}
+
+if (-not $SkipMigrate) {
+  Write-Host "Applying pending API migrations (prisma migrate deploy)..."
+  pnpm -C apps/api exec prisma migrate deploy
 }
 
 Write-Host "Starting web + api (pnpm dev:app)..."

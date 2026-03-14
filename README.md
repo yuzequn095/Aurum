@@ -389,6 +389,8 @@ One-click clean restart (Windows, kills old listeners on 3000/3001 first):
 pnpm dev:restart
 ```
 
+`dev:restart` also runs `prisma migrate deploy` for `apps/api` before launching web/api, so newly added DB slices are available without a separate manual migration step.
+
 Full monorepo dev (all packages/tasks):
 
 ```bash
