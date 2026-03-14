@@ -184,17 +184,16 @@ This allows fast interactions without navigating across multiple pages.
 
 ## Current Status
 
-Milestones 7, 8, 9.1, 9.2, 9.3, and 9.4 are complete.
+Milestones 7, 8, 9.x, 10 foundation, and Milestone 11 are complete. Milestone 12 is the next active focus.
 
-- Auth: email/password login, JWT access token + refresh token, refresh rotation/reuse detection, logout/logout-all, guarded APIs, server-side userId isolation.
-- Ledger v2: income transactions, date-only `occurredAt` API contract (`YYYY-MM-DD`) with DB `DateTime`, category + subcategory taxonomy, and enforced category/subcategory for income/expense.
-- UX + List: standardized `ApiError`, toast system, improved taxonomy UX/defaults, server-side transaction filters, row-click edit flow, and transaction list view-model/formatters.
-- Import/Export: CSV export, CSV dry-run + import with taxonomy auto-create, idempotent import via content hash (`ImportLog`), and user backup JSON export.
-- Restore tooling: development backup restore CLI (`wipe|append`) with ID-preserving upserts.
-- Analytics + AI: monthly summary and category breakdown endpoints; AI monthly report is available via pluggable insight engine (`rules` / `llm` / `hybrid`).
-- LLM is optional and controlled by env flags to avoid cost in local/dev.
-- Milestone 10.2 foundation is active on web: premium app shell, full-bleed canvas, reusable UI primitives (Card/Button/Badge/Skeleton), KPI section, chart foundation, 6-month trend chart, category donut chart, settings + logout flow.
-- Analytics now includes monthly summary time series endpoint for trend visualizations: `GET /v1/analytics/summary-series`.
+- Auth + Ledger baseline: email/password auth, JWT access/refresh rotation, user-scoped ledger APIs, income support, taxonomy model, server-side filters, and transaction edit flows.
+- Data tooling: CSV import/export, idempotent import logs, backup export + restore CLI.
+- Analytics + AI baseline: monthly summary/category breakdown + pluggable AI insight engine (`rules` / `llm` / `hybrid`).
+- Milestone 10 web foundation: app shell, premium design tokens/primitives, dashboard KPI/trend/category visuals, settings/logout flow.
+- Milestone 11.1-11.4: shared AI contracts/provider/router foundations, run/report repositories, dev workbench + `/ai-insights` validation, localStorage persistence and shared web repository access.
+- Milestone 11.5-11.6: canonical `PortfolioSnapshot` domain + adapters/mappers, first DB-backed snapshot persistence slice, and snapshot selection/ingestion/report/score snapshot-driven flows in `/ai-insights`.
+- Milestone 11.7-11.8: server-backed AI report persistence, snapshot-scoped report history/query, lifecycle guard (block snapshot delete if linked reports), and server-owned snapshot-based report creation API path.
+- Milestone 11.9: persisted Financial Health Score artifact contracts + DB/API/web integration foundations landed; `/ai-insights` now calls server-backed score creation/history paths.
 
 ## Current Architecture
 
@@ -272,24 +271,22 @@ flowchart LR
 
 ### Milestone 10 - UX Implementation
 
-- responsive layout
-- dashboard UI
-- portfolio UI
-- transactions UI
-- insights UI
+- stabilize and polish app-shell level UX foundations
+- continue improving dashboard / transactions / AI insights consistency
 
-### Milestone 11 - Advanced AI
+### Milestone 11 - Snapshot-Driven AI Platform (Completed)
 
-- financial health score
-- proactive AI alerts
-- budget analysis
-- goal tracking
+- 11.1-11.4: shared AI contracts, provider/router/repository foundations, dev validation flows
+- 11.5-11.6: canonical `PortfolioSnapshot`, CSV-shaped adapter/mappers, DB snapshot slice, snapshot-driven `/ai-insights`
+- 11.7-11.8: snapshot-linked server-backed report persistence + snapshot-scoped report creation APIs
+- 11.9: persisted Financial Health Score artifacts + snapshot-scoped creation/history APIs
+- outcome: snapshot-driven report/score lifecycle is established with server-backed persistence paths
 
-### Milestone 12 - Connected Finance
+### Milestone 12 - Connected Finance & Real Ingestion (Current Focus)
 
 - bank integrations
 - brokerage integrations
-- automated portfolio tracking
+- production-grade ingestion workflows and automation
 
 ### Milestone 13 - Financial Execution Layer
 
@@ -320,7 +317,12 @@ All within one unified platform.
 | Phase 5 - Ledger v2 | M8.1 Date-only occurredAt, M8.2 Income, M8.3 Category/Subcategory taxonomy | Done | API date-only, DB DateTime retained (Strategy A). |
 | Phase 6 - UX + List | M9.1 API errors/toasts/taxonomy UX, M9.2 list VM + filters + row edit | Done | Transactions list supports server-side filtering and fast in-place edit updates. |
 | Phase 7 - Import/Export + Backup | M9.3 CSV import/export, M9.4 idempotency + backup export + restore CLI | Done | End-to-end CSV workflow plus JSON backup/restore tooling for local/dev. |
-| Phase 8 - Web UX Foundation | M10.1 app shell + route group, M10.2 design tokens + UI primitives + dashboard KPI/charts + settings/logout | In Progress | Premium layout baseline landed; dashboard now includes KPI + trend + category visuals with loading/empty states. |
+| Phase 8 - Web UX Foundation | M10.1 app shell + route group, M10.2 design tokens + UI primitives + dashboard KPI/charts + settings/logout | In Progress | Premium layout baseline landed; dashboard includes KPI + trend + category visuals with loading/empty states. |
+| Phase 9 - AI Core Foundations | M11.1-M11.4 contracts/task/provider/router/run/report foundations + local persistence + validation pages | Done | Manual-provider-first architecture established in `packages/core`; web validation shells landed. |
+| Phase 10 - Snapshot Canonicalization | M11.5-M11.6 canonical `PortfolioSnapshot`, source adapters, mappers, first DB snapshot slice + web snapshot selection/ingestion | Done | Persisted snapshots are now the upstream analysis object in `/ai-insights`. |
+| Phase 11 - Server-backed Report Lifecycle | M11.7-M11.8 snapshot-linked report contracts, DB/API persistence/query, snapshot-scoped creation flow | Done | Report history and creation moved toward server-owned snapshot-scoped flows. |
+| Phase 12 - Server-backed Score Lifecycle | M11.9 score artifact contracts + DB/API/web migration | Done | Snapshot-scoped score artifact persistence and API integration landed in core/API/web paths. |
+| Phase 13 - Connected Finance & Ingestion Hardening | M12 connected integrations + production ingestion workflows | In Progress | Next focus: move from demo/validation ingestion toward production-ready connected finance flows. |
 
 ## Architecture Documents
 
@@ -490,6 +492,19 @@ Base URL: `http://localhost:3001`
 | `/v1/analytics/summary-series` | GET | Yes | Monthly summary series (`months`, `endYear`, `endMonth`) ordered oldest -> newest. |
 | `/v1/analytics/category-breakdown` | GET | Yes | Monthly expense breakdown by category. |
 | `/v1/ai/monthly-report` | GET | Yes | Monthly AI report payload with generated insights. |
+| `/v1/portfolio-snapshots` | POST | Yes | Create canonical portfolio snapshot with nested positions. |
+| `/v1/portfolio-snapshots` | GET | Yes | List persisted portfolio snapshots (newest first). |
+| `/v1/portfolio-snapshots/:id` | GET | Yes | Get single portfolio snapshot by id. |
+| `/v1/portfolio-snapshots/:id` | DELETE | Yes | Delete snapshot if no linked persisted reports (409 when blocked). |
+| `/v1/ai-reports` | POST | Yes | Create persisted AI report artifact (verification path). |
+| `/v1/ai-reports` | GET | Yes | List persisted AI report artifacts. |
+| `/v1/ai-reports/by-snapshot/:sourceSnapshotId` | GET | Yes | List report artifacts linked to a snapshot. |
+| `/v1/ai-reports/:id` | GET | Yes | Get report artifact by id. |
+| `/v1/portfolio-snapshots/:sourceSnapshotId/reports` | POST | Yes | Server-side create report artifact from snapshot context + manual markdown content. |
+| `/v1/financial-health-scores` | GET | Yes | List persisted Financial Health Score artifacts. |
+| `/v1/financial-health-scores/by-snapshot/:sourceSnapshotId` | GET | Yes | List score artifacts linked to a snapshot. |
+| `/v1/financial-health-scores/:id` | GET | Yes | Get score artifact by id. |
+| `/v1/portfolio-snapshots/:sourceSnapshotId/financial-health-scores` | POST | Yes | Server-side create score artifact from snapshot context. |
 
 Transactions query params (`GET /v1/transactions`):
 
