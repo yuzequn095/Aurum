@@ -2,16 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import {
-  buildFinancialHealthInsight,
-  calculateFinancialHealthScore,
   CsvPortfolioSnapshotAdapter,
-  portfolioSnapshotToFinancialHealthScoreInput,
   portfolioSnapshotToReportInput,
   createPreparedAIRunRecord,
   submitManualResult,
   type AIReportArtifact,
-  type FinancialHealthInsight,
-  type FinancialHealthScoreResult,
+  type FinancialHealthScoreArtifact,
   type PortfolioSnapshot,
 } from '@aurum/core';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -36,6 +32,10 @@ import {
   createReportForSnapshot,
   listAIReportsBySourceSnapshotId,
 } from '@/lib/api/ai-reports';
+import {
+  createFinancialHealthScoreForSnapshot,
+  listFinancialHealthScoresBySourceSnapshotId,
+} from '@/lib/api/financial-health-scores';
 
 const runRepository = aiRunRepository;
 
@@ -92,14 +92,19 @@ export default function AiInsightsPage() {
   const [reportsStatusMessage, setReportsStatusMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [scores, setScores] = useState<FinancialHealthScoreArtifact[]>([]);
+  const [selectedScoreId, setSelectedScoreId] = useState<string | null>(null);
+  const [isScoresLoading, setIsScoresLoading] = useState(false);
+  const [isGeneratingScore, setIsGeneratingScore] = useState(false);
   const [scoreStatusMessage, setScoreStatusMessage] = useState<string>('');
-  const [scoreResult, setScoreResult] = useState<FinancialHealthScoreResult | null>(null);
-  const [scoreInsight, setScoreInsight] = useState<FinancialHealthInsight | null>(null);
 
   const selectedReport = reports.find((report) => report.id === selectedReportId);
   const selectedSnapshot = selectedSnapshotId
     ? snapshots.find((snapshot) => snapshot.id === selectedSnapshotId)
     : undefined;
+  const selectedScore = scores.find((score) => score.id === selectedScoreId);
+  const selectedScoreResult = selectedScore?.result;
+  const selectedScoreInsight = selectedScore?.insight;
 
   const loadSnapshots = async () => {
     setIsSnapshotsLoading(true);
@@ -165,12 +170,51 @@ export default function AiInsightsPage() {
     }
   };
 
+  const loadScoresForSelectedSnapshot = async (sourceSnapshotId: string | null) => {
+    if (!sourceSnapshotId) {
+      setScores([]);
+      setSelectedScoreId(null);
+      setScoreStatusMessage('Select a portfolio snapshot to view score history.');
+      return;
+    }
+
+    setIsScoresLoading(true);
+    setScoreStatusMessage('');
+
+    try {
+      const nextScores =
+        await listFinancialHealthScoresBySourceSnapshotId(sourceSnapshotId);
+      setScores(nextScores);
+      setSelectedScoreId((currentSelectedId) => {
+        const hasCurrent = currentSelectedId
+          ? nextScores.some((score) => score.id === currentSelectedId)
+          : false;
+        return hasCurrent ? currentSelectedId : nextScores[0]?.id ?? null;
+      });
+      if (nextScores.length === 0) {
+        setScoreStatusMessage('No financial health scores found for selected snapshot yet.');
+      } else {
+        setScoreStatusMessage(`Loaded ${nextScores.length} score artifacts for selected snapshot.`);
+      }
+    } catch (error) {
+      setScoreStatusMessage(
+        error instanceof Error ? error.message : 'Failed to load score history from API.',
+      );
+    } finally {
+      setIsScoresLoading(false);
+    }
+  };
+
   useEffect(() => {
     void loadSnapshots();
   }, []);
 
   useEffect(() => {
     void loadReportsForSelectedSnapshot(selectedSnapshotId);
+  }, [selectedSnapshotId]);
+
+  useEffect(() => {
+    void loadScoresForSelectedSnapshot(selectedSnapshotId);
   }, [selectedSnapshotId]);
 
   const onGenerateDemoReport = async () => {
@@ -241,24 +285,36 @@ export default function AiInsightsPage() {
     }
   };
 
-  const onGenerateDemoScore = () => {
+  const onGenerateDemoScore = async () => {
+    setIsGeneratingScore(true);
+    setScoreStatusMessage('');
+
     try {
       if (!selectedSnapshot) {
         setScoreStatusMessage('Select a portfolio snapshot before generating a score.');
         return;
       }
+      if (!selectedSnapshot.id) {
+        setScoreStatusMessage('Selected snapshot is missing an id and cannot create a score.');
+        return;
+      }
 
-      const scoreInput = portfolioSnapshotToFinancialHealthScoreInput(selectedSnapshot);
-      const result = calculateFinancialHealthScore(scoreInput);
-      const insight = buildFinancialHealthInsight(result);
-
-      setScoreResult(result);
-      setScoreInsight(insight);
-      setScoreStatusMessage(
-        `Snapshot-driven score generated at ${formatDateTime(result.createdAt)}`,
+      const createdScore = await createFinancialHealthScoreForSnapshot(
+        selectedSnapshot.id,
+        {
+          scoringVersion: '1.0.0',
+        },
       );
+
+      await loadScoresForSelectedSnapshot(selectedSnapshot.id);
+      setSelectedScoreId(createdScore.id);
+      setScoreStatusMessage(`Server-created score artifact generated: ${createdScore.id}`);
     } catch (error) {
-      setScoreStatusMessage(error instanceof Error ? error.message : 'Failed to generate demo score');
+      setScoreStatusMessage(
+        error instanceof Error ? error.message : 'Failed to generate financial health score',
+      );
+    } finally {
+      setIsGeneratingScore(false);
     }
   };
 
@@ -496,15 +552,19 @@ export default function AiInsightsPage() {
             <div className='space-y-1'>
               <CardTitle>Financial Health Score v1</CardTitle>
               <CardDescription>
-                Deterministic score and deterministic insight generated from shared core logic.
+                Server-backed score artifact history scoped by selected snapshot.
               </CardDescription>
             </div>
             <div className='flex flex-wrap items-center gap-2'>
-              <Button variant='primary' onClick={onGenerateDemoScore}>
-                Generate Score from Selected Snapshot
+              <Button
+                variant='primary'
+                onClick={() => void onGenerateDemoScore()}
+                disabled={isGeneratingScore}
+              >
+                {isGeneratingScore ? 'Generating...' : 'Generate Score from Selected Snapshot'}
               </Button>
               <span className='text-xs text-aurum-muted'>
-                Uses selected persisted snapshot and in-memory component state only.
+                Score creation and history are loaded from API, scoped by selected snapshot.
               </span>
             </div>
             {scoreStatusMessage ? (
@@ -513,32 +573,66 @@ export default function AiInsightsPage() {
               </p>
             ) : null}
           </CardHeader>
-          <CardContent>
-            {!scoreResult || !scoreInsight ? (
+          <CardContent className='space-y-4'>
+            <div className='space-y-2'>
+              <p className='text-sm font-medium text-aurum-text'>Score History</p>
+              {isScoresLoading ? (
+                <p className='text-sm text-aurum-muted'>Loading snapshot-scoped score history...</p>
+              ) : scores.length === 0 ? (
+                <p className='text-sm text-aurum-muted'>
+                  No persisted scores yet. Click "Generate Score from Selected Snapshot" to create one.
+                </p>
+              ) : (
+                <div className='space-y-2'>
+                  {scores.map((score) => (
+                    <button
+                      key={score.id}
+                      type='button'
+                      onClick={() => setSelectedScoreId(score.id)}
+                      className={`w-full rounded-[12px] border px-3 py-2 text-left text-xs transition ${
+                        score.id === selectedScoreId
+                          ? 'border-[var(--aurum-accent)] bg-[var(--aurum-accent)]/10'
+                          : 'border-[var(--aurum-border)] bg-[var(--aurum-surface)] hover:bg-[var(--aurum-surface-alt)]'
+                      }`}
+                    >
+                      <p className='font-medium text-aurum-text'>
+                        {score.result.totalScore}/{score.result.maxScore} -{' '}
+                        {score.result.grade.replace('_', ' ')}
+                      </p>
+                      <p className='text-aurum-muted'>
+                        created: {formatDateTime(score.createdAt)}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {!selectedScoreResult || !selectedScoreInsight ? (
               <p className='text-sm text-aurum-muted'>
-                Click "Generate Demo Score" to run the deterministic Financial Health Score flow.
+                Select a score artifact from history to view details.
               </p>
             ) : (
               <div className='grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4'>
                 <div>
                   <p className='text-xs uppercase tracking-wide text-aurum-muted'>Total Score</p>
                   <p className='text-lg font-semibold text-aurum-text'>
-                    {scoreResult.totalScore}/{scoreResult.maxScore}
+                    {selectedScoreResult.totalScore}/{selectedScoreResult.maxScore}
                   </p>
                 </div>
                 <div>
                   <p className='text-xs uppercase tracking-wide text-aurum-muted'>Grade</p>
                   <p className='text-lg font-semibold capitalize text-aurum-text'>
-                    {scoreResult.grade.replace('_', ' ')}
+                    {selectedScoreResult.grade.replace('_', ' ')}
                   </p>
                 </div>
                 <div className='md:col-span-2'>
                   <p className='text-xs uppercase tracking-wide text-aurum-muted'>Headline</p>
-                  <p className='text-aurum-text'>{scoreInsight.headline}</p>
+                  <p className='text-aurum-text'>{selectedScoreInsight.headline}</p>
                 </div>
                 <div className='md:col-span-2 xl:col-span-4'>
                   <p className='text-xs uppercase tracking-wide text-aurum-muted'>Summary</p>
-                  <p className='text-aurum-text'>{scoreInsight.summary}</p>
+                  <p className='text-aurum-text'>{selectedScoreInsight.summary}</p>
                 </div>
               </div>
             )}
@@ -553,10 +647,10 @@ export default function AiInsightsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-3'>
-            {!scoreResult ? (
+            {!selectedScoreResult ? (
               <p className='text-sm text-aurum-muted'>No score result yet.</p>
             ) : (
-              scoreResult.breakdown.map((item) => (
+              selectedScoreResult.breakdown.map((item) => (
                 <div
                   key={item.dimension}
                   className='rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3 text-sm'
@@ -583,12 +677,12 @@ export default function AiInsightsPage() {
               <CardTitle>Strengths</CardTitle>
             </CardHeader>
             <CardContent className='space-y-2'>
-              {!scoreInsight ? (
+              {!selectedScoreInsight ? (
                 <p className='text-sm text-aurum-muted'>No insight yet.</p>
-              ) : scoreInsight.strengths.length === 0 ? (
+              ) : selectedScoreInsight.strengths.length === 0 ? (
                 <p className='text-sm text-aurum-muted'>No standout strengths identified.</p>
               ) : (
-                scoreInsight.strengths.map((item) => (
+                selectedScoreInsight.strengths.map((item) => (
                   <p key={item} className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
                     {item}
                   </p>
@@ -602,12 +696,12 @@ export default function AiInsightsPage() {
               <CardTitle>Concerns</CardTitle>
             </CardHeader>
             <CardContent className='space-y-2'>
-              {!scoreInsight ? (
+              {!selectedScoreInsight ? (
                 <p className='text-sm text-aurum-muted'>No insight yet.</p>
-              ) : scoreInsight.concerns.length === 0 ? (
+              ) : selectedScoreInsight.concerns.length === 0 ? (
                 <p className='text-sm text-aurum-muted'>No major concerns identified.</p>
               ) : (
-                scoreInsight.concerns.map((item) => (
+                selectedScoreInsight.concerns.map((item) => (
                   <p key={item} className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
                     {item}
                   </p>
@@ -621,12 +715,12 @@ export default function AiInsightsPage() {
               <CardTitle>Next Actions</CardTitle>
             </CardHeader>
             <CardContent className='space-y-2'>
-              {!scoreInsight ? (
+              {!selectedScoreInsight ? (
                 <p className='text-sm text-aurum-muted'>No insight yet.</p>
-              ) : scoreInsight.nextActions.length === 0 ? (
+              ) : selectedScoreInsight.nextActions.length === 0 ? (
                 <p className='text-sm text-aurum-muted'>No urgent action required.</p>
               ) : (
-                scoreInsight.nextActions.map((item) => (
+                selectedScoreInsight.nextActions.map((item) => (
                   <p key={item} className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
                     {item}
                   </p>
