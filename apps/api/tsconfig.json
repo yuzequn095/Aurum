@@ -15,7 +15,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@aurum/core": ["../../packages/core/src/index.ts"],
+      "@aurum/core": ["../../packages/core/src/index"],
       "@aurum/core/*": ["../../packages/core/src/*"]
     },
     "incremental": true,

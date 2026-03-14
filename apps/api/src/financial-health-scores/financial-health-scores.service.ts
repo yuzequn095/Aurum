@@ -2,8 +2,8 @@ import {
   buildFinancialHealthInsight,
   calculateFinancialHealthScore,
   portfolioSnapshotToFinancialHealthScoreInput,
-  type FinancialHealthScoreArtifact,
-} from '@aurum/core';
+} from '../../../../packages/core/src/index';
+import type { FinancialHealthScoreArtifact } from '@aurum/core';
 import { randomUUID } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
