@@ -1,4 +1,7 @@
 import type {
+  BankLinkTokenResult,
+  BankSourceConnectionResult,
+  BankSyncMaterializationResult,
   ConnectedSource,
   ConnectedSourceAccount,
   ConnectedSyncRun,
@@ -12,7 +15,6 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ManualStaticSourceAdapter } from '../../../../packages/core/src/portfolio/manual-static';
 import type {
   ConnectedSourceAccountRecord,
-  ConnectedSourceKind,
   ConnectedSourceRecord,
   ConnectedSourceStatus,
   ConnectedSyncRunRecord,
@@ -24,13 +26,21 @@ import { PortfolioSnapshotsService } from '../portfolio-snapshots/portfolio-snap
 import { mapPortfolioSnapshotRecordToSnapshot } from '../portfolio-snapshots/portfolio-snapshot.mapper';
 import { formatDateOnly, parseDateOnly } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
+import { ConnectedSourceSecretsService } from './connected-source-secrets.service';
 import { CreateConnectedSourceAccountDto } from './dto/create-connected-source-account.dto';
 import { CreateConnectedSourceDto } from './dto/create-connected-source.dto';
 import { CreateManualStaticValuationDto } from './dto/create-manual-static-valuation.dto';
+import { ExchangePlaidPublicTokenDto } from './dto/exchange-plaid-public-token.dto';
 import { ListConnectedSourcesQueryDto } from './dto/list-connected-sources-query.dto';
 import { MaterializeManualStaticSnapshotDto } from './dto/materialize-manual-static-snapshot.dto';
 import { UpdateConnectedSourceAccountDto } from './dto/update-connected-source-account.dto';
 import { UpdateConnectedSourceDto } from './dto/update-connected-source.dto';
+import { PlaidBankAdapter } from './providers/plaid/plaid-bank.adapter';
+import { PlaidClient } from './providers/plaid/plaid.client';
+import type {
+  PlaidLinkedAccount,
+  PlaidSourceSecretPayload,
+} from './providers/plaid/plaid.types';
 
 type OwnedSourceAccountRecord = Prisma.ConnectedSourceAccountRecordGetPayload<{
   include: { source: true };
@@ -108,6 +118,7 @@ function mapSourceRecord(record: ConnectedSourceRecord): ConnectedSource {
     userId: record.userId,
     kind: record.kind,
     providerKey: record.providerKey ?? undefined,
+    providerConnectionId: record.providerConnectionId ?? undefined,
     displayName: record.displayName,
     status: record.status,
     institutionName: record.institutionName ?? undefined,
@@ -127,6 +138,7 @@ function mapSourceAccountRecord(
     sourceId: record.sourceId,
     externalAccountId: record.externalAccountId ?? undefined,
     displayName: record.displayName,
+    officialName: record.officialName ?? undefined,
     accountType: record.accountType,
     currency: record.currency,
     assetType: mapAssetType(record.assetType),
@@ -182,12 +194,6 @@ function mapValuationRecord(
   };
 }
 
-function mapKind(
-  kind: ConnectedSourceKind | undefined,
-): ConnectedSourceKind | undefined {
-  return kind;
-}
-
 function mapStatus(
   status: ConnectedSourceStatus | undefined,
 ): ConnectedSourceStatus | undefined {
@@ -209,19 +215,14 @@ function getLatestValuationDate(
   );
 }
 
-function buildSourceFingerprint(valuations: ManualStaticValuation[]): string {
-  const fingerprintPayload = valuations.map((valuation) => ({
-    id: valuation.id,
-    sourceAccountId: valuation.sourceAccountId,
-    valuationDate: valuation.valuationDate,
-    marketValue: valuation.marketValue,
-    quantity: valuation.quantity,
-    unitPrice: valuation.unitPrice,
-  }));
+function buildSourceFingerprint(items: Array<Record<string, unknown>>): string {
+  return createHash('sha256').update(JSON.stringify(items)).digest('hex');
+}
 
-  return createHash('sha256')
-    .update(JSON.stringify(fingerprintPayload))
-    .digest('hex');
+function mapPlaidAccountAssetType(
+  accountType: string,
+): PortfolioAssetCategoryType {
+  return accountType.trim().toLowerCase() === 'depository' ? 'CASH' : 'OTHER';
 }
 
 @Injectable()
@@ -231,6 +232,9 @@ export class ConnectedFinanceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly portfolioSnapshotsService: PortfolioSnapshotsService,
+    private readonly connectedSourceSecretsService: ConnectedSourceSecretsService,
+    private readonly plaidClient: PlaidClient,
+    private readonly plaidBankAdapter: PlaidBankAdapter,
   ) {}
 
   async listSources(
@@ -239,7 +243,7 @@ export class ConnectedFinanceService {
   ): Promise<ConnectedSource[]> {
     const where: Prisma.ConnectedSourceRecordWhereInput = {
       userId,
-      kind: mapKind(query.kind),
+      kind: query.kind,
       status: mapStatus(query.status),
     };
 
@@ -301,6 +305,123 @@ export class ConnectedFinanceService {
     }
 
     return this.getSourceById(userId, id);
+  }
+
+  async createPlaidLinkToken(userId: string): Promise<BankLinkTokenResult> {
+    const result = await this.plaidClient.createLinkToken(userId);
+
+    return {
+      providerKey: 'PLAID',
+      linkToken: result.linkToken,
+      expiration: result.expiration,
+    };
+  }
+
+  async exchangePlaidPublicToken(
+    userId: string,
+    dto: ExchangePlaidPublicTokenDto,
+  ): Promise<BankSourceConnectionResult> {
+    const exchange = await this.plaidClient.exchangePublicToken(
+      dto.publicToken,
+    );
+    const initialAccounts = await this.plaidClient.getInitialAccounts(
+      exchange.accessToken,
+      dto.metadata,
+    );
+    if (initialAccounts.accounts.length === 0) {
+      throw new BadRequestException(
+        'Plaid connection returned no accounts to link.',
+      );
+    }
+
+    const institutionName =
+      dto.metadata?.institution?.institutionName ??
+      initialAccounts.institution?.institutionName;
+    const providerConnectionId = initialAccounts.itemId ?? exchange.itemId;
+
+    const existingSource = await this.prisma.connectedSourceRecord.findFirst({
+      where: {
+        userId,
+        kind: 'BANK',
+        providerKey: 'PLAID',
+        providerConnectionId,
+      },
+    });
+
+    const sourceMetadata = {
+      ...(existingSource ? mapMetadata(existingSource.metadata) : {}),
+      provider: 'PLAID',
+      linkSessionId: dto.metadata?.linkSessionId,
+      lastExchangeRequestId: exchange.requestId,
+    } satisfies Record<string, unknown>;
+
+    const source = existingSource
+      ? await this.prisma.connectedSourceRecord.update({
+          where: { id: existingSource.id },
+          data: {
+            status: 'ACTIVE',
+            displayName: institutionName ?? existingSource.displayName,
+            institutionName,
+            baseCurrency:
+              initialAccounts.accounts[0]?.currency ??
+              existingSource.baseCurrency,
+            metadata: sourceMetadata as Prisma.InputJsonValue,
+          },
+        })
+      : await this.prisma.connectedSourceRecord.create({
+          data: {
+            userId,
+            kind: 'BANK',
+            providerKey: 'PLAID',
+            providerConnectionId,
+            displayName: institutionName ?? 'Plaid Bank Connection',
+            status: 'ACTIVE',
+            institutionName,
+            baseCurrency: initialAccounts.accounts[0]?.currency ?? 'USD',
+            metadata: sourceMetadata as Prisma.InputJsonValue,
+          },
+        });
+
+    await this.prisma.connectedSourceSecretRecord.upsert({
+      where: {
+        sourceId_secretType: {
+          sourceId: source.id,
+          secretType: 'PROVIDER_CREDENTIALS',
+        },
+      },
+      create: {
+        userId,
+        sourceId: source.id,
+        secretType: 'PROVIDER_CREDENTIALS',
+        encryptedPayload: this.connectedSourceSecretsService.encryptJson({
+          accessToken: exchange.accessToken,
+          itemId: providerConnectionId,
+          institutionId: dto.metadata?.institution?.institutionId,
+          institutionName,
+        }),
+      },
+      update: {
+        userId,
+        encryptedPayload: this.connectedSourceSecretsService.encryptJson({
+          accessToken: exchange.accessToken,
+          itemId: providerConnectionId,
+          institutionId: dto.metadata?.institution?.institutionId,
+          institutionName,
+        }),
+      },
+    });
+
+    const sourceAccounts = await this.syncPlaidSourceAccounts(
+      source,
+      initialAccounts.accounts,
+      institutionName,
+    );
+
+    return {
+      providerKey: 'PLAID',
+      source: mapSourceRecord(source),
+      accounts: sourceAccounts.map(mapSourceAccountRecord),
+    };
   }
 
   async createSourceAccount(
@@ -508,11 +629,9 @@ export class ConnectedFinanceService {
       latestValuations,
       dto.snapshotDate,
     );
-    const sourceShape = mapSourceRecord(source);
-    const accountShapes = activeAccounts.map(mapSourceAccountRecord);
     const normalized = this.manualStaticSourceAdapter.normalize({
-      source: sourceShape,
-      accounts: accountShapes,
+      source: mapSourceRecord(source),
+      accounts: activeAccounts.map(mapSourceAccountRecord),
       latestValuations,
       snapshotDate,
     });
@@ -522,15 +641,23 @@ export class ConnectedFinanceService {
       );
     }
 
-    const sourceFingerprint = buildSourceFingerprint(latestValuations);
-    const startedAt = new Date();
+    const sourceFingerprint = buildSourceFingerprint(
+      latestValuations.map((valuation) => ({
+        id: valuation.id,
+        sourceAccountId: valuation.sourceAccountId,
+        valuationDate: valuation.valuationDate,
+        marketValue: valuation.marketValue,
+        quantity: valuation.quantity,
+        unitPrice: valuation.unitPrice,
+      })),
+    );
     const syncRun = await this.prisma.connectedSyncRunRecord.create({
       data: {
         userId,
         sourceId,
         triggerType: 'MANUAL',
         status: 'RUNNING',
-        startedAt,
+        startedAt: new Date(),
         normalizationVersion: normalized.normalizationVersion,
         metadata: {
           materializationMode: 'manual_static_latest_valuations',
@@ -617,6 +744,181 @@ export class ConnectedFinanceService {
     }
   }
 
+  async syncBankSource(
+    userId: string,
+    sourceId: string,
+  ): Promise<BankSyncMaterializationResult | null> {
+    const source = await this.getOwnedSourceRecord(userId, sourceId);
+    if (!source) {
+      return null;
+    }
+
+    this.assertPlaidBankSource(source);
+
+    const secretRecord =
+      await this.prisma.connectedSourceSecretRecord.findFirst({
+        where: {
+          userId,
+          sourceId,
+          secretType: 'PROVIDER_CREDENTIALS',
+        },
+      });
+    if (!secretRecord) {
+      throw new BadRequestException(
+        'Plaid bank source is missing provider credentials.',
+      );
+    }
+
+    const secretPayload =
+      this.connectedSourceSecretsService.decryptJson<PlaidSourceSecretPayload>(
+        secretRecord.encryptedPayload,
+      );
+    const syncRun = await this.prisma.connectedSyncRunRecord.create({
+      data: {
+        userId,
+        sourceId,
+        triggerType: 'MANUAL',
+        status: 'RUNNING',
+        startedAt: new Date(),
+        normalizationVersion: this.plaidBankAdapter.normalizationVersion,
+        metadata: {
+          providerKey: 'PLAID',
+          syncMode: 'balance_snapshot',
+          itemId: secretPayload.itemId,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    try {
+      const plaidBalances = await this.plaidClient.getCurrentBalances(
+        secretPayload.accessToken,
+      );
+      if (plaidBalances.accounts.length === 0) {
+        throw new BadRequestException(
+          'Plaid bank source returned no linked accounts to sync.',
+        );
+      }
+
+      const syncedAccounts = await this.syncPlaidSourceAccounts(
+        source,
+        plaidBalances.accounts,
+        secretPayload.institutionName ??
+          plaidBalances.institution?.institutionName,
+      );
+      const snapshotDate = formatDateOnly(new Date());
+      const normalized = this.plaidBankAdapter.normalize({
+        source: mapSourceRecord(source),
+        accounts: syncedAccounts
+          .map(mapSourceAccountRecord)
+          .filter((account) => account.isActive),
+        accountInputs: plaidBalances.accounts,
+        balances: plaidBalances.accounts,
+        snapshotDate,
+      });
+      if (normalized.positions.length === 0) {
+        throw new BadRequestException(
+          'Plaid bank source returned no usable account balances to materialize.',
+        );
+      }
+
+      const sourceFingerprint = buildSourceFingerprint(
+        plaidBalances.accounts.map((account) => ({
+          externalAccountId: account.externalAccountId,
+          currentBalance: account.currentBalance,
+          availableBalance: account.availableBalance,
+          currency: account.currency,
+        })),
+      );
+      const snapshot = await this.portfolioSnapshotsService.createSnapshot(
+        {
+          userId,
+          metadata: {
+            portfolioName: normalized.portfolioName,
+            sourceType: 'other',
+            sourceLabel: normalized.sourceLabel ?? source.displayName,
+            snapshotDate,
+            valuationCurrency: normalized.valuationCurrency,
+            ingestionMode: 'CONNECTED_SYNC',
+            sourceId,
+            sourceSyncRunId: syncRun.id,
+            normalizationVersion: normalized.normalizationVersion,
+            sourceFingerprint,
+          },
+          totalValue: normalized.totalValue,
+          cashValue: normalized.cashValue,
+          positions: normalized.positions.map((position) => ({
+            assetKey: position.assetKey,
+            symbol: position.symbol,
+            name: position.name,
+            quantity: position.quantity,
+            marketValue: position.marketValue,
+            category: this.toPortfolioCategory(position.category),
+            sourceAccountId: position.sourceAccountRef,
+            notes: position.notes,
+          })),
+        },
+        userId,
+      );
+
+      const completedSyncRun = await this.prisma.connectedSyncRunRecord.update({
+        where: { id: syncRun.id },
+        data: {
+          status: 'SUCCEEDED',
+          finishedAt: new Date(),
+          producedSnapshotId: snapshot.id,
+          rawPayloadRef: plaidBalances.requestId,
+          metadata: {
+            providerKey: 'PLAID',
+            syncMode: 'balance_snapshot',
+            itemId: secretPayload.itemId,
+            snapshotId: snapshot.id,
+            syncedExternalAccountIds: plaidBalances.accounts.map(
+              (account) => account.externalAccountId,
+            ),
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      await this.prisma.connectedSourceRecord.update({
+        where: { id: sourceId },
+        data: {
+          lastSuccessfulSyncAt: new Date(),
+          institutionName:
+            secretPayload.institutionName ??
+            plaidBalances.institution?.institutionName,
+          metadata: {
+            ...(mapMetadata(source.metadata) ?? {}),
+            provider: 'PLAID',
+            lastBalanceSyncRequestId: plaidBalances.requestId,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      return {
+        snapshot,
+        syncRun: mapSyncRunRecord(completedSyncRun),
+        syncedAccountCount: plaidBalances.accounts.length,
+        materializedPositionCount: normalized.positions.length,
+        snapshotDate,
+        balanceSelectionStrategy:
+          this.plaidBankAdapter.balanceSelectionStrategy,
+      };
+    } catch (error) {
+      await this.prisma.connectedSyncRunRecord.update({
+        where: { id: syncRun.id },
+        data: {
+          status: 'FAILED',
+          finishedAt: new Date(),
+          errorCode: 'PLAID_BANK_SYNC_FAILED',
+          errorMessage:
+            error instanceof Error ? error.message : 'Plaid bank sync failed',
+        },
+      });
+
+      throw error;
+    }
+  }
+
   async listSourceSnapshots(
     userId: string,
     sourceId: string,
@@ -667,10 +969,90 @@ export class ConnectedFinanceService {
     });
   }
 
+  private async syncPlaidSourceAccounts(
+    source: ConnectedSourceRecord,
+    plaidAccounts: PlaidLinkedAccount[],
+    institutionName?: string,
+  ): Promise<ConnectedSourceAccountRecord[]> {
+    const existingAccounts =
+      await this.prisma.connectedSourceAccountRecord.findMany({
+        where: { sourceId: source.id },
+      });
+    const existingByExternalAccountId = new Map(
+      existingAccounts
+        .filter((account) => account.externalAccountId)
+        .map((account) => [account.externalAccountId as string, account]),
+    );
+    const syncedAccounts: ConnectedSourceAccountRecord[] = [];
+
+    for (const plaidAccount of plaidAccounts) {
+      const data = {
+        displayName: plaidAccount.displayName,
+        officialName: plaidAccount.officialName,
+        accountType: plaidAccount.accountType,
+        currency: plaidAccount.currency ?? source.baseCurrency,
+        assetType: mapPlaidAccountAssetType(plaidAccount.accountType),
+        assetSubType: plaidAccount.accountSubType,
+        institutionOrIssuer:
+          plaidAccount.institutionName ??
+          institutionName ??
+          source.institutionName,
+        maskLast4: plaidAccount.maskLast4,
+        isActive: true,
+        metadata: {
+          ...(plaidAccount.metadata ?? {}),
+          currentBalance: plaidAccount.currentBalance,
+          availableBalance: plaidAccount.availableBalance,
+          balanceAsOf: plaidAccount.asOf,
+          externalAccountId: plaidAccount.externalAccountId,
+        } as Prisma.InputJsonValue,
+      };
+      const existing = existingByExternalAccountId.get(
+        plaidAccount.externalAccountId,
+      );
+      const synced = existing
+        ? await this.prisma.connectedSourceAccountRecord.update({
+            where: { id: existing.id },
+            data,
+          })
+        : await this.prisma.connectedSourceAccountRecord.create({
+            data: {
+              sourceId: source.id,
+              externalAccountId: plaidAccount.externalAccountId,
+              ...data,
+            },
+          });
+
+      syncedAccounts.push(synced);
+    }
+
+    await this.prisma.connectedSourceAccountRecord.updateMany({
+      where: {
+        sourceId: source.id,
+        externalAccountId: {
+          notIn: plaidAccounts.map((account) => account.externalAccountId),
+        },
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    return syncedAccounts;
+  }
+
   private assertManualStaticSource(source: ConnectedSourceRecord) {
     if (source.kind !== 'MANUAL_STATIC') {
       throw new BadRequestException(
         'Manual static accounts and valuations require a MANUAL_STATIC source.',
+      );
+    }
+  }
+
+  private assertPlaidBankSource(source: ConnectedSourceRecord) {
+    if (source.kind !== 'BANK' || source.providerKey !== 'PLAID') {
+      throw new BadRequestException(
+        'Plaid bank sync requires a BANK source with providerKey PLAID.',
       );
     }
   }

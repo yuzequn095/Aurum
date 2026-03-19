@@ -40,6 +40,7 @@ export interface ConnectedSource {
   userId: string;
   kind: ConnectedSourceKind;
   providerKey?: string;
+  providerConnectionId?: string;
   displayName: string;
   status: ConnectedSourceStatus;
   institutionName?: string;
@@ -55,6 +56,7 @@ export interface ConnectedSourceAccount {
   sourceId: string;
   externalAccountId?: string;
   displayName: string;
+  officialName?: string;
   accountType: string;
   currency: string;
   assetType?: PortfolioAssetCategory;

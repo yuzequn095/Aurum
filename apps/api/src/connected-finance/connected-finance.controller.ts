@@ -10,6 +10,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type {
+  BankLinkTokenResult,
+  BankSourceConnectionResult,
+  BankSyncMaterializationResult,
   ConnectedSource,
   ConnectedSourceAccount,
   ConnectedSyncRun,
@@ -24,6 +27,7 @@ import { ConnectedFinanceService } from './connected-finance.service';
 import { CreateConnectedSourceAccountDto } from './dto/create-connected-source-account.dto';
 import { CreateConnectedSourceDto } from './dto/create-connected-source.dto';
 import { CreateManualStaticValuationDto } from './dto/create-manual-static-valuation.dto';
+import { ExchangePlaidPublicTokenDto } from './dto/exchange-plaid-public-token.dto';
 import { ListConnectedSourcesQueryDto } from './dto/list-connected-sources-query.dto';
 import { MaterializeManualStaticSnapshotDto } from './dto/materialize-manual-static-snapshot.dto';
 import { UpdateConnectedSourceAccountDto } from './dto/update-connected-source-account.dto';
@@ -48,6 +52,21 @@ export class ConnectedFinanceController {
     @Body() dto: CreateConnectedSourceDto,
   ): Promise<ConnectedSource> {
     return this.service.createSource(user.userId, dto);
+  }
+
+  @Post('bank/plaid/link-token')
+  async createPlaidLinkToken(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<BankLinkTokenResult> {
+    return this.service.createPlaidLinkToken(user.userId);
+  }
+
+  @Post('bank/plaid/exchange-public-token')
+  async exchangePlaidPublicToken(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ExchangePlaidPublicTokenDto,
+  ): Promise<BankSourceConnectionResult> {
+    return this.service.exchangePlaidPublicToken(user.userId, dto);
   }
 
   @Get('sources/:id')
@@ -171,6 +190,19 @@ export class ConnectedFinanceController {
     }
 
     return syncRuns;
+  }
+
+  @Post('sources/:id/sync')
+  async syncSource(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ): Promise<BankSyncMaterializationResult> {
+    const result = await this.service.syncBankSource(user.userId, id);
+    if (!result) {
+      throw new NotFoundException('Connected source not found');
+    }
+
+    return result;
   }
 
   @Get('sources/:id/snapshots')

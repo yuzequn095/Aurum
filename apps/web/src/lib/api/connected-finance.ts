@@ -1,4 +1,7 @@
 import type {
+  BankLinkTokenResult,
+  BankSourceConnectionResult,
+  BankSyncMaterializationResult,
   ConnectedSource,
   ConnectedSourceAccount,
   ManualStaticSnapshotMaterializationResult,
@@ -44,6 +47,24 @@ export interface CreateManualStaticValuationRequest {
   metadata?: Record<string, unknown>;
 }
 
+export interface ExchangePlaidPublicTokenRequest {
+  publicToken: string;
+  metadata?: {
+    institution?: {
+      institutionId?: string;
+      institutionName?: string;
+    };
+    accounts?: Array<{
+      id: string;
+      name?: string;
+      mask?: string;
+      subtype?: string;
+      type?: string;
+    }>;
+    linkSessionId?: string;
+  };
+}
+
 export async function listConnectedSources(
   kind?: ConnectedSource['kind'],
 ): Promise<ConnectedSource[]> {
@@ -60,6 +81,19 @@ export async function createConnectedSource(
   body: CreateConnectedSourceRequest,
 ): Promise<ConnectedSource> {
   return apiPost<ConnectedSource>('/v1/connected-finance/sources', body);
+}
+
+export async function createPlaidLinkToken(): Promise<BankLinkTokenResult> {
+  return apiPost<BankLinkTokenResult>('/v1/connected-finance/bank/plaid/link-token', {});
+}
+
+export async function exchangePlaidPublicToken(
+  body: ExchangePlaidPublicTokenRequest,
+): Promise<BankSourceConnectionResult> {
+  return apiPost<BankSourceConnectionResult>(
+    '/v1/connected-finance/bank/plaid/exchange-public-token',
+    body,
+  );
 }
 
 export async function listConnectedSourceAccounts(
@@ -115,4 +149,13 @@ export async function materializeManualStaticSnapshot(
 
 export async function listConnectedSourceSnapshots(sourceId: string): Promise<PortfolioSnapshot[]> {
   return apiGet<PortfolioSnapshot[]>(`/v1/connected-finance/sources/${sourceId}/snapshots`);
+}
+
+export async function syncConnectedBankSource(
+  sourceId: string,
+): Promise<BankSyncMaterializationResult> {
+  return apiPost<BankSyncMaterializationResult>(
+    `/v1/connected-finance/sources/${sourceId}/sync`,
+    {},
+  );
 }

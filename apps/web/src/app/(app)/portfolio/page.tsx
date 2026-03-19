@@ -9,6 +9,7 @@ import type {
   PortfolioAssetCategory,
   PortfolioSnapshot,
 } from '@aurum/core';
+import { PlaidSandboxBankSection } from '@/components/portfolio/PlaidSandboxBankSection';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -323,6 +324,8 @@ export default function PortfolioPage() {
 
   return (
     <PageContainer className="space-y-6">
+      <PlaidSandboxBankSection onSnapshotsChanged={loadAllSnapshots} />
+
       <Card>
         <CardHeader>
           <CardTitle>Manual Static Accounts</CardTitle>

@@ -71,6 +71,10 @@ enum ConnectedSyncStatus {
   PARTIAL_SUCCESS
 }
 
+enum ConnectedSourceSecretType {
+  PROVIDER_CREDENTIALS
+}
+
 enum PortfolioSnapshotIngestionMode {
   MANUAL_STATIC
   CSV_IMPORT
@@ -90,6 +94,7 @@ model User {
   transactions           Transaction[]
   importLogs             ImportLog[]
   connectedSources       ConnectedSourceRecord[]
+  connectedSourceSecrets ConnectedSourceSecretRecord[]
   connectedSyncRuns      ConnectedSyncRunRecord[]
   manualStaticValuations ManualStaticValuationRecord[]
   portfolioSnapshots PortfolioSnapshotRecord[]
@@ -232,6 +237,7 @@ model ConnectedSourceRecord {
   userId               String
   kind                 ConnectedSourceKind
   providerKey          String?
+  providerConnectionId String?
   displayName          String
   status               ConnectedSourceStatus
   institutionName      String?
@@ -243,6 +249,7 @@ model ConnectedSourceRecord {
 
   user                   User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   accounts               ConnectedSourceAccountRecord[]
+  secrets                ConnectedSourceSecretRecord[]
   syncRuns               ConnectedSyncRunRecord[]
   manualStaticValuations ManualStaticValuationRecord[]
   snapshots              PortfolioSnapshotRecord[]
@@ -250,6 +257,8 @@ model ConnectedSourceRecord {
   @@index([userId, createdAt])
   @@index([userId, kind])
   @@index([userId, status])
+  @@index([providerKey, providerConnectionId])
+  @@unique([userId, providerKey, providerConnectionId])
 }
 
 model ConnectedSourceAccountRecord {
@@ -257,6 +266,7 @@ model ConnectedSourceAccountRecord {
   sourceId          String
   externalAccountId String?
   displayName       String
+  officialName      String?
   accountType       String
   currency          String   @default("USD")
   assetType         PortfolioAssetCategoryType?
@@ -273,6 +283,23 @@ model ConnectedSourceAccountRecord {
 
   @@index([sourceId, isActive])
   @@index([sourceId, createdAt])
+  @@index([sourceId, externalAccountId])
+}
+
+model ConnectedSourceSecretRecord {
+  id               String                    @id @default(cuid())
+  userId           String
+  sourceId         String
+  secretType       ConnectedSourceSecretType
+  encryptedPayload String
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+
+  user   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source ConnectedSourceRecord @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, secretType])
+  @@index([userId, createdAt])
 }
 
 model ManualStaticValuationRecord {
