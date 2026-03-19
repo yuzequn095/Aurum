@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "ManualStaticValuationRecord_sourceAccountId_valuationDate_creat" RENAME TO "ManualStaticValuationRecord_sourceAccountId_valuationDate_c_idx";

@@ -1,3 +1,5 @@
+import type { PortfolioAssetCategory } from './types';
+
 export const connectedSourceKinds = ['MANUAL_STATIC', 'BANK', 'BROKERAGE', 'CRYPTO'] as const;
 
 export type ConnectedSourceKind = (typeof connectedSourceKinds)[number];
@@ -55,6 +57,9 @@ export interface ConnectedSourceAccount {
   displayName: string;
   accountType: string;
   currency: string;
+  assetType?: PortfolioAssetCategory;
+  assetSubType?: string;
+  institutionOrIssuer?: string;
   maskLast4?: string;
   isActive: boolean;
   metadata?: Record<string, unknown>;

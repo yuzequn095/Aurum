@@ -82,15 +82,16 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  identities        AuthIdentity[]
-  refreshTokens     RefreshToken[]
-  accounts          Account[]
-  categories        Category[]
-  subcategories     Subcategory[]
-  transactions      Transaction[]
-  importLogs        ImportLog[]
-  connectedSources  ConnectedSourceRecord[]
-  connectedSyncRuns ConnectedSyncRunRecord[]
+  identities             AuthIdentity[]
+  refreshTokens          RefreshToken[]
+  accounts               Account[]
+  categories             Category[]
+  subcategories          Subcategory[]
+  transactions           Transaction[]
+  importLogs             ImportLog[]
+  connectedSources       ConnectedSourceRecord[]
+  connectedSyncRuns      ConnectedSyncRunRecord[]
+  manualStaticValuations ManualStaticValuationRecord[]
   portfolioSnapshots PortfolioSnapshotRecord[]
 }
 
@@ -240,10 +241,11 @@ model ConnectedSourceRecord {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
-  user      User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accounts  ConnectedSourceAccountRecord[]
-  syncRuns  ConnectedSyncRunRecord[]
-  snapshots PortfolioSnapshotRecord[]
+  user                   User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts               ConnectedSourceAccountRecord[]
+  syncRuns               ConnectedSyncRunRecord[]
+  manualStaticValuations ManualStaticValuationRecord[]
+  snapshots              PortfolioSnapshotRecord[]
 
   @@index([userId, createdAt])
   @@index([userId, kind])
@@ -257,16 +259,46 @@ model ConnectedSourceAccountRecord {
   displayName       String
   accountType       String
   currency          String   @default("USD")
+  assetType         PortfolioAssetCategoryType?
+  assetSubType      String?
+  institutionOrIssuer String?
   maskLast4         String?
   isActive          Boolean  @default(true)
   metadata          Json?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  source ConnectedSourceRecord @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source                 ConnectedSourceRecord       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  manualStaticValuations ManualStaticValuationRecord[]
 
   @@index([sourceId, isActive])
   @@index([sourceId, createdAt])
+}
+
+model ManualStaticValuationRecord {
+  id              String   @id @default(cuid())
+  userId          String
+  sourceId        String
+  sourceAccountId String
+  valuationDate   DateTime
+  currency        String   @default("USD")
+  marketValue     Decimal
+  quantity        Decimal?
+  unitPrice       Decimal?
+  symbol          String?
+  assetName       String?
+  note            String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user          User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source        ConnectedSourceRecord      @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceAccount ConnectedSourceAccountRecord @relation(fields: [sourceAccountId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([sourceId, valuationDate])
+  @@index([sourceAccountId, valuationDate, createdAt])
 }
 
 model ConnectedSyncRunRecord {

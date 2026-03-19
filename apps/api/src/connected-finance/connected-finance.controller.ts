@@ -13,13 +13,20 @@ import type {
   ConnectedSource,
   ConnectedSourceAccount,
   ConnectedSyncRun,
+  ManualStaticSnapshotMaterializationResult,
+  ManualStaticValuation,
+  PortfolioSnapshot,
 } from '@aurum/core';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ConnectedFinanceService } from './connected-finance.service';
+import { CreateConnectedSourceAccountDto } from './dto/create-connected-source-account.dto';
 import { CreateConnectedSourceDto } from './dto/create-connected-source.dto';
+import { CreateManualStaticValuationDto } from './dto/create-manual-static-valuation.dto';
 import { ListConnectedSourcesQueryDto } from './dto/list-connected-sources-query.dto';
+import { MaterializeManualStaticSnapshotDto } from './dto/materialize-manual-static-snapshot.dto';
+import { UpdateConnectedSourceAccountDto } from './dto/update-connected-source-account.dto';
 import { UpdateConnectedSourceDto } from './dto/update-connected-source.dto';
 
 @Controller('v1/connected-finance')
@@ -83,6 +90,76 @@ export class ConnectedFinanceController {
     return accounts;
   }
 
+  @Post('sources/:id/accounts')
+  async createSourceAccount(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateConnectedSourceAccountDto,
+  ): Promise<ConnectedSourceAccount> {
+    const account = await this.service.createSourceAccount(
+      user.userId,
+      id,
+      dto,
+    );
+    if (!account) {
+      throw new NotFoundException('Connected source not found');
+    }
+
+    return account;
+  }
+
+  @Patch('accounts/:accountId')
+  async updateSourceAccount(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('accountId') accountId: string,
+    @Body() dto: UpdateConnectedSourceAccountDto,
+  ): Promise<ConnectedSourceAccount> {
+    const account = await this.service.updateSourceAccount(
+      user.userId,
+      accountId,
+      dto,
+    );
+    if (!account) {
+      throw new NotFoundException('Connected source account not found');
+    }
+
+    return account;
+  }
+
+  @Get('accounts/:accountId/manual-valuations')
+  async listManualStaticValuations(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('accountId') accountId: string,
+  ): Promise<ManualStaticValuation[]> {
+    const valuations = await this.service.listManualStaticValuations(
+      user.userId,
+      accountId,
+    );
+    if (!valuations) {
+      throw new NotFoundException('Connected source account not found');
+    }
+
+    return valuations;
+  }
+
+  @Post('accounts/:accountId/manual-valuations')
+  async createManualStaticValuation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('accountId') accountId: string,
+    @Body() dto: CreateManualStaticValuationDto,
+  ): Promise<ManualStaticValuation> {
+    const valuation = await this.service.createManualStaticValuation(
+      user.userId,
+      accountId,
+      dto,
+    );
+    if (!valuation) {
+      throw new NotFoundException('Connected source account not found');
+    }
+
+    return valuation;
+  }
+
   @Get('sources/:id/sync-runs')
   async listSourceSyncRuns(
     @CurrentUser() user: AuthenticatedUser,
@@ -94,5 +171,36 @@ export class ConnectedFinanceController {
     }
 
     return syncRuns;
+  }
+
+  @Get('sources/:id/snapshots')
+  async listSourceSnapshots(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ): Promise<PortfolioSnapshot[]> {
+    const snapshots = await this.service.listSourceSnapshots(user.userId, id);
+    if (!snapshots) {
+      throw new NotFoundException('Connected source not found');
+    }
+
+    return snapshots;
+  }
+
+  @Post('sources/:id/materialize-snapshot')
+  async materializeManualStaticSnapshot(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: MaterializeManualStaticSnapshotDto,
+  ): Promise<ManualStaticSnapshotMaterializationResult> {
+    const result = await this.service.materializeManualStaticSnapshot(
+      user.userId,
+      id,
+      dto,
+    );
+    if (!result) {
+      throw new NotFoundException('Connected source not found');
+    }
+
+    return result;
   }
 }

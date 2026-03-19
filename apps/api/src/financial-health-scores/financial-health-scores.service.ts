@@ -90,6 +90,7 @@ export class FinancialHealthScoresService {
   ): Promise<FinancialHealthScoreArtifact> {
     const snapshot = await this.portfolioSnapshotsService.getSnapshotById(
       command.sourceSnapshotId,
+      command.userId,
     );
     if (!snapshot) {
       throw new NotFoundException(

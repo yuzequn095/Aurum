@@ -80,6 +80,7 @@ export class AIReportsService {
   ): Promise<AIReportArtifact> {
     const snapshot = await this.portfolioSnapshotsService.getSnapshotById(
       command.sourceSnapshotId,
+      command.userId,
     );
     if (!snapshot) {
       throw new NotFoundException(

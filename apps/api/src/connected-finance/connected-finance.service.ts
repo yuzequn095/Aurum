@@ -2,20 +2,43 @@ import type {
   ConnectedSource,
   ConnectedSourceAccount,
   ConnectedSyncRun,
+  ManualStaticSnapshotMaterializationResult,
+  ManualStaticValuation,
+  PortfolioAssetCategory,
+  PortfolioSnapshot,
 } from '@aurum/core';
-import { Injectable } from '@nestjs/common';
+import { createHash } from 'node:crypto';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { ManualStaticSourceAdapter } from '../../../../packages/core/src/portfolio/manual-static';
 import type {
   ConnectedSourceAccountRecord,
   ConnectedSourceKind,
   ConnectedSourceRecord,
   ConnectedSourceStatus,
   ConnectedSyncRunRecord,
+  ManualStaticValuationRecord,
+  PortfolioAssetCategoryType,
   Prisma,
 } from '@prisma/client';
+import { PortfolioSnapshotsService } from '../portfolio-snapshots/portfolio-snapshots.service';
+import { mapPortfolioSnapshotRecordToSnapshot } from '../portfolio-snapshots/portfolio-snapshot.mapper';
+import { formatDateOnly, parseDateOnly } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateConnectedSourceAccountDto } from './dto/create-connected-source-account.dto';
 import { CreateConnectedSourceDto } from './dto/create-connected-source.dto';
+import { CreateManualStaticValuationDto } from './dto/create-manual-static-valuation.dto';
 import { ListConnectedSourcesQueryDto } from './dto/list-connected-sources-query.dto';
+import { MaterializeManualStaticSnapshotDto } from './dto/materialize-manual-static-snapshot.dto';
+import { UpdateConnectedSourceAccountDto } from './dto/update-connected-source-account.dto';
 import { UpdateConnectedSourceDto } from './dto/update-connected-source.dto';
+
+type OwnedSourceAccountRecord = Prisma.ConnectedSourceAccountRecordGetPayload<{
+  include: { source: true };
+}>;
+
+type SourceSnapshotRecord = Prisma.PortfolioSnapshotRecordGetPayload<{
+  include: { positions: true };
+}>;
 
 function mapMetadata(
   value: Prisma.JsonValue | null,
@@ -25,6 +48,58 @@ function mapMetadata(
   }
 
   return value as Record<string, unknown>;
+}
+
+function mapAssetType(
+  assetType: PortfolioAssetCategoryType | null,
+): PortfolioAssetCategory | undefined {
+  switch (assetType) {
+    case 'CASH':
+      return 'cash';
+    case 'EQUITY':
+      return 'equity';
+    case 'ETF':
+      return 'etf';
+    case 'CRYPTO':
+      return 'crypto';
+    case 'FUND':
+      return 'fund';
+    case 'OTHER':
+      return 'other';
+    default:
+      return undefined;
+  }
+}
+
+function toPrismaAssetType(
+  assetType: PortfolioAssetCategory | undefined,
+): PortfolioAssetCategoryType | undefined {
+  switch (assetType) {
+    case 'cash':
+      return 'CASH';
+    case 'equity':
+      return 'EQUITY';
+    case 'etf':
+      return 'ETF';
+    case 'crypto':
+      return 'CRYPTO';
+    case 'fund':
+      return 'FUND';
+    case 'other':
+      return 'OTHER';
+    default:
+      return undefined;
+  }
+}
+
+function decimalToNumber(
+  value: Prisma.Decimal | number | null | undefined,
+): number | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  return Number(value);
 }
 
 function mapSourceRecord(record: ConnectedSourceRecord): ConnectedSource {
@@ -54,6 +129,9 @@ function mapSourceAccountRecord(
     displayName: record.displayName,
     accountType: record.accountType,
     currency: record.currency,
+    assetType: mapAssetType(record.assetType),
+    assetSubType: record.assetSubType ?? undefined,
+    institutionOrIssuer: record.institutionOrIssuer ?? undefined,
     maskLast4: record.maskLast4 ?? undefined,
     isActive: record.isActive,
     metadata: mapMetadata(record.metadata),
@@ -82,6 +160,28 @@ function mapSyncRunRecord(record: ConnectedSyncRunRecord): ConnectedSyncRun {
   };
 }
 
+function mapValuationRecord(
+  record: ManualStaticValuationRecord,
+): ManualStaticValuation {
+  return {
+    id: record.id,
+    userId: record.userId,
+    sourceId: record.sourceId,
+    sourceAccountId: record.sourceAccountId,
+    valuationDate: formatDateOnly(record.valuationDate),
+    currency: record.currency,
+    marketValue: Number(record.marketValue),
+    quantity: decimalToNumber(record.quantity),
+    unitPrice: decimalToNumber(record.unitPrice),
+    symbol: record.symbol ?? undefined,
+    assetName: record.assetName ?? undefined,
+    note: record.note ?? undefined,
+    metadata: mapMetadata(record.metadata),
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  };
+}
+
 function mapKind(
   kind: ConnectedSourceKind | undefined,
 ): ConnectedSourceKind | undefined {
@@ -94,9 +194,44 @@ function mapStatus(
   return status;
 }
 
+function getLatestValuationDate(
+  valuations: ManualStaticValuation[],
+  requestedSnapshotDate?: string,
+): string {
+  if (requestedSnapshotDate) {
+    return requestedSnapshotDate;
+  }
+
+  return valuations.reduce(
+    (latest, valuation) =>
+      valuation.valuationDate > latest ? valuation.valuationDate : latest,
+    valuations[0]?.valuationDate ?? formatDateOnly(new Date()),
+  );
+}
+
+function buildSourceFingerprint(valuations: ManualStaticValuation[]): string {
+  const fingerprintPayload = valuations.map((valuation) => ({
+    id: valuation.id,
+    sourceAccountId: valuation.sourceAccountId,
+    valuationDate: valuation.valuationDate,
+    marketValue: valuation.marketValue,
+    quantity: valuation.quantity,
+    unitPrice: valuation.unitPrice,
+  }));
+
+  return createHash('sha256')
+    .update(JSON.stringify(fingerprintPayload))
+    .digest('hex');
+}
+
 @Injectable()
 export class ConnectedFinanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly manualStaticSourceAdapter = new ManualStaticSourceAdapter();
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly portfolioSnapshotsService: PortfolioSnapshotsService,
+  ) {}
 
   async listSources(
     userId: string,
@@ -140,10 +275,7 @@ export class ConnectedFinanceService {
     userId: string,
     id: string,
   ): Promise<ConnectedSource | null> {
-    const record = await this.prisma.connectedSourceRecord.findFirst({
-      where: { id, userId },
-    });
-
+    const record = await this.getOwnedSourceRecord(userId, id);
     return record ? mapSourceRecord(record) : null;
   }
 
@@ -169,6 +301,68 @@ export class ConnectedFinanceService {
     }
 
     return this.getSourceById(userId, id);
+  }
+
+  async createSourceAccount(
+    userId: string,
+    sourceId: string,
+    dto: CreateConnectedSourceAccountDto,
+  ): Promise<ConnectedSourceAccount | null> {
+    const source = await this.getOwnedSourceRecord(userId, sourceId);
+    if (!source) {
+      return null;
+    }
+
+    this.assertManualStaticSource(source);
+
+    const created = await this.prisma.connectedSourceAccountRecord.create({
+      data: {
+        sourceId,
+        externalAccountId: dto.externalAccountId,
+        displayName: dto.displayName,
+        accountType: dto.accountType,
+        currency: dto.currency ?? source.baseCurrency,
+        assetType: toPrismaAssetType(dto.assetType),
+        assetSubType: dto.assetSubType,
+        institutionOrIssuer: dto.institutionOrIssuer,
+        maskLast4: dto.maskLast4,
+        isActive: dto.isActive ?? true,
+        metadata: dto.metadata as Prisma.InputJsonValue | undefined,
+      },
+    });
+
+    return mapSourceAccountRecord(created);
+  }
+
+  async updateSourceAccount(
+    userId: string,
+    accountId: string,
+    dto: UpdateConnectedSourceAccountDto,
+  ): Promise<ConnectedSourceAccount | null> {
+    const account = await this.getOwnedSourceAccountRecord(userId, accountId);
+    if (!account) {
+      return null;
+    }
+
+    this.assertManualStaticSource(account.source);
+
+    const updated = await this.prisma.connectedSourceAccountRecord.update({
+      where: { id: accountId },
+      data: {
+        displayName: dto.displayName,
+        accountType: dto.accountType,
+        currency: dto.currency,
+        assetType: dto.assetType ? toPrismaAssetType(dto.assetType) : undefined,
+        assetSubType: dto.assetSubType,
+        institutionOrIssuer: dto.institutionOrIssuer,
+        externalAccountId: dto.externalAccountId,
+        maskLast4: dto.maskLast4,
+        isActive: dto.isActive,
+        metadata: dto.metadata as Prisma.InputJsonValue | undefined,
+      },
+    });
+
+    return mapSourceAccountRecord(updated);
   }
 
   async listSourceAccounts(
@@ -205,9 +399,312 @@ export class ConnectedFinanceService {
     return records.map(mapSyncRunRecord);
   }
 
-  private getOwnedSourceRecord(userId: string, id: string) {
+  async createManualStaticValuation(
+    userId: string,
+    accountId: string,
+    dto: CreateManualStaticValuationDto,
+  ): Promise<ManualStaticValuation | null> {
+    const account = await this.getOwnedSourceAccountRecord(userId, accountId);
+    if (!account) {
+      return null;
+    }
+
+    this.assertManualStaticSource(account.source);
+
+    // `marketValue` remains the canonical source of truth in v1 materialization.
+    const created = await this.prisma.manualStaticValuationRecord.create({
+      data: {
+        userId,
+        sourceId: account.sourceId,
+        sourceAccountId: account.id,
+        valuationDate: parseDateOnly(dto.valuationDate),
+        currency: dto.currency ?? account.currency,
+        marketValue: dto.marketValue,
+        quantity: dto.quantity,
+        unitPrice: dto.unitPrice,
+        symbol: dto.symbol,
+        assetName: dto.assetName,
+        note: dto.note,
+        metadata: dto.metadata as Prisma.InputJsonValue | undefined,
+      },
+    });
+
+    return mapValuationRecord(created);
+  }
+
+  async listManualStaticValuations(
+    userId: string,
+    accountId: string,
+  ): Promise<ManualStaticValuation[] | null> {
+    const account = await this.getOwnedSourceAccountRecord(userId, accountId);
+    if (!account) {
+      return null;
+    }
+
+    this.assertManualStaticSource(account.source);
+
+    const records = await this.prisma.manualStaticValuationRecord.findMany({
+      where: {
+        userId,
+        sourceAccountId: account.id,
+      },
+      orderBy: [{ valuationDate: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    return records.map(mapValuationRecord);
+  }
+
+  async materializeManualStaticSnapshot(
+    userId: string,
+    sourceId: string,
+    dto: MaterializeManualStaticSnapshotDto,
+  ): Promise<ManualStaticSnapshotMaterializationResult | null> {
+    const source = await this.getOwnedSourceRecord(userId, sourceId);
+    if (!source) {
+      return null;
+    }
+
+    this.assertManualStaticSource(source);
+
+    const activeAccounts =
+      await this.prisma.connectedSourceAccountRecord.findMany({
+        where: {
+          sourceId,
+          isActive: true,
+        },
+        orderBy: [{ createdAt: 'asc' }],
+      });
+
+    if (activeAccounts.length === 0) {
+      throw new BadRequestException(
+        'Manual static source has no active accounts to materialize.',
+      );
+    }
+
+    const valuationRecords =
+      await this.prisma.manualStaticValuationRecord.findMany({
+        where: {
+          userId,
+          sourceId,
+          sourceAccountId: {
+            in: activeAccounts.map((account) => account.id),
+          },
+        },
+        orderBy: [
+          { sourceAccountId: 'asc' },
+          { valuationDate: 'desc' },
+          { createdAt: 'desc' },
+        ],
+      });
+
+    const latestValuations = this.selectLatestValuations(valuationRecords);
+    if (latestValuations.length === 0) {
+      throw new BadRequestException(
+        'Manual static source has no valuation history to materialize.',
+      );
+    }
+
+    const snapshotDate = getLatestValuationDate(
+      latestValuations,
+      dto.snapshotDate,
+    );
+    const sourceShape = mapSourceRecord(source);
+    const accountShapes = activeAccounts.map(mapSourceAccountRecord);
+    const normalized = this.manualStaticSourceAdapter.normalize({
+      source: sourceShape,
+      accounts: accountShapes,
+      latestValuations,
+      snapshotDate,
+    });
+    if (normalized.positions.length === 0) {
+      throw new BadRequestException(
+        'Manual static source has no usable latest valuations for active accounts.',
+      );
+    }
+
+    const sourceFingerprint = buildSourceFingerprint(latestValuations);
+    const startedAt = new Date();
+    const syncRun = await this.prisma.connectedSyncRunRecord.create({
+      data: {
+        userId,
+        sourceId,
+        triggerType: 'MANUAL',
+        status: 'RUNNING',
+        startedAt,
+        normalizationVersion: normalized.normalizationVersion,
+        metadata: {
+          materializationMode: 'manual_static_latest_valuations',
+          latestValuationIds: latestValuations.map((valuation) => valuation.id),
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    try {
+      const snapshot = await this.portfolioSnapshotsService.createSnapshot(
+        {
+          userId,
+          metadata: {
+            portfolioName: normalized.portfolioName,
+            sourceType: 'manual',
+            sourceLabel: normalized.sourceLabel ?? source.displayName,
+            snapshotDate: normalized.snapshotDate,
+            valuationCurrency: normalized.valuationCurrency,
+            ingestionMode: 'MANUAL_STATIC',
+            sourceId,
+            sourceSyncRunId: syncRun.id,
+            normalizationVersion: normalized.normalizationVersion,
+            sourceFingerprint,
+          },
+          totalValue: normalized.totalValue,
+          cashValue: normalized.cashValue,
+          positions: normalized.positions.map((position) => ({
+            assetKey: position.assetKey,
+            symbol: position.symbol,
+            name: position.name,
+            quantity: position.quantity,
+            marketValue: position.marketValue,
+            category: this.toPortfolioCategory(position.category),
+            sourceAccountId: position.sourceAccountRef,
+            notes: position.notes,
+          })),
+        },
+        userId,
+      );
+
+      const completedSyncRun = await this.prisma.connectedSyncRunRecord.update({
+        where: { id: syncRun.id },
+        data: {
+          status: 'SUCCEEDED',
+          finishedAt: new Date(),
+          producedSnapshotId: snapshot.id,
+          metadata: {
+            materializationMode: 'manual_static_latest_valuations',
+            snapshotId: snapshot.id,
+            latestValuationIds: latestValuations.map(
+              (valuation) => valuation.id,
+            ),
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      await this.prisma.connectedSourceRecord.update({
+        where: { id: sourceId },
+        data: { lastSuccessfulSyncAt: new Date() },
+      });
+
+      return {
+        snapshot,
+        syncRun: mapSyncRunRecord(completedSyncRun),
+        latestValuationCount: latestValuations.length,
+        materializedAccountCount: normalized.positions.length,
+        snapshotDate,
+      };
+    } catch (error) {
+      await this.prisma.connectedSyncRunRecord.update({
+        where: { id: syncRun.id },
+        data: {
+          status: 'FAILED',
+          finishedAt: new Date(),
+          errorCode: 'MANUAL_STATIC_MATERIALIZATION_FAILED',
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : 'Snapshot materialization failed',
+        },
+      });
+
+      throw error;
+    }
+  }
+
+  async listSourceSnapshots(
+    userId: string,
+    sourceId: string,
+  ): Promise<PortfolioSnapshot[] | null> {
+    const source = await this.getOwnedSourceRecord(userId, sourceId);
+    if (!source) {
+      return null;
+    }
+
+    const snapshots = await this.prisma.portfolioSnapshotRecord.findMany({
+      where: {
+        userId,
+        sourceId,
+      },
+      orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        positions: {
+          orderBy: [{ marketValue: 'desc' }, { assetKey: 'asc' }],
+        },
+      },
+    });
+
+    return snapshots.map((snapshot) =>
+      mapPortfolioSnapshotRecordToSnapshot(snapshot as SourceSnapshotRecord),
+    );
+  }
+
+  private async getOwnedSourceRecord(userId: string, id: string) {
     return this.prisma.connectedSourceRecord.findFirst({
       where: { id, userId },
     });
+  }
+
+  private async getOwnedSourceAccountRecord(
+    userId: string,
+    accountId: string,
+  ): Promise<OwnedSourceAccountRecord | null> {
+    return this.prisma.connectedSourceAccountRecord.findFirst({
+      where: {
+        id: accountId,
+        source: {
+          userId,
+        },
+      },
+      include: {
+        source: true,
+      },
+    });
+  }
+
+  private assertManualStaticSource(source: ConnectedSourceRecord) {
+    if (source.kind !== 'MANUAL_STATIC') {
+      throw new BadRequestException(
+        'Manual static accounts and valuations require a MANUAL_STATIC source.',
+      );
+    }
+  }
+
+  private selectLatestValuations(
+    valuationRecords: ManualStaticValuationRecord[],
+  ): ManualStaticValuation[] {
+    const latestByAccountId = new Map<string, ManualStaticValuation>();
+
+    valuationRecords.forEach((record) => {
+      if (!latestByAccountId.has(record.sourceAccountId)) {
+        latestByAccountId.set(
+          record.sourceAccountId,
+          mapValuationRecord(record),
+        );
+      }
+    });
+
+    return Array.from(latestByAccountId.values());
+  }
+
+  private toPortfolioCategory(
+    category: string | undefined,
+  ): PortfolioAssetCategory | undefined {
+    switch (category) {
+      case 'cash':
+      case 'equity':
+      case 'etf':
+      case 'crypto':
+      case 'fund':
+      case 'other':
+        return category;
+      default:
+        return undefined;
+    }
   }
 }
