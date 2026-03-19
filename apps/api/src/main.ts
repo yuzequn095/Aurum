@@ -1,12 +1,9 @@
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
 
 function buildAllowedOrigins(): Set<string> {
-  const defaults = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-  ];
+  const defaults = ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
   const fromEnv = (process.env.CORS_ORIGIN ?? '')
     .split(',')
@@ -23,7 +20,10 @@ async function bootstrap() {
 
   if (isProduction) {
     app.enableCors({
-      origin: (origin, callback) => {
+      origin: (
+        origin: string | undefined,
+        callback: (error: Error | null, allow?: boolean) => void,
+      ) => {
         if (!origin || allowedOrigins.has(origin)) {
           callback(null, true);
           return;
@@ -42,12 +42,13 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // 只保留 DTO 里声明过的字段
-      forbidNonWhitelisted: true, // 出现未声明字段直接 400
-      transform: true, // 把 payload 转成 DTO class 实例
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
   await app.listen(3001);
 }
+
 void bootstrap();

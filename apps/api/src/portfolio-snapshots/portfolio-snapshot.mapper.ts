@@ -5,6 +5,7 @@ import type {
 } from '@aurum/core';
 import {
   type PortfolioAssetCategoryType,
+  type PortfolioSnapshotIngestionMode,
   type PortfolioSnapshotSourceType,
   Prisma,
 } from '@prisma/client';
@@ -42,6 +43,21 @@ function mapSourceType(
   }
 }
 
+function mapIngestionMode(
+  ingestionMode: PortfolioSnapshotIngestionMode | null,
+): PortfolioSnapshot['metadata']['ingestionMode'] | undefined {
+  switch (ingestionMode) {
+    case 'MANUAL_STATIC':
+      return 'MANUAL_STATIC';
+    case 'CSV_IMPORT':
+      return 'CSV_IMPORT';
+    case 'CONNECTED_SYNC':
+      return 'CONNECTED_SYNC';
+    default:
+      return undefined;
+  }
+}
+
 function mapCategory(
   category: PortfolioAssetCategoryType | null,
 ): PortfolioAssetCategory | undefined {
@@ -68,17 +84,24 @@ export function mapPortfolioSnapshotRecordToSnapshot(
 ): PortfolioSnapshot {
   return {
     id: record.id,
+    userId: record.userId,
     metadata: {
       portfolioName: record.portfolioName ?? undefined,
       sourceType: mapSourceType(record.sourceType),
       sourceLabel: record.sourceLabel ?? undefined,
       snapshotDate: formatDateOnly(record.snapshotDate),
       valuationCurrency: record.valuationCurrency ?? undefined,
+      ingestionMode: mapIngestionMode(record.ingestionMode),
+      sourceId: record.sourceId ?? undefined,
+      sourceSyncRunId: record.sourceSyncRunId ?? undefined,
+      normalizationVersion: record.normalizationVersion ?? undefined,
+      sourceFingerprint: record.sourceFingerprint ?? undefined,
     },
     totalValue: Number(record.totalValue),
     cashValue: decimalToNumber(record.cashValue),
     positions: record.positions.map((position) => ({
-      symbol: position.symbol,
+      assetKey: position.assetKey,
+      symbol: position.symbol ?? undefined,
       name: position.name ?? undefined,
       quantity: decimalToNumber(position.quantity),
       marketValue: Number(position.marketValue),

@@ -72,6 +72,7 @@ describe('parseCsv', () => {
         line: 3,
         message: 'amount must be a positive decimal with up to 2 decimals',
       },
+      { line: 3, message: 'subcategory requires category' },
     ]);
   });
 });

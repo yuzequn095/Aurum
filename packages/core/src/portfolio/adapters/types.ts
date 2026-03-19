@@ -1,8 +1,4 @@
-import type {
-  PortfolioAssetCategory,
-  PortfolioDataSourceType,
-  PortfolioSnapshot,
-} from '../types';
+import type { PortfolioAssetCategory, PortfolioDataSourceType, PortfolioSnapshot } from '../types';
 
 export interface PortfolioSnapshotSourceAdapter<TInput> {
   sourceType: PortfolioDataSourceType;
@@ -11,6 +7,7 @@ export interface PortfolioSnapshotSourceAdapter<TInput> {
 
 export interface PortfolioCsvRow {
   symbol: string;
+  assetKey?: string;
   name?: string;
   quantity?: number;
   marketValue: number;

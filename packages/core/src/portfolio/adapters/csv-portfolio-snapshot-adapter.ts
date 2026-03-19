@@ -32,8 +32,11 @@ function isValidCsvRow(row: PortfolioCsvRow): boolean {
 }
 
 function toPositionSnapshot(row: PortfolioCsvRow): PortfolioPositionSnapshot {
+  const symbol = row.symbol.trim();
+
   return {
-    symbol: row.symbol.trim(),
+    assetKey: sanitizeOptionalString(row.assetKey),
+    symbol,
     name: sanitizeOptionalString(row.name),
     quantity: sanitizeOptionalNumber(row.quantity),
     marketValue: row.marketValue,
@@ -46,9 +49,7 @@ function toPositionSnapshot(row: PortfolioCsvRow): PortfolioPositionSnapshot {
   };
 }
 
-export class CsvPortfolioSnapshotAdapter
-  implements PortfolioSnapshotSourceAdapter<PortfolioCsvImportInput>
-{
+export class CsvPortfolioSnapshotAdapter implements PortfolioSnapshotSourceAdapter<PortfolioCsvImportInput> {
   readonly sourceType = 'csv_import' as const;
 
   toSnapshot(input: PortfolioCsvImportInput): PortfolioSnapshot {
@@ -63,6 +64,7 @@ export class CsvPortfolioSnapshotAdapter
         sourceLabel: sanitizeOptionalString(input.sourceLabel),
         snapshotDate: input.snapshotDate,
         valuationCurrency: sanitizeOptionalString(input.valuationCurrency),
+        ingestionMode: 'CSV_IMPORT',
       },
       totalValue: positionsValue + (cashValue ?? 0),
       cashValue,

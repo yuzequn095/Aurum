@@ -15,7 +15,9 @@ export class PortfolioSnapshotsController {
   constructor(private readonly service: PortfolioSnapshotsService) {}
 
   @Post()
-  async create(@Body() snapshot: PortfolioSnapshot): Promise<PortfolioSnapshot> {
+  async create(
+    @Body() snapshot: PortfolioSnapshot,
+  ): Promise<PortfolioSnapshot> {
     return this.service.createSnapshot(snapshot);
   }
 

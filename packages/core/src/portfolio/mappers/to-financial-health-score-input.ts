@@ -9,7 +9,7 @@ export function portfolioSnapshotToFinancialHealthScoreInput(
     totalAssets: snapshot.totalValue,
     cashValue: snapshot.cashValue,
     positions: snapshot.positions.map((position) => ({
-      symbol: position.symbol,
+      symbol: position.symbol ?? position.assetKey ?? position.name ?? 'UNKNOWN',
       marketValue: position.marketValue,
       portfolioWeight: position.portfolioWeight,
       category: position.category,

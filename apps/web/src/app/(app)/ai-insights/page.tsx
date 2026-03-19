@@ -11,27 +11,12 @@ import {
   type PortfolioSnapshot,
 } from '@aurum/core';
 import { PageContainer } from '@/components/layout/PageContainer';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/Card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import {
-  mockPortfolioCsvImportInput,
-  mockPortfolioReportManualOutput,
-} from '@/lib/ai/dev-seeds';
+import { mockPortfolioCsvImportInput, mockPortfolioReportManualOutput } from '@/lib/ai/dev-seeds';
 import { aiRunRepository } from '@/lib/ai/repositories';
-import {
-  createPortfolioSnapshot,
-  listPortfolioSnapshots,
-} from '@/lib/api/portfolio-snapshots';
-import {
-  createReportForSnapshot,
-  listAIReportsBySourceSnapshotId,
-} from '@/lib/api/ai-reports';
+import { createPortfolioSnapshot, listPortfolioSnapshots } from '@/lib/api/portfolio-snapshots';
+import { createReportForSnapshot, listAIReportsBySourceSnapshotId } from '@/lib/api/ai-reports';
 import {
   createFinancialHealthScoreForSnapshot,
   listFinancialHealthScoresBySourceSnapshotId,
@@ -124,7 +109,7 @@ export default function AiInsightsPage() {
         const hasCurrent = currentSelectedId
           ? nextSnapshots.some((snapshot) => snapshot.id === currentSelectedId)
           : false;
-        return hasCurrent ? currentSelectedId : nextSnapshots[0].id ?? null;
+        return hasCurrent ? currentSelectedId : (nextSnapshots[0].id ?? null);
       });
       setSnapshotsStatusMessage(`Loaded ${nextSnapshots.length} persisted snapshots.`);
     } catch (error) {
@@ -154,7 +139,7 @@ export default function AiInsightsPage() {
         const hasCurrent = currentSelectedId
           ? nextReports.some((report) => report.id === currentSelectedId)
           : false;
-        return hasCurrent ? currentSelectedId : nextReports[0]?.id ?? null;
+        return hasCurrent ? currentSelectedId : (nextReports[0]?.id ?? null);
       });
       if (nextReports.length === 0) {
         setReportsStatusMessage('No reports found for the selected snapshot yet.');
@@ -182,14 +167,13 @@ export default function AiInsightsPage() {
     setScoreStatusMessage('');
 
     try {
-      const nextScores =
-        await listFinancialHealthScoresBySourceSnapshotId(sourceSnapshotId);
+      const nextScores = await listFinancialHealthScoresBySourceSnapshotId(sourceSnapshotId);
       setScores(nextScores);
       setSelectedScoreId((currentSelectedId) => {
         const hasCurrent = currentSelectedId
           ? nextScores.some((score) => score.id === currentSelectedId)
           : false;
-        return hasCurrent ? currentSelectedId : nextScores[0]?.id ?? null;
+        return hasCurrent ? currentSelectedId : (nextScores[0]?.id ?? null);
       });
       if (nextScores.length === 0) {
         setScoreStatusMessage('No financial health scores found for selected snapshot yet.');
@@ -299,12 +283,9 @@ export default function AiInsightsPage() {
         return;
       }
 
-      const createdScore = await createFinancialHealthScoreForSnapshot(
-        selectedSnapshot.id,
-        {
-          scoringVersion: '1.0.0',
-        },
-      );
+      const createdScore = await createFinancialHealthScoreForSnapshot(selectedSnapshot.id, {
+        scoringVersion: '1.0.0',
+      });
 
       await loadScoresForSelectedSnapshot(selectedSnapshot.id);
       setSelectedScoreId(createdScore.id);
@@ -319,51 +300,51 @@ export default function AiInsightsPage() {
   };
 
   return (
-    <PageContainer className='space-y-6'>
+    <PageContainer className="space-y-6">
       <Card>
-        <CardHeader className='space-y-3'>
-          <div className='space-y-1'>
+        <CardHeader className="space-y-3">
+          <div className="space-y-1">
             <CardTitle>AI Insights</CardTitle>
             <CardDescription>
               Report artifact view for Milestone 11.2. Generate demo data to validate the
               run-to-report pipeline end-to-end.
             </CardDescription>
           </div>
-          <div className='flex flex-wrap items-center gap-2'>
-            <Button variant='primary' onClick={onGenerateDemoReport} disabled={isGenerating}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="primary" onClick={onGenerateDemoReport} disabled={isGenerating}>
               {isGenerating ? 'Generating...' : 'Generate Report from Selected Snapshot'}
             </Button>
-            <span className='text-xs text-aurum-muted'>
+            <span className="text-xs text-aurum-muted">
               Report history is loaded from API, scoped by selected snapshot.
             </span>
           </div>
           {statusMessage ? (
-            <p className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+            <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
               {statusMessage}
             </p>
           ) : null}
         </CardHeader>
       </Card>
 
-      <section className='grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]'>
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]">
         <Card>
-          <CardHeader className='space-y-3'>
-            <div className='space-y-1'>
+          <CardHeader className="space-y-3">
+            <div className="space-y-1">
               <CardTitle>Portfolio Snapshots</CardTitle>
               <CardDescription>
                 Persisted canonical snapshots from API, used as upcoming analysis source.
               </CardDescription>
             </div>
-            <div className='flex items-center gap-2'>
+            <div className="flex items-center gap-2">
               <Button
-                variant='primary'
+                variant="primary"
                 onClick={() => void onCreateDemoSnapshot()}
                 disabled={isCreatingSnapshot || isSnapshotsLoading}
               >
                 {isCreatingSnapshot ? 'Creating...' : 'Create Demo Snapshot'}
               </Button>
               <Button
-                variant='secondary'
+                variant="secondary"
                 onClick={() => void loadSnapshots()}
                 disabled={isSnapshotsLoading || isCreatingSnapshot}
               >
@@ -371,19 +352,19 @@ export default function AiInsightsPage() {
               </Button>
             </div>
             {snapshotsStatusMessage ? (
-              <p className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
                 {snapshotsStatusMessage}
               </p>
             ) : null}
           </CardHeader>
-          <CardContent className='space-y-2'>
+          <CardContent className="space-y-2">
             {snapshots.length === 0 ? (
-              <p className='text-sm text-aurum-muted'>No snapshots available.</p>
+              <p className="text-sm text-aurum-muted">No snapshots available.</p>
             ) : (
               snapshots.map((snapshot) => (
                 <button
                   key={snapshot.id ?? `${snapshot.metadata.snapshotDate}-${snapshot.totalValue}`}
-                  type='button'
+                  type="button"
                   onClick={() => setSelectedSnapshotId(snapshot.id ?? null)}
                   className={`w-full rounded-[12px] border px-3 py-2 text-left text-xs transition ${
                     snapshot.id === selectedSnapshotId
@@ -391,11 +372,11 @@ export default function AiInsightsPage() {
                       : 'border-[var(--aurum-border)] bg-[var(--aurum-surface)] hover:bg-[var(--aurum-surface-alt)]'
                   }`}
                 >
-                  <p className='font-medium text-aurum-text'>
+                  <p className="font-medium text-aurum-text">
                     {snapshot.metadata.portfolioName ?? 'Untitled Portfolio'}
                   </p>
-                  <p className='text-aurum-muted'>date: {snapshot.metadata.snapshotDate}</p>
-                  <p className='text-aurum-muted'>positions: {snapshot.positions.length}</p>
+                  <p className="text-aurum-muted">date: {snapshot.metadata.snapshotDate}</p>
+                  <p className="text-aurum-muted">positions: {snapshot.positions.length}</p>
                 </button>
               ))
             )}
@@ -409,38 +390,36 @@ export default function AiInsightsPage() {
               Snapshot selection foundation for upcoming snapshot-driven report/score flow.
             </CardDescription>
           </CardHeader>
-          <CardContent className='space-y-4'>
+          <CardContent className="space-y-4">
             {!selectedSnapshot ? (
-              <p className='text-sm text-aurum-muted'>
-                Select a snapshot from the list.
-              </p>
+              <p className="text-sm text-aurum-muted">Select a snapshot from the list.</p>
             ) : (
-              <div className='grid grid-cols-1 gap-3 text-sm md:grid-cols-2'>
+              <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
                 <div>
-                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>
-                    Portfolio Name
-                  </p>
-                  <p className='text-aurum-text'>{selectedSnapshotPortfolioName}</p>
+                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Portfolio Name</p>
+                  <p className="text-aurum-text">{selectedSnapshotPortfolioName}</p>
                 </div>
                 <div>
-                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Snapshot Date</p>
-                  <p className='text-aurum-text'>{selectedSnapshot.metadata.snapshotDate}</p>
+                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Snapshot Date</p>
+                  <p className="text-aurum-text">{selectedSnapshot.metadata.snapshotDate}</p>
                 </div>
                 <div>
-                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Total Value</p>
-                  <p className='text-aurum-text'>{formatMoney(selectedSnapshot.totalValue)}</p>
+                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Total Value</p>
+                  <p className="text-aurum-text">{formatMoney(selectedSnapshot.totalValue)}</p>
                 </div>
                 <div>
-                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Cash Value</p>
-                  <p className='text-aurum-text'>
+                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Cash Value</p>
+                  <p className="text-aurum-text">
                     {selectedSnapshot.cashValue === undefined
                       ? 'N/A'
                       : formatMoney(selectedSnapshot.cashValue)}
                   </p>
                 </div>
                 <div>
-                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Positions Count</p>
-                  <p className='text-aurum-text'>{selectedSnapshot.positions.length}</p>
+                  <p className="text-xs uppercase tracking-wide text-aurum-muted">
+                    Positions Count
+                  </p>
+                  <p className="text-aurum-text">{selectedSnapshot.positions.length}</p>
                 </div>
               </div>
             )}
@@ -448,29 +427,29 @@ export default function AiInsightsPage() {
         </Card>
       </section>
 
-      <section className='grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]'>
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]">
         <Card>
           <CardHeader>
             <CardTitle>Report List</CardTitle>
             <CardDescription>Select a report artifact to inspect details.</CardDescription>
           </CardHeader>
-          <CardContent className='space-y-2'>
+          <CardContent className="space-y-2">
             {reportsStatusMessage ? (
-              <p className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
                 {reportsStatusMessage}
               </p>
             ) : null}
             {isReportsLoading ? (
-              <p className='text-sm text-aurum-muted'>Loading snapshot-scoped report history...</p>
+              <p className="text-sm text-aurum-muted">Loading snapshot-scoped report history...</p>
             ) : reports.length === 0 ? (
-              <p className='text-sm text-aurum-muted'>
-                No reports yet. Click "Generate Demo Report" to create one.
+              <p className="text-sm text-aurum-muted">
+                No reports yet. Click &quot;Generate Demo Report&quot; to create one.
               </p>
             ) : (
               reports.map((report) => (
                 <button
                   key={report.id}
-                  type='button'
+                  type="button"
                   onClick={() => setSelectedReportId(report.id)}
                   className={`w-full rounded-[12px] border px-3 py-2 text-left text-xs transition ${
                     report.id === selectedReportId
@@ -478,9 +457,9 @@ export default function AiInsightsPage() {
                       : 'border-[var(--aurum-border)] bg-[var(--aurum-surface)] hover:bg-[var(--aurum-surface-alt)]'
                   }`}
                 >
-                  <p className='font-medium text-aurum-text'>{report.title}</p>
-                  <p className='text-aurum-muted'>type: {report.reportType}</p>
-                  <p className='text-aurum-muted'>created: {formatDateTime(report.createdAt)}</p>
+                  <p className="font-medium text-aurum-text">{report.title}</p>
+                  <p className="text-aurum-muted">type: {report.reportType}</p>
+                  <p className="text-aurum-muted">created: {formatDateTime(report.createdAt)}</p>
                 </button>
               ))
             )}
@@ -490,53 +469,57 @@ export default function AiInsightsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Report Detail</CardTitle>
-            <CardDescription>Selected formal report artifact generated from a completed run.</CardDescription>
+            <CardDescription>
+              Selected formal report artifact generated from a completed run.
+            </CardDescription>
           </CardHeader>
-          <CardContent className='space-y-4'>
+          <CardContent className="space-y-4">
             {!selectedReport ? (
-              <p className='text-sm text-aurum-muted'>Select a report from the list.</p>
+              <p className="text-sm text-aurum-muted">Select a report from the list.</p>
             ) : (
               <>
-                <div className='grid grid-cols-1 gap-3 text-sm md:grid-cols-2'>
+                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
                   <div>
-                    <p className='text-xs uppercase tracking-wide text-aurum-muted'>Title</p>
-                    <p className='text-aurum-text'>{selectedReport.title}</p>
+                    <p className="text-xs uppercase tracking-wide text-aurum-muted">Title</p>
+                    <p className="text-aurum-text">{selectedReport.title}</p>
                   </div>
                   <div>
-                    <p className='text-xs uppercase tracking-wide text-aurum-muted'>Report Type</p>
-                    <p className='text-aurum-text'>{selectedReport.reportType}</p>
+                    <p className="text-xs uppercase tracking-wide text-aurum-muted">Report Type</p>
+                    <p className="text-aurum-text">{selectedReport.reportType}</p>
                   </div>
                   <div>
-                    <p className='text-xs uppercase tracking-wide text-aurum-muted'>
+                    <p className="text-xs uppercase tracking-wide text-aurum-muted">
                       Prompt Version
                     </p>
-                    <p className='text-aurum-text'>{selectedReport.promptVersion}</p>
+                    <p className="text-aurum-text">{selectedReport.promptVersion}</p>
                   </div>
                   <div>
-                    <p className='text-xs uppercase tracking-wide text-aurum-muted'>Source Run ID</p>
-                    <p className='break-all text-aurum-text'>{selectedReport.sourceRunId}</p>
+                    <p className="text-xs uppercase tracking-wide text-aurum-muted">
+                      Source Run ID
+                    </p>
+                    <p className="break-all text-aurum-text">{selectedReport.sourceRunId}</p>
                   </div>
                   {selectedPortfolioName ? (
                     <div>
-                      <p className='text-xs uppercase tracking-wide text-aurum-muted'>
+                      <p className="text-xs uppercase tracking-wide text-aurum-muted">
                         Portfolio Name
                       </p>
-                      <p className='text-aurum-text'>{selectedPortfolioName}</p>
+                      <p className="text-aurum-text">{selectedPortfolioName}</p>
                     </div>
                   ) : null}
                   {selectedSnapshotDate ? (
                     <div>
-                      <p className='text-xs uppercase tracking-wide text-aurum-muted'>
+                      <p className="text-xs uppercase tracking-wide text-aurum-muted">
                         Snapshot Date
                       </p>
-                      <p className='text-aurum-text'>{selectedSnapshotDate}</p>
+                      <p className="text-aurum-text">{selectedSnapshotDate}</p>
                     </div>
                   ) : null}
                 </div>
 
-                <div className='space-y-2'>
-                  <p className='text-sm font-medium text-aurum-text'>Content (Markdown)</p>
-                  <pre className='max-h-[560px] overflow-auto rounded-[12px] border border-aurum-border bg-aurum-surface p-3 text-xs whitespace-pre-wrap text-aurum-text'>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-aurum-text">Content (Markdown)</p>
+                  <pre className="max-h-[560px] overflow-auto rounded-[12px] border border-aurum-border bg-aurum-surface p-3 text-xs whitespace-pre-wrap text-aurum-text">
                     {selectedReport.contentMarkdown}
                   </pre>
                 </div>
@@ -546,48 +529,49 @@ export default function AiInsightsPage() {
         </Card>
       </section>
 
-      <section className='space-y-6'>
+      <section className="space-y-6">
         <Card>
-          <CardHeader className='space-y-3'>
-            <div className='space-y-1'>
+          <CardHeader className="space-y-3">
+            <div className="space-y-1">
               <CardTitle>Financial Health Score v1</CardTitle>
               <CardDescription>
                 Server-backed score artifact history scoped by selected snapshot.
               </CardDescription>
             </div>
-            <div className='flex flex-wrap items-center gap-2'>
+            <div className="flex flex-wrap items-center gap-2">
               <Button
-                variant='primary'
+                variant="primary"
                 onClick={() => void onGenerateDemoScore()}
                 disabled={isGeneratingScore}
               >
                 {isGeneratingScore ? 'Generating...' : 'Generate Score from Selected Snapshot'}
               </Button>
-              <span className='text-xs text-aurum-muted'>
+              <span className="text-xs text-aurum-muted">
                 Score creation and history are loaded from API, scoped by selected snapshot.
               </span>
             </div>
             {scoreStatusMessage ? (
-              <p className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
                 {scoreStatusMessage}
               </p>
             ) : null}
           </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='space-y-2'>
-              <p className='text-sm font-medium text-aurum-text'>Score History</p>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-aurum-text">Score History</p>
               {isScoresLoading ? (
-                <p className='text-sm text-aurum-muted'>Loading snapshot-scoped score history...</p>
+                <p className="text-sm text-aurum-muted">Loading snapshot-scoped score history...</p>
               ) : scores.length === 0 ? (
-                <p className='text-sm text-aurum-muted'>
-                  No persisted scores yet. Click "Generate Score from Selected Snapshot" to create one.
+                <p className="text-sm text-aurum-muted">
+                  No persisted scores yet. Click &quot;Generate Score from Selected Snapshot&quot;
+                  to create one.
                 </p>
               ) : (
-                <div className='space-y-2'>
+                <div className="space-y-2">
                   {scores.map((score) => (
                     <button
                       key={score.id}
-                      type='button'
+                      type="button"
                       onClick={() => setSelectedScoreId(score.id)}
                       className={`w-full rounded-[12px] border px-3 py-2 text-left text-xs transition ${
                         score.id === selectedScoreId
@@ -595,13 +579,11 @@ export default function AiInsightsPage() {
                           : 'border-[var(--aurum-border)] bg-[var(--aurum-surface)] hover:bg-[var(--aurum-surface-alt)]'
                       }`}
                     >
-                      <p className='font-medium text-aurum-text'>
+                      <p className="font-medium text-aurum-text">
                         {score.result.totalScore}/{score.result.maxScore} -{' '}
                         {score.result.grade.replace('_', ' ')}
                       </p>
-                      <p className='text-aurum-muted'>
-                        created: {formatDateTime(score.createdAt)}
-                      </p>
+                      <p className="text-aurum-muted">created: {formatDateTime(score.createdAt)}</p>
                     </button>
                   ))}
                 </div>
@@ -609,30 +591,30 @@ export default function AiInsightsPage() {
             </div>
 
             {!selectedScoreResult || !selectedScoreInsight ? (
-              <p className='text-sm text-aurum-muted'>
+              <p className="text-sm text-aurum-muted">
                 Select a score artifact from history to view details.
               </p>
             ) : (
-              <div className='grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4'>
+              <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
                 <div>
-                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Total Score</p>
-                  <p className='text-lg font-semibold text-aurum-text'>
+                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Total Score</p>
+                  <p className="text-lg font-semibold text-aurum-text">
                     {selectedScoreResult.totalScore}/{selectedScoreResult.maxScore}
                   </p>
                 </div>
                 <div>
-                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Grade</p>
-                  <p className='text-lg font-semibold capitalize text-aurum-text'>
+                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Grade</p>
+                  <p className="text-lg font-semibold capitalize text-aurum-text">
                     {selectedScoreResult.grade.replace('_', ' ')}
                   </p>
                 </div>
-                <div className='md:col-span-2'>
-                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Headline</p>
-                  <p className='text-aurum-text'>{selectedScoreInsight.headline}</p>
+                <div className="md:col-span-2">
+                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Headline</p>
+                  <p className="text-aurum-text">{selectedScoreInsight.headline}</p>
                 </div>
-                <div className='md:col-span-2 xl:col-span-4'>
-                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Summary</p>
-                  <p className='text-aurum-text'>{selectedScoreInsight.summary}</p>
+                <div className="md:col-span-2 xl:col-span-4">
+                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Summary</p>
+                  <p className="text-aurum-text">{selectedScoreInsight.summary}</p>
                 </div>
               </div>
             )}
@@ -646,44 +628,47 @@ export default function AiInsightsPage() {
               Per-dimension deterministic scores, labels, and reasoning from the score engine.
             </CardDescription>
           </CardHeader>
-          <CardContent className='space-y-3'>
+          <CardContent className="space-y-3">
             {!selectedScoreResult ? (
-              <p className='text-sm text-aurum-muted'>No score result yet.</p>
+              <p className="text-sm text-aurum-muted">No score result yet.</p>
             ) : (
               selectedScoreResult.breakdown.map((item) => (
                 <div
                   key={item.dimension}
-                  className='rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3 text-sm'
+                  className="rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3 text-sm"
                 >
-                  <div className='flex flex-wrap items-center justify-between gap-2'>
-                    <p className='font-medium text-aurum-text'>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium text-aurum-text">
                       {formatDimensionName(item.dimension)}
                     </p>
-                    <p className='text-xs text-aurum-muted'>
+                    <p className="text-xs text-aurum-muted">
                       {item.score}/{item.maxScore}
                     </p>
                   </div>
-                  <p className='mt-1 text-xs font-medium text-aurum-text'>{item.label}</p>
-                  <p className='mt-1 text-xs text-aurum-muted'>{item.reason}</p>
+                  <p className="mt-1 text-xs font-medium text-aurum-text">{item.label}</p>
+                  <p className="mt-1 text-xs text-aurum-muted">{item.reason}</p>
                 </div>
               ))
             )}
           </CardContent>
         </Card>
 
-        <section className='grid grid-cols-1 gap-6 xl:grid-cols-3'>
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <Card>
             <CardHeader>
               <CardTitle>Strengths</CardTitle>
             </CardHeader>
-            <CardContent className='space-y-2'>
+            <CardContent className="space-y-2">
               {!selectedScoreInsight ? (
-                <p className='text-sm text-aurum-muted'>No insight yet.</p>
+                <p className="text-sm text-aurum-muted">No insight yet.</p>
               ) : selectedScoreInsight.strengths.length === 0 ? (
-                <p className='text-sm text-aurum-muted'>No standout strengths identified.</p>
+                <p className="text-sm text-aurum-muted">No standout strengths identified.</p>
               ) : (
                 selectedScoreInsight.strengths.map((item) => (
-                  <p key={item} className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+                  <p
+                    key={item}
+                    className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text"
+                  >
                     {item}
                   </p>
                 ))
@@ -695,14 +680,17 @@ export default function AiInsightsPage() {
             <CardHeader>
               <CardTitle>Concerns</CardTitle>
             </CardHeader>
-            <CardContent className='space-y-2'>
+            <CardContent className="space-y-2">
               {!selectedScoreInsight ? (
-                <p className='text-sm text-aurum-muted'>No insight yet.</p>
+                <p className="text-sm text-aurum-muted">No insight yet.</p>
               ) : selectedScoreInsight.concerns.length === 0 ? (
-                <p className='text-sm text-aurum-muted'>No major concerns identified.</p>
+                <p className="text-sm text-aurum-muted">No major concerns identified.</p>
               ) : (
                 selectedScoreInsight.concerns.map((item) => (
-                  <p key={item} className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+                  <p
+                    key={item}
+                    className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text"
+                  >
                     {item}
                   </p>
                 ))
@@ -714,14 +702,17 @@ export default function AiInsightsPage() {
             <CardHeader>
               <CardTitle>Next Actions</CardTitle>
             </CardHeader>
-            <CardContent className='space-y-2'>
+            <CardContent className="space-y-2">
               {!selectedScoreInsight ? (
-                <p className='text-sm text-aurum-muted'>No insight yet.</p>
+                <p className="text-sm text-aurum-muted">No insight yet.</p>
               ) : selectedScoreInsight.nextActions.length === 0 ? (
-                <p className='text-sm text-aurum-muted'>No urgent action required.</p>
+                <p className="text-sm text-aurum-muted">No urgent action required.</p>
               ) : (
                 selectedScoreInsight.nextActions.map((item) => (
-                  <p key={item} className='rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text'>
+                  <p
+                    key={item}
+                    className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text"
+                  >
                     {item}
                   </p>
                 ))

@@ -14,6 +14,7 @@ import { ImportModule } from './import/import.module';
 import { PortfolioSnapshotsModule } from './portfolio-snapshots/portfolio-snapshots.module';
 import { AIReportsModule } from './ai-reports/ai-reports.module';
 import { FinancialHealthScoresModule } from './financial-health-scores/financial-health-scores.module';
+import { ConnectedFinanceModule } from './connected-finance/connected-finance.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { FinancialHealthScoresModule } from './financial-health-scores/financial
     PortfolioSnapshotsModule,
     AIReportsModule,
     FinancialHealthScoresModule,
+    ConnectedFinanceModule,
   ],
   controllers: [AppController],
 })

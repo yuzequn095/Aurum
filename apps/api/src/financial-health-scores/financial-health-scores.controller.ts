@@ -1,10 +1,5 @@
 import type { FinancialHealthScoreArtifact } from '@aurum/core';
-import {
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-} from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param } from '@nestjs/common';
 import { FinancialHealthScoresService } from './financial-health-scores.service';
 
 @Controller('v1/financial-health-scores')
@@ -24,7 +19,9 @@ export class FinancialHealthScoresController {
   }
 
   @Get(':id')
-  async getById(@Param('id') id: string): Promise<FinancialHealthScoreArtifact> {
+  async getById(
+    @Param('id') id: string,
+  ): Promise<FinancialHealthScoreArtifact> {
     const score = await this.service.getScoreArtifactById(id);
     if (!score) {
       throw new NotFoundException(`Financial health score not found: ${id}`);
