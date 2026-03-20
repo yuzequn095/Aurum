@@ -2,6 +2,9 @@ import type {
   BankLinkTokenResult,
   BankSourceConnectionResult,
   BankSyncMaterializationResult,
+  BrokerageConnectionPortalResult,
+  BrokerageSourceImportResult,
+  BrokerageSyncMaterializationResult,
   ConnectedSource,
   ConnectedSourceAccount,
   ManualStaticSnapshotMaterializationResult,
@@ -155,6 +158,29 @@ export async function syncConnectedBankSource(
   sourceId: string,
 ): Promise<BankSyncMaterializationResult> {
   return apiPost<BankSyncMaterializationResult>(
+    `/v1/connected-finance/sources/${sourceId}/sync`,
+    {},
+  );
+}
+
+export async function createSnapTradeConnectionPortalUrl(): Promise<BrokerageConnectionPortalResult> {
+  return apiPost<BrokerageConnectionPortalResult>(
+    '/v1/connected-finance/brokerage/snaptrade/connection-portal-url',
+    {},
+  );
+}
+
+export async function importSnapTradeAccounts(): Promise<BrokerageSourceImportResult> {
+  return apiPost<BrokerageSourceImportResult>(
+    '/v1/connected-finance/brokerage/snaptrade/import-accounts',
+    {},
+  );
+}
+
+export async function syncConnectedBrokerageSource(
+  sourceId: string,
+): Promise<BrokerageSyncMaterializationResult> {
+  return apiPost<BrokerageSyncMaterializationResult>(
     `/v1/connected-finance/sources/${sourceId}/sync`,
     {},
   );

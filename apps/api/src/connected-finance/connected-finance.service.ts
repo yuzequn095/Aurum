@@ -2,6 +2,9 @@ import type {
   BankLinkTokenResult,
   BankSourceConnectionResult,
   BankSyncMaterializationResult,
+  BrokerageConnectionPortalResult,
+  BrokerageSourceImportResult,
+  BrokerageSyncMaterializationResult,
   ConnectedSource,
   ConnectedSourceAccount,
   ConnectedSyncRun,
@@ -14,6 +17,7 @@ import { createHash } from 'node:crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ManualStaticSourceAdapter } from '../../../../packages/core/src/portfolio/manual-static';
 import type {
+  ConnectedProviderUserRecord,
   ConnectedSourceAccountRecord,
   ConnectedSourceRecord,
   ConnectedSourceStatus,
@@ -41,6 +45,13 @@ import type {
   PlaidLinkedAccount,
   PlaidSourceSecretPayload,
 } from './providers/plaid/plaid.types';
+import { SnapTradeBrokerageAdapter } from './providers/snaptrade/snaptrade-brokerage.adapter';
+import { SnapTradeClient } from './providers/snaptrade/snaptrade.client';
+import type {
+  SnapTradeBrokerageAccount,
+  SnapTradeConnectionSummary,
+  SnapTradeProviderUserSecretPayload,
+} from './providers/snaptrade/snaptrade.types';
 
 type OwnedSourceAccountRecord = Prisma.ConnectedSourceAccountRecordGetPayload<{
   include: { source: true };
@@ -225,9 +236,16 @@ function mapPlaidAccountAssetType(
   return accountType.trim().toLowerCase() === 'depository' ? 'CASH' : 'OTHER';
 }
 
+function mapSnapTradeSourceStatus(
+  connection: SnapTradeConnectionSummary,
+): ConnectedSourceStatus {
+  return connection.disabled ? 'NEEDS_ATTENTION' : 'ACTIVE';
+}
+
 @Injectable()
 export class ConnectedFinanceService {
   private readonly manualStaticSourceAdapter = new ManualStaticSourceAdapter();
+  private readonly snapTradeProviderKey = 'SNAPTRADE';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -235,6 +253,8 @@ export class ConnectedFinanceService {
     private readonly connectedSourceSecretsService: ConnectedSourceSecretsService,
     private readonly plaidClient: PlaidClient,
     private readonly plaidBankAdapter: PlaidBankAdapter,
+    private readonly snapTradeClient: SnapTradeClient,
+    private readonly snapTradeBrokerageAdapter: SnapTradeBrokerageAdapter,
   ) {}
 
   async listSources(
@@ -421,6 +441,54 @@ export class ConnectedFinanceService {
       providerKey: 'PLAID',
       source: mapSourceRecord(source),
       accounts: sourceAccounts.map(mapSourceAccountRecord),
+    };
+  }
+
+  async createSnapTradeConnectionPortal(
+    userId: string,
+  ): Promise<BrokerageConnectionPortalResult> {
+    const providerUser = await this.getOrCreateSnapTradeProviderUser(userId);
+    const portal = await this.snapTradeClient.createConnectionPortal(
+      providerUser.providerUserId,
+      providerUser.providerUserSecret,
+    );
+
+    return {
+      providerKey: 'SNAPTRADE',
+      providerUserId: providerUser.providerUserId,
+      connectionPortalUrl: portal.connectionPortalUrl,
+      sessionId: portal.sessionId,
+    };
+  }
+
+  async importSnapTradeAccounts(
+    userId: string,
+  ): Promise<BrokerageSourceImportResult> {
+    const providerUser = await this.getOrCreateSnapTradeProviderUser(userId);
+    const imported = await this.snapTradeClient.importAccounts(
+      providerUser.providerUserId,
+      providerUser.providerUserSecret,
+    );
+
+    if (imported.connections.length === 0) {
+      throw new BadRequestException(
+        'SnapTrade returned no brokerage connections to import.',
+      );
+    }
+
+    const summaries = await this.upsertSnapTradeSources(
+      userId,
+      imported.connections,
+      imported.accounts,
+    );
+
+    return {
+      providerKey: 'SNAPTRADE',
+      providerUserId: providerUser.providerUserId,
+      sources: summaries.map((summary) => ({
+        source: mapSourceRecord(summary.source),
+        accounts: summary.accounts.map(mapSourceAccountRecord),
+      })),
     };
   }
 
@@ -919,6 +987,248 @@ export class ConnectedFinanceService {
     }
   }
 
+  async syncBrokerageSource(
+    userId: string,
+    sourceId: string,
+  ): Promise<BrokerageSyncMaterializationResult | null> {
+    const source = await this.getOwnedSourceRecord(userId, sourceId);
+    if (!source) {
+      return null;
+    }
+
+    this.assertSnapTradeBrokerageSource(source);
+
+    const providerUser = await this.getOrCreateSnapTradeProviderUser(userId);
+    const syncRun = await this.prisma.connectedSyncRunRecord.create({
+      data: {
+        userId,
+        sourceId,
+        triggerType: 'MANUAL',
+        status: 'RUNNING',
+        startedAt: new Date(),
+        normalizationVersion:
+          this.snapTradeBrokerageAdapter.normalizationVersion,
+        metadata: {
+          providerKey: this.snapTradeProviderKey,
+          syncMode: 'holdings_snapshot',
+          providerConnectionId: source.providerConnectionId,
+          providerUserId: providerUser.providerUserId,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    try {
+      const imported = await this.snapTradeClient.importAccounts(
+        providerUser.providerUserId,
+        providerUser.providerUserSecret,
+      );
+      const connection = imported.connections.find(
+        (candidate) => candidate.connectionId === source.providerConnectionId,
+      );
+      if (!connection) {
+        throw new BadRequestException(
+          'SnapTrade connection could not be found for this brokerage source.',
+        );
+      }
+
+      const upsertedSource = await this.prisma.connectedSourceRecord.update({
+        where: { id: sourceId },
+        data: {
+          displayName: connection.displayName,
+          status: mapSnapTradeSourceStatus(connection),
+          institutionName: connection.institutionName,
+          metadata: {
+            ...(mapMetadata(source.metadata) ?? {}),
+            provider: this.snapTradeProviderKey,
+            brokerageSlug: connection.brokerageSlug,
+            lastImportedAt: new Date().toISOString(),
+          } as Prisma.InputJsonValue,
+        },
+      });
+      const syncedAccounts = await this.syncSnapTradeSourceAccounts(
+        upsertedSource,
+        connection,
+        imported.accounts.filter(
+          (account) =>
+            account.providerConnectionId ===
+            upsertedSource.providerConnectionId,
+        ),
+      );
+      const activeAccounts = syncedAccounts.filter(
+        (account) => account.isActive,
+      );
+      if (activeAccounts.length === 0) {
+        throw new BadRequestException(
+          'SnapTrade brokerage source returned no active accounts to sync.',
+        );
+      }
+
+      const holdings = await Promise.all(
+        activeAccounts.map((account) => {
+          if (!account.externalAccountId) {
+            throw new BadRequestException(
+              'SnapTrade brokerage account is missing an external account id.',
+            );
+          }
+
+          const importedAccount = imported.accounts.find(
+            (candidate) =>
+              candidate.externalAccountId === account.externalAccountId,
+          );
+          if (!importedAccount) {
+            throw new BadRequestException(
+              'SnapTrade brokerage account details are out of sync with imported accounts.',
+            );
+          }
+
+          return this.snapTradeClient.getAccountHoldings(
+            providerUser.providerUserId,
+            providerUser.providerUserSecret,
+            importedAccount,
+          );
+        }),
+      );
+
+      const snapshotDate = formatDateOnly(new Date());
+      const normalized = this.snapTradeBrokerageAdapter.normalize({
+        source: mapSourceRecord(upsertedSource),
+        accounts: activeAccounts.map(mapSourceAccountRecord),
+        accountInputs: imported.accounts.filter(
+          (account) =>
+            account.providerConnectionId ===
+            upsertedSource.providerConnectionId,
+        ),
+        positions: holdings.flatMap(
+          (accountHoldings) => accountHoldings.positions,
+        ),
+        balances: holdings.flatMap(
+          (accountHoldings) => accountHoldings.balances,
+        ),
+        snapshotDate,
+      });
+      if (normalized.positions.length === 0) {
+        throw new BadRequestException(
+          'SnapTrade brokerage source returned no usable holdings to materialize.',
+        );
+      }
+
+      const sourceFingerprint = buildSourceFingerprint(
+        holdings.flatMap((accountHoldings) =>
+          accountHoldings.positions.map((position) => ({
+            externalAccountId: position.externalAccountId,
+            providerInstrumentId: position.providerInstrumentId,
+            symbol: position.symbol,
+            quantity: position.quantity,
+            marketValue: position.marketValue,
+            currency: position.currency,
+          })),
+        ),
+      );
+      const snapshot = await this.portfolioSnapshotsService.createSnapshot(
+        {
+          userId,
+          metadata: {
+            portfolioName: normalized.portfolioName,
+            sourceType: 'broker_sync',
+            sourceLabel: normalized.sourceLabel ?? upsertedSource.displayName,
+            snapshotDate,
+            valuationCurrency: normalized.valuationCurrency,
+            ingestionMode: 'CONNECTED_SYNC',
+            sourceId,
+            sourceSyncRunId: syncRun.id,
+            normalizationVersion: normalized.normalizationVersion,
+            sourceFingerprint,
+          },
+          totalValue: normalized.totalValue,
+          cashValue: normalized.cashValue,
+          positions: normalized.positions.map((position) => ({
+            assetKey: position.assetKey,
+            symbol: position.symbol,
+            name: position.name,
+            quantity: position.quantity,
+            marketValue: position.marketValue,
+            category: this.toPortfolioCategory(position.category),
+            sourceAccountId: position.sourceAccountRef,
+            notes: position.notes,
+          })),
+        },
+        userId,
+      );
+
+      const completedSyncRun = await this.prisma.connectedSyncRunRecord.update({
+        where: { id: syncRun.id },
+        data: {
+          status: 'SUCCEEDED',
+          finishedAt: new Date(),
+          producedSnapshotId: snapshot.id,
+          metadata: {
+            providerKey: this.snapTradeProviderKey,
+            syncMode: 'holdings_snapshot',
+            providerConnectionId: upsertedSource.providerConnectionId,
+            snapshotId: snapshot.id,
+            syncedExternalAccountIds: activeAccounts.map(
+              (account) => account.externalAccountId,
+            ),
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      await this.prisma.connectedSourceRecord.update({
+        where: { id: sourceId },
+        data: {
+          lastSuccessfulSyncAt: new Date(),
+        },
+      });
+
+      return {
+        snapshot,
+        syncRun: mapSyncRunRecord(completedSyncRun),
+        syncedAccountCount: activeAccounts.length,
+        materializedPositionCount: normalized.positions.length,
+        snapshotDate,
+      };
+    } catch (error) {
+      await this.prisma.connectedSyncRunRecord.update({
+        where: { id: syncRun.id },
+        data: {
+          status: 'FAILED',
+          finishedAt: new Date(),
+          errorCode: 'SNAPTRADE_BROKERAGE_SYNC_FAILED',
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : 'SnapTrade brokerage sync failed',
+        },
+      });
+
+      throw error;
+    }
+  }
+
+  async syncSource(
+    userId: string,
+    sourceId: string,
+  ): Promise<
+    BankSyncMaterializationResult | BrokerageSyncMaterializationResult | null
+  > {
+    const source = await this.getOwnedSourceRecord(userId, sourceId);
+    if (!source) {
+      return null;
+    }
+
+    if (source.kind === 'BANK' && source.providerKey === 'PLAID') {
+      return this.syncBankSource(userId, sourceId);
+    }
+
+    if (source.kind === 'BROKERAGE' && source.providerKey === 'SNAPTRADE') {
+      return this.syncBrokerageSource(userId, sourceId);
+    }
+
+    throw new BadRequestException(
+      'Connected sync is only supported for BANK/PLAID and BROKERAGE/SNAPTRADE sources.',
+    );
+  }
+
   async listSourceSnapshots(
     userId: string,
     sourceId: string,
@@ -967,6 +1277,65 @@ export class ConnectedFinanceService {
         source: true,
       },
     });
+  }
+
+  private async getOrCreateSnapTradeProviderUser(userId: string): Promise<{
+    providerUserId: string;
+    providerUserSecret: string;
+  }> {
+    const existing = await this.prisma.connectedProviderUserRecord.findFirst({
+      where: {
+        userId,
+        providerKey: this.snapTradeProviderKey,
+      },
+    });
+    if (existing) {
+      return this.mapSnapTradeProviderUserSecret(existing);
+    }
+
+    const providerUserId = this.buildSnapTradeProviderUserId(userId);
+    const registered = await this.snapTradeClient.registerUser(providerUserId);
+    if (!registered.snapTradeUserSecret) {
+      throw new BadRequestException(
+        'SnapTrade did not return a provider user secret.',
+      );
+    }
+
+    const created = await this.prisma.connectedProviderUserRecord.create({
+      data: {
+        userId,
+        providerKey: this.snapTradeProviderKey,
+        providerUserId,
+        encryptedPayload: this.connectedSourceSecretsService.encryptJson({
+          snapTradeUserId: registered.snapTradeUserId,
+          snapTradeUserSecret: registered.snapTradeUserSecret,
+        }),
+        metadata: {
+          provider: this.snapTradeProviderKey,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return this.mapSnapTradeProviderUserSecret(created);
+  }
+
+  private buildSnapTradeProviderUserId(userId: string): string {
+    return `aurum:${userId}`;
+  }
+
+  private mapSnapTradeProviderUserSecret(record: ConnectedProviderUserRecord): {
+    providerUserId: string;
+    providerUserSecret: string;
+  } {
+    const payload =
+      this.connectedSourceSecretsService.decryptJson<SnapTradeProviderUserSecretPayload>(
+        record.encryptedPayload,
+      );
+
+    return {
+      providerUserId: payload.snapTradeUserId,
+      providerUserSecret: payload.snapTradeUserSecret,
+    };
   }
 
   private async syncPlaidSourceAccounts(
@@ -1041,6 +1410,155 @@ export class ConnectedFinanceService {
     return syncedAccounts;
   }
 
+  private async upsertSnapTradeSources(
+    userId: string,
+    connections: SnapTradeConnectionSummary[],
+    accounts: SnapTradeBrokerageAccount[],
+  ): Promise<
+    Array<{
+      source: ConnectedSourceRecord;
+      accounts: ConnectedSourceAccountRecord[];
+    }>
+  > {
+    const summaries: Array<{
+      source: ConnectedSourceRecord;
+      accounts: ConnectedSourceAccountRecord[];
+    }> = [];
+
+    for (const connection of connections) {
+      if (!connection.connectionId) {
+        continue;
+      }
+
+      const connectionAccounts = accounts.filter(
+        (account) => account.providerConnectionId === connection.connectionId,
+      );
+      if (connectionAccounts.length === 0) {
+        continue;
+      }
+
+      const existingSource = await this.prisma.connectedSourceRecord.findFirst({
+        where: {
+          userId,
+          kind: 'BROKERAGE',
+          providerKey: this.snapTradeProviderKey,
+          providerConnectionId: connection.connectionId,
+        },
+      });
+      const sourceMetadata = {
+        ...(existingSource ? mapMetadata(existingSource.metadata) : {}),
+        provider: this.snapTradeProviderKey,
+        brokerageSlug: connection.brokerageSlug,
+        lastImportedAt: new Date().toISOString(),
+      } satisfies Record<string, unknown>;
+      const source = existingSource
+        ? await this.prisma.connectedSourceRecord.update({
+            where: { id: existingSource.id },
+            data: {
+              displayName: connection.displayName,
+              status: mapSnapTradeSourceStatus(connection),
+              institutionName: connection.institutionName,
+              baseCurrency:
+                connectionAccounts[0]?.currency ?? existingSource.baseCurrency,
+              metadata: sourceMetadata as Prisma.InputJsonValue,
+            },
+          })
+        : await this.prisma.connectedSourceRecord.create({
+            data: {
+              userId,
+              kind: 'BROKERAGE',
+              providerKey: this.snapTradeProviderKey,
+              providerConnectionId: connection.connectionId,
+              displayName: connection.displayName,
+              status: mapSnapTradeSourceStatus(connection),
+              institutionName: connection.institutionName,
+              baseCurrency: connectionAccounts[0]?.currency ?? 'USD',
+              metadata: sourceMetadata as Prisma.InputJsonValue,
+            },
+          });
+
+      const syncedAccounts = await this.syncSnapTradeSourceAccounts(
+        source,
+        connection,
+        connectionAccounts,
+      );
+      summaries.push({
+        source,
+        accounts: syncedAccounts,
+      });
+    }
+
+    return summaries;
+  }
+
+  private async syncSnapTradeSourceAccounts(
+    source: ConnectedSourceRecord,
+    connection: SnapTradeConnectionSummary,
+    providerAccounts: SnapTradeBrokerageAccount[],
+  ): Promise<ConnectedSourceAccountRecord[]> {
+    const existingAccounts =
+      await this.prisma.connectedSourceAccountRecord.findMany({
+        where: { sourceId: source.id },
+      });
+    const existingByExternalAccountId = new Map(
+      existingAccounts
+        .filter((account) => account.externalAccountId)
+        .map((account) => [account.externalAccountId as string, account]),
+    );
+    const syncedAccounts: ConnectedSourceAccountRecord[] = [];
+
+    for (const providerAccount of providerAccounts) {
+      const data = {
+        displayName: providerAccount.displayName,
+        officialName: providerAccount.officialName,
+        accountType: providerAccount.accountType,
+        currency: providerAccount.currency ?? source.baseCurrency,
+        assetSubType: providerAccount.accountSubType,
+        institutionOrIssuer:
+          providerAccount.institutionName ??
+          connection.institutionName ??
+          source.institutionName,
+        maskLast4: providerAccount.maskLast4,
+        isActive: providerAccount.isActive ?? true,
+        metadata: {
+          ...(providerAccount.metadata ?? {}),
+          providerConnectionId: providerAccount.providerConnectionId,
+        } as Prisma.InputJsonValue,
+      };
+      const existing = existingByExternalAccountId.get(
+        providerAccount.externalAccountId,
+      );
+      const synced = existing
+        ? await this.prisma.connectedSourceAccountRecord.update({
+            where: { id: existing.id },
+            data,
+          })
+        : await this.prisma.connectedSourceAccountRecord.create({
+            data: {
+              sourceId: source.id,
+              externalAccountId: providerAccount.externalAccountId,
+              ...data,
+            },
+          });
+
+      syncedAccounts.push(synced);
+    }
+
+    await this.prisma.connectedSourceAccountRecord.updateMany({
+      where: {
+        sourceId: source.id,
+        externalAccountId: {
+          notIn: providerAccounts.map((account) => account.externalAccountId),
+        },
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    return syncedAccounts;
+  }
+
   private assertManualStaticSource(source: ConnectedSourceRecord) {
     if (source.kind !== 'MANUAL_STATIC') {
       throw new BadRequestException(
@@ -1053,6 +1571,17 @@ export class ConnectedFinanceService {
     if (source.kind !== 'BANK' || source.providerKey !== 'PLAID') {
       throw new BadRequestException(
         'Plaid bank sync requires a BANK source with providerKey PLAID.',
+      );
+    }
+  }
+
+  private assertSnapTradeBrokerageSource(source: ConnectedSourceRecord) {
+    if (
+      source.kind !== 'BROKERAGE' ||
+      source.providerKey !== this.snapTradeProviderKey
+    ) {
+      throw new BadRequestException(
+        'SnapTrade brokerage sync requires a BROKERAGE source with providerKey SNAPTRADE.',
       );
     }
   }

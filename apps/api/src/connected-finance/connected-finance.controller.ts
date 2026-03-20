@@ -13,6 +13,9 @@ import type {
   BankLinkTokenResult,
   BankSourceConnectionResult,
   BankSyncMaterializationResult,
+  BrokerageConnectionPortalResult,
+  BrokerageSourceImportResult,
+  BrokerageSyncMaterializationResult,
   ConnectedSource,
   ConnectedSourceAccount,
   ConnectedSyncRun,
@@ -67,6 +70,20 @@ export class ConnectedFinanceController {
     @Body() dto: ExchangePlaidPublicTokenDto,
   ): Promise<BankSourceConnectionResult> {
     return this.service.exchangePlaidPublicToken(user.userId, dto);
+  }
+
+  @Post('brokerage/snaptrade/connection-portal-url')
+  async createSnapTradeConnectionPortal(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<BrokerageConnectionPortalResult> {
+    return this.service.createSnapTradeConnectionPortal(user.userId);
+  }
+
+  @Post('brokerage/snaptrade/import-accounts')
+  async importSnapTradeAccounts(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<BrokerageSourceImportResult> {
+    return this.service.importSnapTradeAccounts(user.userId);
   }
 
   @Get('sources/:id')
@@ -196,8 +213,10 @@ export class ConnectedFinanceController {
   async syncSource(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-  ): Promise<BankSyncMaterializationResult> {
-    const result = await this.service.syncBankSource(user.userId, id);
+  ): Promise<
+    BankSyncMaterializationResult | BrokerageSyncMaterializationResult
+  > {
+    const result = await this.service.syncSource(user.userId, id);
     if (!result) {
       throw new NotFoundException('Connected source not found');
     }

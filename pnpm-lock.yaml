@@ -86,6 +86,9 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
+      snaptrade-typescript-sdk:
+        specifier: ^9.0.173
+        version: 9.0.173
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3.2.0
@@ -1868,6 +1871,9 @@ packages:
   axe-core@4.11.1:
     resolution: {integrity: sha512-BASOg+YwO2C+346x3LZOeoovTIoTrRqEsqMa6fmfAV0P+U9mFr9NsyOEpiYvFjbc64NMrSswhV50WdXzdb/Z5A==}
     engines: {node: '>=4'}
+
+  axios@1.10.0:
+    resolution: {integrity: sha512-/1xYAC4MP/HEG+3duIhFr4ZQXR4sQXOIe+o6sdqzeykGLx6Upp/1p8MHqhINOvGeP7xyNHe7tsiJByc4SSVUxw==}
 
   axios@1.13.6:
     resolution: {integrity: sha512-ChTCHMouEe2kn713WHbQGcuYrr6fXTBiu460OTwWrWob16g1bXn4vtz07Ope7ewMozJAnEquLk5lWQWtBig9DQ==}
@@ -4256,6 +4262,10 @@ packages:
   slash@3.0.0:
     resolution: {integrity: sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==}
     engines: {node: '>=8'}
+
+  snaptrade-typescript-sdk@9.0.173:
+    resolution: {integrity: sha512-3qWpE6fAqTPrfg72cmDm30oXbhquq1FVogUMnHQug0WBw2cLT7OJYfNNF8UpE4bXc4LQMgqaOgAT49dp7ibIsQ==}
+    engines: {node: '>=10'}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -6668,6 +6678,14 @@ snapshots:
   aws-ssl-profiles@1.1.2: {}
 
   axe-core@4.11.1: {}
+
+  axios@1.10.0:
+    dependencies:
+      follow-redirects: 1.15.11
+      form-data: 4.0.5
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
 
   axios@1.13.6:
     dependencies:
@@ -9516,6 +9534,12 @@ snapshots:
   signal-exit@4.1.0: {}
 
   slash@3.0.0: {}
+
+  snaptrade-typescript-sdk@9.0.173:
+    dependencies:
+      axios: 1.10.0
+    transitivePeerDependencies:
+      - debug
 
   source-map-js@1.2.1: {}
 

@@ -1,22 +1,17 @@
 'use client';
 
-import type { ConnectedSource, ConnectedSourceAccount, PortfolioSnapshot } from '@aurum/core';
-import type { PlaidLinkOnSuccessMetadata } from 'react-plaid-link';
 import { useEffect, useState } from 'react';
-import { usePlaidLink } from 'react-plaid-link';
+import type { ConnectedSource, ConnectedSourceAccount, PortfolioSnapshot } from '@aurum/core';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import {
-  createPlaidLinkToken,
-  exchangePlaidPublicToken,
+  createSnapTradeConnectionPortalUrl,
+  importSnapTradeAccounts,
   listConnectedSourceAccounts,
   listConnectedSourceSnapshots,
   listConnectedSources,
-  syncConnectedBankSource,
+  syncConnectedBrokerageSource,
 } from '@/lib/api/connected-finance';
-
-const inputClassName =
-  'h-10 w-full rounded-[var(--aurum-radius-md)] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 text-sm text-[var(--aurum-text)] outline-none transition focus:border-[var(--aurum-accent)]';
 
 function formatMoney(value: number, currency = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
@@ -45,40 +40,21 @@ function formatDateTime(value: string | undefined): string {
   });
 }
 
-function mapPlaidMetadata(metadata: PlaidLinkOnSuccessMetadata) {
-  return {
-    institution: metadata.institution
-      ? {
-          institutionId: metadata.institution.institution_id ?? undefined,
-          institutionName: metadata.institution.name ?? undefined,
-        }
-      : undefined,
-    accounts: metadata.accounts.map((account) => ({
-      id: account.id,
-      name: account.name ?? undefined,
-      mask: account.mask ?? undefined,
-      subtype: account.subtype ?? undefined,
-      type: account.type ?? undefined,
-    })),
-    linkSessionId: metadata.link_session_id ?? undefined,
-  };
-}
-
-type PlaidSandboxBankSectionProps = {
+type SnapTradeBrokerageSectionProps = {
   onSnapshotsChanged?: () => Promise<void> | void;
 };
 
-export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBankSectionProps) {
+export function SnapTradeBrokerageSection({
+  onSnapshotsChanged,
+}: SnapTradeBrokerageSectionProps) {
   const [sources, setSources] = useState<ConnectedSource[]>([]);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<ConnectedSourceAccount[]>([]);
   const [sourceSnapshots, setSourceSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [statusMessage, setStatusMessage] = useState('');
-  const [linkToken, setLinkToken] = useState<string | null>(null);
-  const [pendingOpen, setPendingOpen] = useState(false);
   const [isLoadingSources, setIsLoadingSources] = useState(false);
-  const [isPreparingLink, setIsPreparingLink] = useState(false);
-  const [isExchanging, setIsExchanging] = useState(false);
+  const [isCreatingPortal, setIsCreatingPortal] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
   const selectedSource = sources.find((source) => source.id === selectedSourceId);
@@ -87,14 +63,16 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
     setIsLoadingSources(true);
 
     try {
-      const nextSources = await listConnectedSources('BANK');
+      const nextSources = await listConnectedSources('BROKERAGE');
       setSources(nextSources);
       setSelectedSourceId((current) => {
         const hasCurrent = current ? nextSources.some((source) => source.id === current) : false;
         return hasCurrent ? current : (nextSources[0]?.id ?? null);
       });
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to load bank sources.');
+      setStatusMessage(
+        error instanceof Error ? error.message : 'Failed to load brokerage sources.',
+      );
     } finally {
       setIsLoadingSources(false);
     }
@@ -116,7 +94,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
       setSourceSnapshots(nextSnapshots);
     } catch (error) {
       setStatusMessage(
-        error instanceof Error ? error.message : 'Failed to load bank source details.',
+        error instanceof Error ? error.message : 'Failed to load brokerage source details.',
       );
     }
   };
@@ -129,63 +107,51 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
     void loadSourceDetails(selectedSourceId);
   }, [selectedSourceId]);
 
-  const onPlaidSuccess = async (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
-    setIsExchanging(true);
+  const onCreateConnectionPortal = async () => {
+    setIsCreatingPortal(true);
     setStatusMessage('');
 
     try {
-      const result = await exchangePlaidPublicToken({
-        publicToken,
-        metadata: mapPlaidMetadata(metadata),
-      });
-      await loadSources();
-      setSelectedSourceId(result.source.id);
+      const result = await createSnapTradeConnectionPortalUrl();
+      window.open(result.connectionPortalUrl, '_blank', 'noopener,noreferrer');
       setStatusMessage(
-        `Bank source connected: ${result.source.displayName} with ${result.accounts.length} account(s).`,
+        `SnapTrade portal opened for provider user ${result.providerUserId}. Complete the connection, then click Import Accounts.`,
       );
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to exchange Plaid token.');
+      setStatusMessage(
+        error instanceof Error
+          ? error.message
+          : 'Failed to create SnapTrade connection portal URL.',
+      );
     } finally {
-      setIsExchanging(false);
-      setPendingOpen(false);
-      setLinkToken(null);
+      setIsCreatingPortal(false);
     }
   };
 
-  const { open, ready } = usePlaidLink({
-    token: linkToken,
-    onSuccess: (publicToken, metadata) => {
-      void onPlaidSuccess(publicToken, metadata);
-    },
-  });
-
-  useEffect(() => {
-    if (pendingOpen && linkToken && ready) {
-      open();
-    }
-  }, [linkToken, open, pendingOpen, ready]);
-
-  const onPreparePlaidLink = async () => {
-    setIsPreparingLink(true);
+  const onImportAccounts = async () => {
+    setIsImporting(true);
     setStatusMessage('');
 
     try {
-      const result = await createPlaidLinkToken();
-      setLinkToken(result.linkToken);
-      setPendingOpen(true);
-    } catch (error) {
-      setPendingOpen(false);
+      const result = await importSnapTradeAccounts();
+      await loadSources();
+      const firstSourceId = result.sources[0]?.source.id ?? null;
+      setSelectedSourceId(firstSourceId);
       setStatusMessage(
-        error instanceof Error ? error.message : 'Failed to create Plaid link token.',
+        `Imported ${result.sources.length} brokerage source(s) for provider user ${result.providerUserId}.`,
+      );
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : 'Failed to import SnapTrade accounts.',
       );
     } finally {
-      setIsPreparingLink(false);
+      setIsImporting(false);
     }
   };
 
   const onSyncSelectedSource = async () => {
     if (!selectedSourceId) {
-      setStatusMessage('Select a bank source before running sync.');
+      setStatusMessage('Select a brokerage source before running sync.');
       return;
     }
 
@@ -193,17 +159,19 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
     setStatusMessage('');
 
     try {
-      const result = await syncConnectedBankSource(selectedSourceId);
+      const result = await syncConnectedBrokerageSource(selectedSourceId);
       await Promise.all([
         loadSourceDetails(selectedSourceId),
         loadSources(),
         onSnapshotsChanged?.(),
       ]);
       setStatusMessage(
-        `Bank snapshot materialized: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
+        `Brokerage snapshot materialized: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
       );
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to sync bank source.');
+      setStatusMessage(
+        error instanceof Error ? error.message : 'Failed to sync brokerage source.',
+      );
     } finally {
       setIsSyncing(false);
     }
@@ -213,30 +181,24 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
     <section className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Plaid Sandbox Bank Ingestion</CardTitle>
+          <CardTitle>SnapTrade Brokerage Ingestion</CardTitle>
           <CardDescription>
-            Internal validation flow for Milestone 12.3. Connect a Plaid Sandbox bank, inspect
-            linked accounts, and materialize a connected snapshot from current balances.
+            Internal validation flow for Milestone 12.4A. Open the SnapTrade Connection Portal,
+            import brokerage accounts, and materialize a connected snapshot from holdings.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <Button
-              onClick={() => void onPreparePlaidLink()}
-              disabled={isPreparingLink || isExchanging}
-            >
-              {isPreparingLink
-                ? 'Preparing Link...'
-                : isExchanging
-                  ? 'Connecting...'
-                  : 'Connect Bank (Plaid Sandbox)'}
+          <div className="flex flex-col gap-3 md:flex-row">
+            <Button onClick={() => void onCreateConnectionPortal()} disabled={isCreatingPortal}>
+              {isCreatingPortal ? 'Opening Portal...' : 'Connect Brokerage (SnapTrade)'}
             </Button>
-            <input
-              className={inputClassName}
-              value={selectedSource?.displayName ?? ''}
-              readOnly
-              placeholder="Connected source will appear here"
-            />
+            <Button
+              variant="secondary"
+              onClick={() => void onImportAccounts()}
+              disabled={isImporting}
+            >
+              {isImporting ? 'Importing...' : 'Import Accounts'}
+            </Button>
           </div>
 
           {statusMessage ? (
@@ -250,15 +212,17 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Bank Sources</CardTitle>
+            <CardTitle>Brokerage Sources</CardTitle>
             <CardDescription>
-              {isLoadingSources ? 'Loading sources...' : `${sources.length} bank source(s) found.`}
+              {isLoadingSources
+                ? 'Loading sources...'
+                : `${sources.length} brokerage source(s) found.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {sources.length === 0 ? (
               <p className="text-sm text-[var(--aurum-text-muted)]">
-                No bank sources connected yet.
+                No brokerage sources connected yet.
               </p>
             ) : (
               sources.map((source) => (
@@ -274,7 +238,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
                 >
                   <p className="font-medium text-[var(--aurum-text)]">{source.displayName}</p>
                   <p className="text-xs text-[var(--aurum-text-muted)]">
-                    {source.institutionName ?? 'Unknown institution'} - {source.status}
+                    {source.institutionName ?? 'Unknown brokerage'} - {source.status}
                   </p>
                   <p className="text-xs text-[var(--aurum-text-muted)]">
                     Last sync: {formatDateTime(source.lastSuccessfulSyncAt)}
@@ -288,38 +252,36 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Linked Bank Accounts</CardTitle>
+              <CardTitle>Brokerage Accounts</CardTitle>
               <CardDescription>
-                Plaid-backed accounts are synced into connected source accounts and mapped
-                one-to-one into snapshot positions for v1.
+                One SnapTrade connection maps to one brokerage source, and one brokerage account
+                maps to one connected source account.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {!selectedSource ? (
                 <p className="text-sm text-[var(--aurum-text-muted)]">
-                  Select a bank source to inspect linked accounts.
+                  Select a brokerage source to inspect imported accounts.
                 </p>
               ) : (
                 <>
                   <div className="flex justify-end">
                     <Button onClick={() => void onSyncSelectedSource()} disabled={isSyncing}>
-                      {isSyncing ? 'Syncing...' : 'Run Balance Sync'}
+                      {isSyncing ? 'Syncing...' : 'Run Holdings Sync'}
                     </Button>
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     {accounts.length === 0 ? (
                       <p className="text-sm text-[var(--aurum-text-muted)]">
-                        No bank accounts have been fetched for this source yet.
+                        No brokerage accounts imported for this source yet.
                       </p>
                     ) : (
                       accounts.map((account) => {
-                        const currentBalance =
-                          typeof account.metadata?.availableBalance === 'number'
-                            ? account.metadata.availableBalance
-                            : typeof account.metadata?.currentBalance === 'number'
-                              ? account.metadata.currentBalance
-                              : undefined;
+                        const balanceTotal =
+                          typeof account.metadata?.balanceTotalAmount === 'number'
+                            ? account.metadata.balanceTotalAmount
+                            : undefined;
 
                         return (
                           <div
@@ -331,18 +293,15 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
                             </p>
                             <p className="text-xs text-[var(--aurum-text-muted)]">
                               {account.accountType}
-                              {account.assetSubType ? ` - ${account.assetSubType}` : ''}
                               {account.maskLast4 ? ` - **** ${account.maskLast4}` : ''}
                             </p>
                             <p className="text-xs text-[var(--aurum-text-muted)]">
-                              {account.institutionOrIssuer ??
-                                selectedSource.institutionName ??
-                                'Plaid'}
+                              {account.institutionOrIssuer ?? selectedSource.institutionName ?? 'SnapTrade'}
                             </p>
                             <p className="mt-2 text-sm text-[var(--aurum-text)]">
-                              {currentBalance !== undefined
-                                ? formatMoney(currentBalance, account.currency)
-                                : 'Balance pending sync'}
+                              {balanceTotal !== undefined
+                                ? formatMoney(balanceTotal, account.currency)
+                                : 'Value will be finalized on sync'}
                             </p>
                           </div>
                         );
@@ -358,13 +317,13 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
             <CardHeader>
               <CardTitle>Materialized Snapshots</CardTitle>
               <CardDescription>
-                Balance syncs write canonical portfolio snapshots with source + sync lineage.
+                Holdings syncs write canonical portfolio snapshots with source and sync lineage.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {sourceSnapshots.length === 0 ? (
                 <p className="text-sm text-[var(--aurum-text-muted)]">
-                  No snapshots have been materialized for this bank source yet.
+                  No snapshots have been materialized for this brokerage source yet.
                 </p>
               ) : (
                 sourceSnapshots.map((snapshot) => (

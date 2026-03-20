@@ -6,6 +6,8 @@ import { ConnectedFinanceController } from './connected-finance.controller';
 import { ConnectedFinanceService } from './connected-finance.service';
 import { PlaidBankAdapter } from './providers/plaid/plaid-bank.adapter';
 import { PlaidClient } from './providers/plaid/plaid.client';
+import { SnapTradeBrokerageAdapter } from './providers/snaptrade/snaptrade-brokerage.adapter';
+import { SnapTradeClient } from './providers/snaptrade/snaptrade.client';
 
 @Module({
   imports: [PortfolioSnapshotsModule, ConfigModule],
@@ -15,6 +17,8 @@ import { PlaidClient } from './providers/plaid/plaid.client';
     ConnectedSourceSecretsService,
     PlaidClient,
     PlaidBankAdapter,
+    SnapTradeClient,
+    SnapTradeBrokerageAdapter,
   ],
   exports: [ConnectedFinanceService],
 })
