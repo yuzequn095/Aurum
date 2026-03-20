@@ -40,6 +40,16 @@ describe('ConnectedFinanceService', () => {
     institutionName: 'SnapTrade Demo Broker',
   } as const;
 
+  const cryptoSourceRecord = {
+    ...manualSourceRecord,
+    id: 'source_crypto',
+    kind: 'CRYPTO',
+    providerKey: 'COINBASE',
+    providerConnectionId: 'coinbase_fingerprint',
+    displayName: 'Coinbase Crypto',
+    institutionName: 'Coinbase',
+  } as const;
+
   const manualAccountRecord = {
     id: 'account_1',
     sourceId: manualSourceRecord.id,
@@ -74,6 +84,24 @@ describe('ConnectedFinanceService', () => {
     metadata: null,
     createdAt: new Date('2026-03-19T00:00:00.000Z'),
     updatedAt: new Date('2026-03-19T00:00:00.000Z'),
+  } as const;
+
+  const cryptoAccountRecord = {
+    id: 'account_crypto_1',
+    sourceId: cryptoSourceRecord.id,
+    externalAccountId: 'coinbase_acc_1',
+    displayName: 'Bitcoin Wallet',
+    officialName: 'Bitcoin',
+    accountType: 'wallet',
+    currency: 'BTC',
+    assetType: 'CRYPTO',
+    assetSubType: 'wallet',
+    institutionOrIssuer: 'Coinbase',
+    maskLast4: null,
+    isActive: true,
+    metadata: null,
+    createdAt: new Date('2026-03-20T00:00:00.000Z'),
+    updatedAt: new Date('2026-03-20T00:00:00.000Z'),
   } as const;
 
   function createPrismaMock() {
@@ -139,6 +167,20 @@ describe('ConnectedFinanceService', () => {
     };
   }
 
+  function createCoinbaseClientMock() {
+    return {
+      listAccounts: jest.fn(),
+      listBalances: jest.fn(),
+    };
+  }
+
+  function createCoinbaseCryptoAdapterMock() {
+    return {
+      normalizationVersion: 'coinbase-crypto-adapter@1.0.0',
+      normalize: jest.fn(),
+    };
+  }
+
   function createPlaidBankAdapterMock() {
     return {
       normalizationVersion: 'plaid-bank-adapter@1.0.0',
@@ -167,6 +209,8 @@ describe('ConnectedFinanceService', () => {
     prisma: ReturnType<typeof createPrismaMock>,
     snapshotService: ReturnType<typeof createSnapshotServiceMock>,
     secretsService = createSecretsServiceMock(),
+    coinbaseClient = createCoinbaseClientMock(),
+    coinbaseCryptoAdapter = createCoinbaseCryptoAdapterMock(),
     plaidClient = createPlaidClientMock(),
     plaidBankAdapter = createPlaidBankAdapterMock(),
     snapTradeClient = createSnapTradeClientMock(),
@@ -177,12 +221,16 @@ describe('ConnectedFinanceService', () => {
         prisma as never,
         snapshotService as never,
         secretsService as never,
+        coinbaseClient as never,
+        coinbaseCryptoAdapter as never,
         plaidClient as never,
         plaidBankAdapter as never,
         snapTradeClient as never,
         snapTradeBrokerageAdapter as never,
       ),
       secretsService,
+      coinbaseClient,
+      coinbaseCryptoAdapter,
       plaidClient,
       plaidBankAdapter,
       snapTradeClient,
@@ -916,6 +964,297 @@ describe('ConnectedFinanceService', () => {
       syncedAccountCount: 1,
       materializedPositionCount: 1,
       balanceSelectionStrategy: 'AVAILABLE_THEN_CURRENT',
+    });
+  });
+
+  it('connect stores encrypted coinbase credentials and creates crypto accounts', async () => {
+    const prisma = createPrismaMock();
+    const snapshotService = createSnapshotServiceMock();
+    const { service, secretsService, coinbaseClient } = createService(
+      prisma,
+      snapshotService,
+    );
+
+    prisma.connectedSourceRecord.findFirst.mockResolvedValue(null);
+    prisma.connectedSourceRecord.create.mockResolvedValue(cryptoSourceRecord);
+    prisma.connectedSourceSecretRecord.upsert.mockResolvedValue({
+      id: 'secret_crypto_1',
+    });
+    prisma.connectedSourceAccountRecord.findMany.mockResolvedValue([]);
+    prisma.connectedSourceAccountRecord.create.mockResolvedValue(
+      cryptoAccountRecord,
+    );
+    prisma.connectedSourceAccountRecord.updateMany.mockResolvedValue({
+      count: 0,
+    });
+    coinbaseClient.listAccounts.mockResolvedValue([
+      {
+        externalAccountId: 'coinbase_acc_1',
+        displayName: 'Bitcoin Wallet',
+        officialName: 'Bitcoin',
+        accountType: 'wallet',
+        currency: 'BTC',
+        assetCode: 'BTC',
+        assetName: 'Bitcoin',
+        assetType: 'crypto',
+        institutionName: 'Coinbase',
+        isActive: true,
+        assetId: 'asset_btc',
+        primary: true,
+        ready: true,
+        metadata: {
+          balanceAmount: '0.50000000',
+        },
+      },
+    ]);
+
+    const result = await service.connectCoinbaseCrypto('user_1', {
+      apiKeyName: 'organizations/org/apiKeys/key',
+      apiPrivateKey:
+        '-----BEGIN EC PRIVATE KEY-----\nprivate\n-----END EC PRIVATE KEY-----',
+      displayName: 'Coinbase Crypto',
+      baseCurrency: 'USD',
+    });
+
+    expect(secretsService.encryptJson).toHaveBeenCalledWith({
+      apiKeyName: 'organizations/org/apiKeys/key',
+      apiPrivateKey:
+        '-----BEGIN EC PRIVATE KEY-----\nprivate\n-----END EC PRIVATE KEY-----',
+    });
+    expect(prisma.connectedSourceSecretRecord.upsert).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      providerKey: 'COINBASE',
+      source: {
+        id: 'source_crypto',
+        kind: 'CRYPTO',
+        providerKey: 'COINBASE',
+      },
+      accounts: [
+        expect.objectContaining({
+          id: 'account_crypto_1',
+          externalAccountId: 'coinbase_acc_1',
+        }),
+      ],
+    });
+  });
+
+  it('only CRYPTO/COINBASE sources can use coinbase crypto sync flow', async () => {
+    const prisma = createPrismaMock();
+    const snapshotService = createSnapshotServiceMock();
+    prisma.connectedSourceRecord.findFirst.mockResolvedValue(
+      manualSourceRecord,
+    );
+
+    const { service } = createService(prisma, snapshotService);
+
+    await expect(
+      service.syncCoinbaseSource('user_1', manualSourceRecord.id),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('cannot sync another user crypto source', async () => {
+    const prisma = createPrismaMock();
+    const snapshotService = createSnapshotServiceMock();
+    prisma.connectedSourceRecord.findFirst.mockResolvedValue(null);
+
+    const { service } = createService(prisma, snapshotService);
+
+    const result = await service.syncCoinbaseSource(
+      'user_2',
+      cryptoSourceRecord.id,
+    );
+
+    expect(result).toBeNull();
+    expect(prisma.connectedSyncRunRecord.create).not.toHaveBeenCalled();
+  });
+
+  it('crypto sync creates snapshot lineage and materializes positions from balances', async () => {
+    const prisma = createPrismaMock();
+    const snapshotService = createSnapshotServiceMock();
+    const { service, secretsService, coinbaseClient, coinbaseCryptoAdapter } =
+      createService(prisma, snapshotService);
+
+    prisma.connectedSourceRecord.findFirst.mockResolvedValue(
+      cryptoSourceRecord,
+    );
+    prisma.connectedSourceSecretRecord.findFirst.mockResolvedValue({
+      id: 'secret_crypto_1',
+      userId: 'user_1',
+      sourceId: cryptoSourceRecord.id,
+      secretType: 'PROVIDER_CREDENTIALS',
+      encryptedPayload: 'encrypted-payload',
+      createdAt: new Date('2026-03-20T00:00:00.000Z'),
+      updatedAt: new Date('2026-03-20T00:00:00.000Z'),
+    });
+    secretsService.decryptJson.mockReturnValue({
+      apiKeyName: 'organizations/org/apiKeys/key',
+      apiPrivateKey:
+        '-----BEGIN EC PRIVATE KEY-----\nprivate\n-----END EC PRIVATE KEY-----',
+    });
+    prisma.connectedSyncRunRecord.create.mockResolvedValue({
+      id: 'sync_crypto_1',
+      userId: 'user_1',
+      sourceId: cryptoSourceRecord.id,
+      triggerType: 'MANUAL',
+      status: 'RUNNING',
+      startedAt: new Date('2026-03-20T10:00:00.000Z'),
+      finishedAt: null,
+      errorCode: null,
+      errorMessage: null,
+      normalizationVersion: 'coinbase-crypto-adapter@1.0.0',
+      rawPayloadRef: null,
+      producedSnapshotId: null,
+      metadata: null,
+      createdAt: new Date('2026-03-20T10:00:00.000Z'),
+      updatedAt: new Date('2026-03-20T10:00:00.000Z'),
+    });
+    coinbaseClient.listAccounts.mockResolvedValue([
+      {
+        externalAccountId: 'coinbase_acc_1',
+        displayName: 'Bitcoin Wallet',
+        officialName: 'Bitcoin',
+        accountType: 'wallet',
+        currency: 'BTC',
+        assetCode: 'BTC',
+        assetName: 'Bitcoin',
+        assetType: 'crypto',
+        institutionName: 'Coinbase',
+        isActive: true,
+        assetId: 'asset_btc',
+        primary: true,
+        ready: true,
+        metadata: {
+          balanceAmount: '0.50000000',
+        },
+      },
+    ]);
+    prisma.connectedSourceAccountRecord.findMany.mockResolvedValue([
+      cryptoAccountRecord,
+    ]);
+    prisma.connectedSourceAccountRecord.update.mockResolvedValue(
+      cryptoAccountRecord,
+    );
+    prisma.connectedSourceAccountRecord.updateMany.mockResolvedValue({
+      count: 0,
+    });
+    coinbaseClient.listBalances.mockResolvedValue([
+      {
+        externalAccountId: 'coinbase_acc_1',
+        assetId: 'asset_btc',
+        symbol: 'BTC',
+        assetName: 'Bitcoin',
+        quantity: 0.5,
+        unitPrice: 68000,
+        marketValue: 34000,
+        valuationCurrency: 'USD',
+        accountType: 'wallet',
+        assetType: 'crypto',
+      },
+    ]);
+    coinbaseCryptoAdapter.normalize.mockReturnValue({
+      portfolioName: 'Coinbase Crypto',
+      sourceLabel: 'Coinbase',
+      snapshotDate: todayDate,
+      valuationCurrency: 'USD',
+      totalValue: 34000,
+      ingestionMode: 'CONNECTED_SYNC',
+      normalizationVersion: 'coinbase-crypto-adapter@1.0.0',
+      positions: [
+        {
+          assetKey: 'crypto:account_crypto_1:BTC',
+          symbol: 'BTC',
+          name: 'Bitcoin',
+          quantity: 0.5,
+          marketValue: 34000,
+          category: 'crypto',
+          sourceAccountRef: 'account_crypto_1',
+        },
+      ],
+    });
+    snapshotService.createSnapshot.mockResolvedValue({
+      id: 'snapshot_crypto_1',
+      userId: 'user_1',
+      metadata: {
+        portfolioName: 'Coinbase Crypto',
+        sourceType: 'other',
+        sourceLabel: 'Coinbase',
+        snapshotDate: todayDate,
+        valuationCurrency: 'USD',
+        ingestionMode: 'CONNECTED_SYNC',
+        sourceId: cryptoSourceRecord.id,
+        sourceSyncRunId: 'sync_crypto_1',
+        normalizationVersion: 'coinbase-crypto-adapter@1.0.0',
+        sourceFingerprint: 'fingerprint',
+      },
+      totalValue: 34000,
+      positions: [
+        {
+          assetKey: 'crypto:account_crypto_1:BTC',
+          symbol: 'BTC',
+          name: 'Bitcoin',
+          quantity: 0.5,
+          marketValue: 34000,
+          category: 'crypto',
+          sourceAccountId: 'account_crypto_1',
+        },
+      ],
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z',
+    });
+    prisma.connectedSyncRunRecord.update.mockResolvedValue({
+      id: 'sync_crypto_1',
+      userId: 'user_1',
+      sourceId: cryptoSourceRecord.id,
+      triggerType: 'MANUAL',
+      status: 'SUCCEEDED',
+      startedAt: new Date('2026-03-20T10:00:00.000Z'),
+      finishedAt: new Date('2026-03-20T10:01:00.000Z'),
+      errorCode: null,
+      errorMessage: null,
+      normalizationVersion: 'coinbase-crypto-adapter@1.0.0',
+      rawPayloadRef: null,
+      producedSnapshotId: 'snapshot_crypto_1',
+      metadata: null,
+      createdAt: new Date('2026-03-20T10:00:00.000Z'),
+      updatedAt: new Date('2026-03-20T10:01:00.000Z'),
+    });
+    prisma.connectedSourceRecord.update.mockResolvedValue({
+      ...cryptoSourceRecord,
+      lastSuccessfulSyncAt: new Date('2026-03-20T10:01:00.000Z'),
+    });
+
+    const result = await service.syncCoinbaseSource(
+      'user_1',
+      cryptoSourceRecord.id,
+    );
+    const snapshotCreateCalls = snapshotService.createSnapshot.mock
+      .calls as Array<[unknown, string]>;
+    const snapshotCreateArgs = snapshotCreateCalls[0]?.[0];
+
+    expect(snapshotCreateArgs).toMatchObject({
+      userId: 'user_1',
+      metadata: {
+        sourceId: 'source_crypto',
+        sourceSyncRunId: 'sync_crypto_1',
+        sourceType: 'other',
+        ingestionMode: 'CONNECTED_SYNC',
+      },
+      positions: [
+        expect.objectContaining({
+          assetKey: 'crypto:account_crypto_1:BTC',
+          sourceAccountId: 'account_crypto_1',
+        }),
+      ],
+    });
+    expect(result).toMatchObject({
+      snapshot: { id: 'snapshot_crypto_1' },
+      syncRun: {
+        id: 'sync_crypto_1',
+        producedSnapshotId: 'snapshot_crypto_1',
+      },
+      syncedAccountCount: 1,
+      materializedPositionCount: 1,
+      snapshotDate: todayDate,
     });
   });
 

@@ -5,6 +5,8 @@ import type {
   BrokerageConnectionPortalResult,
   BrokerageSourceImportResult,
   BrokerageSyncMaterializationResult,
+  CryptoSourceConnectionResult,
+  CryptoSyncMaterializationResult,
   ConnectedSource,
   ConnectedSourceAccount,
   ConnectedSyncRun,
@@ -34,11 +36,18 @@ import { ConnectedSourceSecretsService } from './connected-source-secrets.servic
 import { CreateConnectedSourceAccountDto } from './dto/create-connected-source-account.dto';
 import { CreateConnectedSourceDto } from './dto/create-connected-source.dto';
 import { CreateManualStaticValuationDto } from './dto/create-manual-static-valuation.dto';
+import { ConnectCoinbaseCryptoDto } from './dto/connect-coinbase-crypto.dto';
 import { ExchangePlaidPublicTokenDto } from './dto/exchange-plaid-public-token.dto';
 import { ListConnectedSourcesQueryDto } from './dto/list-connected-sources-query.dto';
 import { MaterializeManualStaticSnapshotDto } from './dto/materialize-manual-static-snapshot.dto';
 import { UpdateConnectedSourceAccountDto } from './dto/update-connected-source-account.dto';
 import { UpdateConnectedSourceDto } from './dto/update-connected-source.dto';
+import { CoinbaseCryptoAdapter } from './providers/coinbase/coinbase-crypto.adapter';
+import { CoinbaseClient } from './providers/coinbase/coinbase.client';
+import type {
+  CoinbaseConnectedAccount,
+  CoinbaseSourceSecretPayload,
+} from './providers/coinbase/coinbase.types';
 import { PlaidBankAdapter } from './providers/plaid/plaid-bank.adapter';
 import { PlaidClient } from './providers/plaid/plaid.client';
 import type {
@@ -236,6 +245,12 @@ function mapPlaidAccountAssetType(
   return accountType.trim().toLowerCase() === 'depository' ? 'CASH' : 'OTHER';
 }
 
+function mapCoinbaseAccountAssetType(
+  account: CoinbaseConnectedAccount,
+): PortfolioAssetCategoryType {
+  return account.assetType === 'fiat' ? 'CASH' : 'CRYPTO';
+}
+
 function mapSnapTradeSourceStatus(
   connection: SnapTradeConnectionSummary,
 ): ConnectedSourceStatus {
@@ -244,6 +259,7 @@ function mapSnapTradeSourceStatus(
 
 @Injectable()
 export class ConnectedFinanceService {
+  private readonly coinbaseProviderKey = 'COINBASE';
   private readonly manualStaticSourceAdapter = new ManualStaticSourceAdapter();
   private readonly snapTradeProviderKey = 'SNAPTRADE';
 
@@ -251,6 +267,8 @@ export class ConnectedFinanceService {
     private readonly prisma: PrismaService,
     private readonly portfolioSnapshotsService: PortfolioSnapshotsService,
     private readonly connectedSourceSecretsService: ConnectedSourceSecretsService,
+    private readonly coinbaseClient: CoinbaseClient,
+    private readonly coinbaseCryptoAdapter: CoinbaseCryptoAdapter,
     private readonly plaidClient: PlaidClient,
     private readonly plaidBankAdapter: PlaidBankAdapter,
     private readonly snapTradeClient: SnapTradeClient,
@@ -489,6 +507,102 @@ export class ConnectedFinanceService {
         source: mapSourceRecord(summary.source),
         accounts: summary.accounts.map(mapSourceAccountRecord),
       })),
+    };
+  }
+
+  async connectCoinbaseCrypto(
+    userId: string,
+    dto: ConnectCoinbaseCryptoDto,
+  ): Promise<CryptoSourceConnectionResult> {
+    const providerConnectionId = createHash('sha256')
+      .update(`${this.coinbaseProviderKey}:${dto.apiKeyName}`)
+      .digest('hex');
+    const valuationCurrency = dto.baseCurrency?.trim().toUpperCase() ?? 'USD';
+    const providerAccounts = await this.coinbaseClient.listAccounts(
+      dto.apiKeyName,
+      dto.apiPrivateKey,
+    );
+
+    if (providerAccounts.length === 0) {
+      throw new BadRequestException(
+        'Coinbase returned no accounts for the provided credentials.',
+      );
+    }
+
+    const existingSource = await this.prisma.connectedSourceRecord.findFirst({
+      where: {
+        userId,
+        kind: 'CRYPTO',
+        providerKey: this.coinbaseProviderKey,
+      },
+    });
+    const keyFingerprint = providerConnectionId.slice(0, 16);
+    const sourceMetadata = {
+      ...(existingSource ? mapMetadata(existingSource.metadata) : {}),
+      provider: this.coinbaseProviderKey,
+      keyFingerprint,
+      valuationCurrency,
+    } satisfies Record<string, unknown>;
+    const source = existingSource
+      ? await this.prisma.connectedSourceRecord.update({
+          where: { id: existingSource.id },
+          data: {
+            providerConnectionId,
+            displayName: dto.displayName?.trim() || existingSource.displayName,
+            status: 'ACTIVE',
+            institutionName: 'Coinbase',
+            baseCurrency: valuationCurrency,
+            metadata: sourceMetadata as Prisma.InputJsonValue,
+          },
+        })
+      : await this.prisma.connectedSourceRecord.create({
+          data: {
+            userId,
+            kind: 'CRYPTO',
+            providerKey: this.coinbaseProviderKey,
+            providerConnectionId,
+            displayName: dto.displayName?.trim() || 'Coinbase Crypto',
+            status: 'ACTIVE',
+            institutionName: 'Coinbase',
+            baseCurrency: valuationCurrency,
+            metadata: sourceMetadata as Prisma.InputJsonValue,
+          },
+        });
+
+    await this.prisma.connectedSourceSecretRecord.upsert({
+      where: {
+        sourceId_secretType: {
+          sourceId: source.id,
+          secretType: 'PROVIDER_CREDENTIALS',
+        },
+      },
+      create: {
+        userId,
+        sourceId: source.id,
+        secretType: 'PROVIDER_CREDENTIALS',
+        encryptedPayload: this.connectedSourceSecretsService.encryptJson({
+          apiKeyName: dto.apiKeyName,
+          apiPrivateKey: dto.apiPrivateKey,
+        }),
+      },
+      update: {
+        userId,
+        encryptedPayload: this.connectedSourceSecretsService.encryptJson({
+          apiKeyName: dto.apiKeyName,
+          apiPrivateKey: dto.apiPrivateKey,
+        }),
+      },
+    });
+
+    const sourceAccounts = await this.syncCoinbaseSourceAccounts(
+      source,
+      providerAccounts,
+    );
+
+    return {
+      providerKey: 'COINBASE',
+      source: mapSourceRecord(source),
+      accounts: sourceAccounts.map(mapSourceAccountRecord),
     };
   }
 
@@ -987,6 +1101,178 @@ export class ConnectedFinanceService {
     }
   }
 
+  async syncCoinbaseSource(
+    userId: string,
+    sourceId: string,
+  ): Promise<CryptoSyncMaterializationResult | null> {
+    const source = await this.getOwnedSourceRecord(userId, sourceId);
+    if (!source) {
+      return null;
+    }
+
+    this.assertCoinbaseCryptoSource(source);
+
+    const secretRecord =
+      await this.prisma.connectedSourceSecretRecord.findFirst({
+        where: {
+          userId,
+          sourceId,
+          secretType: 'PROVIDER_CREDENTIALS',
+        },
+      });
+    if (!secretRecord) {
+      throw new BadRequestException(
+        'Coinbase crypto source is missing provider credentials.',
+      );
+    }
+
+    const secretPayload =
+      this.connectedSourceSecretsService.decryptJson<CoinbaseSourceSecretPayload>(
+        secretRecord.encryptedPayload,
+      );
+    const syncRun = await this.prisma.connectedSyncRunRecord.create({
+      data: {
+        userId,
+        sourceId,
+        triggerType: 'MANUAL',
+        status: 'RUNNING',
+        startedAt: new Date(),
+        normalizationVersion: this.coinbaseCryptoAdapter.normalizationVersion,
+        metadata: {
+          providerKey: this.coinbaseProviderKey,
+          syncMode: 'balance_snapshot',
+          providerConnectionId: source.providerConnectionId,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    try {
+      const providerAccounts = await this.coinbaseClient.listAccounts(
+        secretPayload.apiKeyName,
+        secretPayload.apiPrivateKey,
+      );
+      const syncedAccounts = await this.syncCoinbaseSourceAccounts(
+        source,
+        providerAccounts,
+      );
+      const balances = await this.coinbaseClient.listBalances(
+        secretPayload.apiKeyName,
+        secretPayload.apiPrivateKey,
+        source.baseCurrency,
+      );
+      const snapshotDate = formatDateOnly(new Date());
+      const normalized = this.coinbaseCryptoAdapter.normalize({
+        source: mapSourceRecord(source),
+        accounts: syncedAccounts
+          .map(mapSourceAccountRecord)
+          .filter((account) => account.isActive),
+        accountInputs: providerAccounts,
+        balances,
+        snapshotDate,
+      });
+      if (normalized.positions.length === 0) {
+        throw new BadRequestException(
+          'Coinbase crypto source returned no positive balances with usable fiat valuation.',
+        );
+      }
+
+      const sourceFingerprint = buildSourceFingerprint(
+        balances
+          .filter(
+            (balance) =>
+              balance.quantity !== undefined &&
+              balance.marketValue !== undefined,
+          )
+          .map((balance) => ({
+            externalAccountId: balance.externalAccountId,
+            symbol: balance.symbol,
+            quantity: balance.quantity,
+            unitPrice: balance.unitPrice,
+            marketValue: balance.marketValue,
+            valuationCurrency: balance.valuationCurrency,
+          })),
+      );
+      const snapshot = await this.portfolioSnapshotsService.createSnapshot(
+        {
+          userId,
+          metadata: {
+            portfolioName: normalized.portfolioName,
+            sourceType: 'other',
+            sourceLabel: normalized.sourceLabel ?? source.displayName,
+            snapshotDate,
+            valuationCurrency: normalized.valuationCurrency,
+            ingestionMode: 'CONNECTED_SYNC',
+            sourceId,
+            sourceSyncRunId: syncRun.id,
+            normalizationVersion: normalized.normalizationVersion,
+            sourceFingerprint,
+          },
+          totalValue: normalized.totalValue,
+          cashValue: normalized.cashValue,
+          positions: normalized.positions.map((position) => ({
+            assetKey: position.assetKey,
+            symbol: position.symbol,
+            name: position.name,
+            quantity: position.quantity,
+            marketValue: position.marketValue,
+            category: this.toPortfolioCategory(position.category),
+            sourceAccountId: position.sourceAccountRef,
+            notes: position.notes,
+          })),
+        },
+        userId,
+      );
+
+      const completedSyncRun = await this.prisma.connectedSyncRunRecord.update({
+        where: { id: syncRun.id },
+        data: {
+          status: 'SUCCEEDED',
+          finishedAt: new Date(),
+          producedSnapshotId: snapshot.id,
+          metadata: {
+            providerKey: this.coinbaseProviderKey,
+            syncMode: 'balance_snapshot',
+            providerConnectionId: source.providerConnectionId,
+            snapshotId: snapshot.id,
+            syncedExternalAccountIds: syncedAccounts.map(
+              (account) => account.externalAccountId,
+            ),
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      await this.prisma.connectedSourceRecord.update({
+        where: { id: sourceId },
+        data: {
+          lastSuccessfulSyncAt: new Date(),
+        },
+      });
+
+      return {
+        snapshot,
+        syncRun: mapSyncRunRecord(completedSyncRun),
+        syncedAccountCount: syncedAccounts.length,
+        materializedPositionCount: normalized.positions.length,
+        snapshotDate,
+      };
+    } catch (error) {
+      await this.prisma.connectedSyncRunRecord.update({
+        where: { id: syncRun.id },
+        data: {
+          status: 'FAILED',
+          finishedAt: new Date(),
+          errorCode: 'COINBASE_CRYPTO_SYNC_FAILED',
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : 'Coinbase crypto sync failed',
+        },
+      });
+
+      throw error;
+    }
+  }
+
   async syncBrokerageSource(
     userId: string,
     sourceId: string,
@@ -1209,7 +1495,10 @@ export class ConnectedFinanceService {
     userId: string,
     sourceId: string,
   ): Promise<
-    BankSyncMaterializationResult | BrokerageSyncMaterializationResult | null
+    | BankSyncMaterializationResult
+    | BrokerageSyncMaterializationResult
+    | CryptoSyncMaterializationResult
+    | null
   > {
     const source = await this.getOwnedSourceRecord(userId, sourceId);
     if (!source) {
@@ -1224,8 +1513,12 @@ export class ConnectedFinanceService {
       return this.syncBrokerageSource(userId, sourceId);
     }
 
+    if (source.kind === 'CRYPTO' && source.providerKey === 'COINBASE') {
+      return this.syncCoinbaseSource(userId, sourceId);
+    }
+
     throw new BadRequestException(
-      'Connected sync is only supported for BANK/PLAID and BROKERAGE/SNAPTRADE sources.',
+      'Connected sync is only supported for BANK/PLAID, BROKERAGE/SNAPTRADE, and CRYPTO/COINBASE sources.',
     );
   }
 
@@ -1410,6 +1703,76 @@ export class ConnectedFinanceService {
     return syncedAccounts;
   }
 
+  private async syncCoinbaseSourceAccounts(
+    source: ConnectedSourceRecord,
+    providerAccounts: CoinbaseConnectedAccount[],
+  ): Promise<ConnectedSourceAccountRecord[]> {
+    const existingAccounts =
+      await this.prisma.connectedSourceAccountRecord.findMany({
+        where: { sourceId: source.id },
+      });
+    const existingByExternalAccountId = new Map(
+      existingAccounts
+        .filter((account) => account.externalAccountId)
+        .map((account) => [account.externalAccountId as string, account]),
+    );
+    const syncedAccounts: ConnectedSourceAccountRecord[] = [];
+
+    for (const providerAccount of providerAccounts) {
+      const data = {
+        displayName: providerAccount.displayName,
+        officialName: providerAccount.officialName,
+        accountType: providerAccount.accountType,
+        currency:
+          providerAccount.assetCode ?? providerAccount.currency ?? 'USD',
+        assetType: mapCoinbaseAccountAssetType(providerAccount),
+        assetSubType: providerAccount.accountType,
+        institutionOrIssuer: 'Coinbase',
+        isActive: providerAccount.isActive ?? true,
+        metadata: {
+          ...(providerAccount.metadata ?? {}),
+          assetId: providerAccount.assetId,
+          assetCode: providerAccount.assetCode,
+          assetName: providerAccount.assetName,
+          assetType: providerAccount.assetType,
+          primary: providerAccount.primary,
+          ready: providerAccount.ready,
+        } as Prisma.InputJsonValue,
+      };
+      const existing = existingByExternalAccountId.get(
+        providerAccount.externalAccountId,
+      );
+      const synced = existing
+        ? await this.prisma.connectedSourceAccountRecord.update({
+            where: { id: existing.id },
+            data,
+          })
+        : await this.prisma.connectedSourceAccountRecord.create({
+            data: {
+              sourceId: source.id,
+              externalAccountId: providerAccount.externalAccountId,
+              ...data,
+            },
+          });
+
+      syncedAccounts.push(synced);
+    }
+
+    await this.prisma.connectedSourceAccountRecord.updateMany({
+      where: {
+        sourceId: source.id,
+        externalAccountId: {
+          notIn: providerAccounts.map((account) => account.externalAccountId),
+        },
+      },
+      data: {
+        isActive: false,
+      },
+    });
+
+    return syncedAccounts;
+  }
+
   private async upsertSnapTradeSources(
     userId: string,
     connections: SnapTradeConnectionSummary[],
@@ -1582,6 +1945,17 @@ export class ConnectedFinanceService {
     ) {
       throw new BadRequestException(
         'SnapTrade brokerage sync requires a BROKERAGE source with providerKey SNAPTRADE.',
+      );
+    }
+  }
+
+  private assertCoinbaseCryptoSource(source: ConnectedSourceRecord) {
+    if (
+      source.kind !== 'CRYPTO' ||
+      source.providerKey !== this.coinbaseProviderKey
+    ) {
+      throw new BadRequestException(
+        'Coinbase crypto sync requires a CRYPTO source with providerKey COINBASE.',
       );
     }
   }

@@ -7,6 +7,8 @@ import type {
   BrokerageSyncMaterializationResult,
   ConnectedSource,
   ConnectedSourceAccount,
+  CryptoSourceConnectionResult,
+  CryptoSyncMaterializationResult,
   ManualStaticSnapshotMaterializationResult,
   ManualStaticValuation,
   PortfolioAssetCategory,
@@ -66,6 +68,13 @@ export interface ExchangePlaidPublicTokenRequest {
     }>;
     linkSessionId?: string;
   };
+}
+
+export interface ConnectCoinbaseCryptoRequest {
+  apiKeyName: string;
+  apiPrivateKey: string;
+  displayName?: string;
+  baseCurrency?: string;
 }
 
 export async function listConnectedSources(
@@ -181,6 +190,24 @@ export async function syncConnectedBrokerageSource(
   sourceId: string,
 ): Promise<BrokerageSyncMaterializationResult> {
   return apiPost<BrokerageSyncMaterializationResult>(
+    `/v1/connected-finance/sources/${sourceId}/sync`,
+    {},
+  );
+}
+
+export async function connectCoinbaseCrypto(
+  body: ConnectCoinbaseCryptoRequest,
+): Promise<CryptoSourceConnectionResult> {
+  return apiPost<CryptoSourceConnectionResult>(
+    '/v1/connected-finance/crypto/coinbase/connect',
+    body,
+  );
+}
+
+export async function syncConnectedCryptoSource(
+  sourceId: string,
+): Promise<CryptoSyncMaterializationResult> {
+  return apiPost<CryptoSyncMaterializationResult>(
     `/v1/connected-finance/sources/${sourceId}/sync`,
     {},
   );

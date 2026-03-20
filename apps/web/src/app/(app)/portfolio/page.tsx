@@ -9,6 +9,7 @@ import type {
   PortfolioAssetCategory,
   PortfolioSnapshot,
 } from '@aurum/core';
+import { CoinbaseCryptoSection } from '@/components/portfolio/CoinbaseCryptoSection';
 import { PlaidSandboxBankSection } from '@/components/portfolio/PlaidSandboxBankSection';
 import { SnapTradeBrokerageSection } from '@/components/portfolio/SnapTradeBrokerageSection';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -325,6 +326,7 @@ export default function PortfolioPage() {
 
   return (
     <PageContainer className="space-y-6">
+      <CoinbaseCryptoSection onSnapshotsChanged={loadAllSnapshots} />
       <SnapTradeBrokerageSection onSnapshotsChanged={loadAllSnapshots} />
       <PlaidSandboxBankSection onSnapshotsChanged={loadAllSnapshots} />
 

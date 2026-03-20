@@ -16,6 +16,8 @@ import type {
   BrokerageConnectionPortalResult,
   BrokerageSourceImportResult,
   BrokerageSyncMaterializationResult,
+  CryptoSourceConnectionResult,
+  CryptoSyncMaterializationResult,
   ConnectedSource,
   ConnectedSourceAccount,
   ConnectedSyncRun,
@@ -30,6 +32,7 @@ import { ConnectedFinanceService } from './connected-finance.service';
 import { CreateConnectedSourceAccountDto } from './dto/create-connected-source-account.dto';
 import { CreateConnectedSourceDto } from './dto/create-connected-source.dto';
 import { CreateManualStaticValuationDto } from './dto/create-manual-static-valuation.dto';
+import { ConnectCoinbaseCryptoDto } from './dto/connect-coinbase-crypto.dto';
 import { ExchangePlaidPublicTokenDto } from './dto/exchange-plaid-public-token.dto';
 import { ListConnectedSourcesQueryDto } from './dto/list-connected-sources-query.dto';
 import { MaterializeManualStaticSnapshotDto } from './dto/materialize-manual-static-snapshot.dto';
@@ -84,6 +87,14 @@ export class ConnectedFinanceController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<BrokerageSourceImportResult> {
     return this.service.importSnapTradeAccounts(user.userId);
+  }
+
+  @Post('crypto/coinbase/connect')
+  async connectCoinbaseCrypto(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ConnectCoinbaseCryptoDto,
+  ): Promise<CryptoSourceConnectionResult> {
+    return this.service.connectCoinbaseCrypto(user.userId, dto);
   }
 
   @Get('sources/:id')
@@ -214,7 +225,9 @@ export class ConnectedFinanceController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
   ): Promise<
-    BankSyncMaterializationResult | BrokerageSyncMaterializationResult
+    | BankSyncMaterializationResult
+    | BrokerageSyncMaterializationResult
+    | CryptoSyncMaterializationResult
   > {
     const result = await this.service.syncSource(user.userId, id);
     if (!result) {
