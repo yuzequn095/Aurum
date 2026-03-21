@@ -84,6 +84,10 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "moduleNameMapper": {
+      "^@aurum/core$": "<rootDir>/../../../packages/core/src/index.ts",
+      "^@aurum/core/(.*)$": "<rootDir>/../../../packages/core/src/$1"
+    },
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

@@ -1,11 +1,17 @@
 'use client';
 
-import type { ConnectedSource, ConnectedSourceAccount, PortfolioSnapshot } from '@aurum/core';
+import {
+  parseProviderNotConfiguredDetails,
+  type ConnectedSource,
+  type ConnectedSourceAccount,
+  type PortfolioSnapshot,
+} from '@aurum/core';
 import type { PlaidLinkOnSuccessMetadata } from 'react-plaid-link';
 import { useEffect, useState } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { ApiError } from '@/lib/api';
 import {
   createPlaidLinkToken,
   exchangePlaidPublicToken,
@@ -74,6 +80,10 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
   const [accounts, setAccounts] = useState<ConnectedSourceAccount[]>([]);
   const [sourceSnapshots, setSourceSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [statusMessage, setStatusMessage] = useState('');
+  const [providerNotice, setProviderNotice] = useState<{
+    title: string;
+    body: string;
+  } | null>(null);
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [pendingOpen, setPendingOpen] = useState(false);
   const [isLoadingSources, setIsLoadingSources] = useState(false);
@@ -132,6 +142,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
   const onPlaidSuccess = async (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
     setIsExchanging(true);
     setStatusMessage('');
+    setProviderNotice(null);
 
     try {
       const result = await exchangePlaidPublicToken({
@@ -168,6 +179,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
   const onPreparePlaidLink = async () => {
     setIsPreparingLink(true);
     setStatusMessage('');
+    setProviderNotice(null);
 
     try {
       const result = await createPlaidLinkToken();
@@ -175,6 +187,14 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
       setPendingOpen(true);
     } catch (error) {
       setPendingOpen(false);
+      const notice =
+        error instanceof ApiError
+          ? parseProviderNotConfiguredDetails(error.details)
+          : null;
+      if (notice) {
+        setProviderNotice(notice);
+        return;
+      }
       setStatusMessage(
         error instanceof Error ? error.message : 'Failed to create Plaid link token.',
       );
@@ -191,6 +211,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
 
     setIsSyncing(true);
     setStatusMessage('');
+    setProviderNotice(null);
 
     try {
       const result = await syncConnectedBankSource(selectedSourceId);
@@ -203,6 +224,14 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
         `Bank snapshot materialized: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
       );
     } catch (error) {
+      const notice =
+        error instanceof ApiError
+          ? parseProviderNotConfiguredDetails(error.details)
+          : null;
+      if (notice) {
+        setProviderNotice(notice);
+        return;
+      }
       setStatusMessage(error instanceof Error ? error.message : 'Failed to sync bank source.');
     } finally {
       setIsSyncing(false);
@@ -223,7 +252,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <Button
               onClick={() => void onPreparePlaidLink()}
-              disabled={isPreparingLink || isExchanging}
+              disabled={isPreparingLink || isExchanging || Boolean(providerNotice)}
             >
               {isPreparingLink
                 ? 'Preparing Link...'
@@ -243,6 +272,13 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
             <p className="rounded-[10px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-2 text-sm text-[var(--aurum-text)]">
               {statusMessage}
             </p>
+          ) : null}
+
+          {providerNotice ? (
+            <div className="rounded-[10px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3 text-sm">
+              <p className="font-medium text-[var(--aurum-text)]">{providerNotice.title}</p>
+              <p className="mt-1 text-[var(--aurum-text-muted)]">{providerNotice.body}</p>
+            </div>
           ) : null}
         </CardContent>
       </Card>

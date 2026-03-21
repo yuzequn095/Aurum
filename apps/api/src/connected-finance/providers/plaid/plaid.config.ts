@@ -26,20 +26,34 @@ function parseStringList(
   return values;
 }
 
+export function getMissingPlaidConfig(configService: ConfigService): string[] {
+  const missing: string[] = [];
+
+  if (!configService.get<string>('PLAID_CLIENT_ID')?.trim()) {
+    missing.push('PLAID_CLIENT_ID');
+  }
+
+  if (!configService.get<string>('PLAID_SECRET')?.trim()) {
+    missing.push('PLAID_SECRET');
+  }
+
+  return missing;
+}
+
 export function getPlaidApiConfig(
   configService: ConfigService,
 ): PlaidApiConfig {
-  const clientId = configService.get<string>('PLAID_CLIENT_ID')?.trim();
-  const secret = configService.get<string>('PLAID_SECRET')?.trim();
+  const missing = getMissingPlaidConfig(configService);
+  if (missing.length > 0) {
+    throw new Error(
+      `${missing.join(', ')} ${missing.length > 1 ? 'are' : 'is'} required`,
+    );
+  }
+
+  const clientId = configService.get<string>('PLAID_CLIENT_ID')!.trim();
+  const secret = configService.get<string>('PLAID_SECRET')!.trim();
   const rawEnv = configService.get<string>('PLAID_ENV')?.trim().toLowerCase();
   const redirectUri = configService.get<string>('PLAID_REDIRECT_URI')?.trim();
-
-  if (!clientId) {
-    throw new Error('PLAID_CLIENT_ID is required');
-  }
-  if (!secret) {
-    throw new Error('PLAID_SECRET is required');
-  }
 
   const env: PlaidEnvironmentKey =
     rawEnv === 'development' || rawEnv === 'production' || rawEnv === 'sandbox'

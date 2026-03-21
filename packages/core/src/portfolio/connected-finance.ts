@@ -35,6 +35,71 @@ export const portfolioSnapshotIngestionModes = [
 
 export type PortfolioSnapshotIngestionMode = (typeof portfolioSnapshotIngestionModes)[number];
 
+export const connectedFinanceProviderKeys = [
+  'PLAID',
+  'COINBASE',
+  'SNAPTRADE',
+] as const;
+
+export type ConnectedFinanceProviderKey =
+  (typeof connectedFinanceProviderKeys)[number];
+
+export const connectedFinanceErrorCodes = [
+  'PROVIDER_NOT_CONFIGURED',
+] as const;
+
+export type ConnectedFinanceErrorCode =
+  (typeof connectedFinanceErrorCodes)[number];
+
+export interface ConnectedFinanceProviderErrorDetails {
+  statusCode?: number;
+  code: ConnectedFinanceErrorCode;
+  provider: Extract<ConnectedFinanceProviderKey, 'PLAID' | 'COINBASE'>;
+  message: string;
+  userMessage?: string;
+  missingConfig?: string[];
+}
+
+export function getProviderNotConfiguredGuidance(
+  provider: Extract<ConnectedFinanceProviderKey, 'PLAID' | 'COINBASE'>,
+): { title: string; body: string } {
+  const providerLabel = provider === 'PLAID' ? 'Plaid' : 'Coinbase';
+
+  return {
+    title: `${providerLabel} is not configured yet`,
+    body:
+      'This environment does not have the required backend credentials configured for this provider. For now, use Manual Create in Manual Static Accounts to add assets or accounts manually.',
+  };
+}
+
+export function parseProviderNotConfiguredDetails(
+  details: unknown,
+): ({
+  provider: Extract<ConnectedFinanceProviderKey, 'PLAID' | 'COINBASE'>;
+  title: string;
+  body: string;
+} | null) {
+  if (!details || typeof details !== 'object') {
+    return null;
+  }
+
+  const candidate = details as Partial<ConnectedFinanceProviderErrorDetails>;
+  if (
+    candidate.code !== 'PROVIDER_NOT_CONFIGURED' ||
+    (candidate.provider !== 'PLAID' && candidate.provider !== 'COINBASE')
+  ) {
+    return null;
+  }
+
+  const guidance = getProviderNotConfiguredGuidance(candidate.provider);
+
+  return {
+    provider: candidate.provider,
+    title: guidance.title,
+    body: candidate.userMessage ?? guidance.body,
+  };
+}
+
 export interface ConnectedSource {
   id: string;
   userId: string;

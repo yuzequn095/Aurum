@@ -2,9 +2,15 @@
 
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
-import type { ConnectedSource, ConnectedSourceAccount, PortfolioSnapshot } from '@aurum/core';
+import {
+  parseProviderNotConfiguredDetails,
+  type ConnectedSource,
+  type ConnectedSourceAccount,
+  type PortfolioSnapshot,
+} from '@aurum/core';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { ApiError } from '@/lib/api';
 import {
   connectCoinbaseCrypto,
   listConnectedSourceAccounts,
@@ -56,6 +62,10 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
   const [accounts, setAccounts] = useState<ConnectedSourceAccount[]>([]);
   const [sourceSnapshots, setSourceSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [statusMessage, setStatusMessage] = useState('');
+  const [providerNotice, setProviderNotice] = useState<{
+    title: string;
+    body: string;
+  } | null>(null);
   const [isLoadingSources, setIsLoadingSources] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -118,6 +128,7 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
     event.preventDefault();
     setIsConnecting(true);
     setStatusMessage('');
+    setProviderNotice(null);
 
     try {
       const result = await connectCoinbaseCrypto({
@@ -137,6 +148,14 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
         `Crypto source connected: ${result.source.displayName} with ${result.accounts.length} account(s).`,
       );
     } catch (error) {
+      const notice =
+        error instanceof ApiError
+          ? parseProviderNotConfiguredDetails(error.details)
+          : null;
+      if (notice) {
+        setProviderNotice(notice);
+        return;
+      }
       setStatusMessage(error instanceof Error ? error.message : 'Failed to connect Coinbase.');
     } finally {
       setIsConnecting(false);
@@ -151,6 +170,7 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
 
     setIsSyncing(true);
     setStatusMessage('');
+    setProviderNotice(null);
 
     try {
       const result = await syncConnectedCryptoSource(selectedSourceId);
@@ -163,6 +183,14 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
         `Crypto snapshot materialized: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
       );
     } catch (error) {
+      const notice =
+        error instanceof ApiError
+          ? parseProviderNotConfiguredDetails(error.details)
+          : null;
+      if (notice) {
+        setProviderNotice(notice);
+        return;
+      }
       setStatusMessage(error instanceof Error ? error.message : 'Failed to sync crypto source.');
     } finally {
       setIsSyncing(false);
@@ -231,7 +259,7 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
               required
             />
             <div className="flex justify-end">
-              <Button type="submit" disabled={isConnecting}>
+              <Button type="submit" disabled={isConnecting || Boolean(providerNotice)}>
                 {isConnecting ? 'Connecting...' : 'Connect Crypto (Coinbase)'}
               </Button>
             </div>
@@ -241,6 +269,13 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
             <p className="rounded-[10px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-2 text-sm text-[var(--aurum-text)]">
               {statusMessage}
             </p>
+          ) : null}
+
+          {providerNotice ? (
+            <div className="rounded-[10px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3 text-sm">
+              <p className="font-medium text-[var(--aurum-text)]">{providerNotice.title}</p>
+              <p className="mt-1 text-[var(--aurum-text-muted)]">{providerNotice.body}</p>
+            </div>
           ) : null}
         </CardContent>
       </Card>

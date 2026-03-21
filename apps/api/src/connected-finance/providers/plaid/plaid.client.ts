@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Configuration, PlaidApi } from 'plaid';
-import { getPlaidApiConfig, getPlaidBasePath } from './plaid.config';
+import { ProviderNotConfiguredException } from '../../provider-not-configured.exception';
+import {
+  getMissingPlaidConfig,
+  getPlaidApiConfig,
+  getPlaidBasePath,
+} from './plaid.config';
 import type {
   PlaidAccountsResult,
   PlaidExchangeResult,
@@ -15,6 +20,7 @@ export class PlaidClient {
   constructor(private readonly configService: ConfigService) {}
 
   async createLinkToken(userId: string): Promise<PlaidLinkTokenResult> {
+    this.assertConfigured();
     const client = this.createClient();
     const config = getPlaidApiConfig(this.configService);
     const response = await client.linkTokenCreate({
@@ -36,6 +42,7 @@ export class PlaidClient {
   }
 
   async exchangePublicToken(publicToken: string): Promise<PlaidExchangeResult> {
+    this.assertConfigured();
     const client = this.createClient();
     const response = await client.itemPublicTokenExchange({
       public_token: publicToken,
@@ -52,6 +59,7 @@ export class PlaidClient {
     accessToken: string,
     metadata?: PlaidExchangePublicTokenMetadata,
   ): Promise<PlaidAccountsResult> {
+    this.assertConfigured();
     const client = this.createClient();
     const response = await client.accountsGet({
       access_token: accessToken,
@@ -89,6 +97,7 @@ export class PlaidClient {
   }
 
   async getCurrentBalances(accessToken: string): Promise<PlaidAccountsResult> {
+    this.assertConfigured();
     const client = this.createClient();
     const response = await client.accountsBalanceGet({
       access_token: accessToken,
@@ -156,5 +165,12 @@ export class PlaidClient {
         },
       }),
     );
+  }
+
+  private assertConfigured() {
+    const missingConfig = getMissingPlaidConfig(this.configService);
+    if (missingConfig.length > 0) {
+      throw new ProviderNotConfiguredException('PLAID', missingConfig);
+    }
   }
 }

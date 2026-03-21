@@ -2,7 +2,11 @@ import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { getCoinbaseApiConfig } from './coinbase.config';
+import { ProviderNotConfiguredException } from '../../provider-not-configured.exception';
+import {
+  getCoinbaseApiConfig,
+  getMissingCoinbaseConfig,
+} from './coinbase.config';
 import type {
   CoinbaseBalance,
   CoinbaseConnectedAccount,
@@ -93,6 +97,7 @@ export class CoinbaseClient {
     apiKeyName: string,
     apiPrivateKey: string,
   ): Promise<CoinbaseConnectedAccount[]> {
+    this.assertConfigured();
     const accounts: CoinbaseConnectedAccount[] = [];
     let nextPath = '/v2/accounts';
 
@@ -115,6 +120,7 @@ export class CoinbaseClient {
     apiPrivateKey: string,
     valuationCurrency = 'USD',
   ): Promise<CoinbaseBalance[]> {
+    this.assertConfigured();
     const accounts = await this.listAccounts(apiKeyName, apiPrivateKey);
     const balances = await Promise.all(
       accounts.map(async (account) => {
@@ -260,5 +266,12 @@ export class CoinbaseClient {
         header,
       },
     );
+  }
+
+  private assertConfigured() {
+    const missingConfig = getMissingCoinbaseConfig(this.configService);
+    if (missingConfig.length > 0) {
+      throw new ProviderNotConfiguredException('COINBASE', missingConfig);
+    }
   }
 }
