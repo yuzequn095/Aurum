@@ -73,6 +73,7 @@ Supported assets:
 - brokerage accounts
 - crypto wallets
 - investment portfolios
+- manual static accounts
 
 Features:
 
@@ -80,12 +81,20 @@ Features:
 - asset allocation
 - institution breakdown
 - portfolio value tracking
+- manual static valuation history
+- connected-finance source and sync foundations
+
+Current foundation:
+
+- manual static account creation and valuation materialization
+- connected source flows for bank, brokerage, and crypto ingestion foundations
+- snapshot-driven portfolio analysis across multiple upstream source types
 
 Future capabilities:
 
-- automatic account synchronization
 - investment performance analytics
 - portfolio risk analysis
+- broader production hardening for provider flows
 
 Portfolio represents the **asset layer** of Aurum.
 
@@ -298,7 +307,7 @@ Aurum is designed to evolve through multiple stages.
 
 ---
 
-### Phase 2 - Connected Finance
+### Phase 2 - Connected Finance Foundation
 
 Integrations with external financial services.
 
@@ -308,7 +317,14 @@ Examples:
 - brokerage APIs
 - crypto exchanges
 
-Accounts will update automatically.
+Foundation scope now implemented:
+
+- provider connection flows
+- source/account modeling
+- sync runs
+- snapshot materialization
+
+Production breadth and deeper automation remain future work.
 
 ---
 

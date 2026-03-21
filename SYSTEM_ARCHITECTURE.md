@@ -12,7 +12,7 @@ The system integrates:
 - AI-powered insights and reports
 - long-term financial planning
 
-Aurum is designed with modular architecture so it can evolve from a **manual finance tracking system** into a **connected financial platform** with real-time financial integrations.
+Aurum is designed with modular architecture so it can evolve from a **manual finance tracking system** into a **connected financial platform** with real-time financial integrations. Milestone 12 completed the foundation-level connected-finance architecture while preserving `PortfolioSnapshot` as the canonical upstream object for analysis.
 
 ---
 
@@ -79,13 +79,21 @@ Tracks:
 - bank accounts
 - brokerage accounts
 - crypto wallets
+- manual static accounts
 - asset allocation
+
+Current foundation:
+
+- connected sources, source accounts, and sync runs
+- manual static valuation history
+- balance-first bank and crypto sync foundations
+- holdings-first brokerage sync foundation
 
 Future expansions:
 
-- automatic account syncing
+- broader provider coverage
 - investment performance analysis
-- institution integrations
+- deeper institution integrations
 
 ---
 
@@ -231,6 +239,25 @@ Analytics APIs power both the Dashboard and AI Insights.
 
 ---
 
+### Connected Finance Module
+
+Handles provider-ready portfolio ingestion and snapshot materialization.
+
+Responsibilities:
+
+- user-scoped `ConnectedSource` management
+- `ConnectedSourceAccount` persistence
+- `ConnectedSyncRun` tracking
+- encrypted provider secret storage
+- manual static valuations
+- Plaid bank connection and balance sync foundation
+- SnapTrade brokerage connection and holdings sync foundation
+- Coinbase crypto self-connect and balance sync foundation
+
+Connected finance does not replace ledger `Account`. It feeds canonical `PortfolioSnapshot` records that the rest of the analysis pipeline already understands.
+
+---
+
 ### Import / Export Module
 
 Handles external data ingestion and export.
@@ -308,6 +335,10 @@ Core entities:
 
 - User
 - Accounts
+- ConnectedSource
+- ConnectedSourceAccount
+- ConnectedSyncRun
+- PortfolioSnapshot
 - Transactions
 - Categories
 - Subcategories
@@ -337,30 +368,28 @@ Transactions reference:
 
 Financial insights are generated using a hybrid system.
 
-### Step 1 - Data aggregation
+### Step 1 - Upstream financial ingestion
 
-Analytics service aggregates:
+Upstream data can now come from:
 
-- monthly income
-- monthly expenses
-- category breakdown
-- portfolio changes
+- ledger transactions
+- manual static portfolio sources
+- bank balance syncs
+- brokerage holdings syncs
+- crypto balance syncs
 
-### Step 2 - Rule-based analysis
+### Step 2 - Canonical snapshot + analytics shaping
 
-Example triggers:
+Connected-finance inputs are normalized into lineage-aware `PortfolioSnapshot` records, while ledger data continues to power analytics APIs.
 
-- spending spikes
-- budget threshold violations
-- unusual expense categories
+### Step 3 - Downstream analysis
 
-### Step 3 - AI interpretation
-
-AI models transform structured data into:
+AI and scoring pipelines transform structured snapshot and analytics inputs into:
 
 - natural language insights
 - financial recommendations
-- reports
+- persisted reports
+- persisted financial health scores
 
 ---
 
@@ -368,7 +397,7 @@ AI models transform structured data into:
 
 Aurum is designed to evolve into a **connected financial ecosystem**.
 
-### Phase 1 - Manual Finance Tracking (Current)
+### Phase 1 - Manual Finance Tracking
 
 - manual transaction entry
 - CSV import
@@ -377,7 +406,7 @@ Aurum is designed to evolve into a **connected financial ecosystem**.
 
 ---
 
-### Phase 2 - Connected Finance
+### Phase 2 - Connected Finance Foundation (Completed foundation)
 
 Integrations with:
 
@@ -388,8 +417,16 @@ Integrations with:
 Potential providers:
 
 - Plaid
-- Teller
-- Snaptrade
+- SnapTrade
+- Coinbase
+
+Current scope:
+
+- provider connection bootstrap
+- encrypted credential handling
+- account import
+- balance or holdings sync
+- snapshot materialization with lineage
 
 ---
 

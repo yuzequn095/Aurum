@@ -53,7 +53,7 @@ Examples:
 - crypto wallet
 - cash wallet
 
-Accounts store balances and transactions.
+Ledger accounts store balances and transactions for the cash-flow system of record.
 
 Attributes:
 
@@ -68,6 +68,8 @@ Future support:
 - institution integration
 - automatic balance sync
 - transaction import
+
+Connected-finance ingestion intentionally does not merge these ledger accounts with connected source accounts. Provider-backed portfolio sources are modeled separately and normalized into canonical snapshots.
 
 ---
 
@@ -182,8 +184,32 @@ Portfolio analysis includes:
 Portfolio data may come from:
 
 - manual entry
-- API integrations
+- manual static sources
+- connected provider integrations
 - imported statements
+
+### Connected Finance Foundation
+
+Milestone 12 added a connected-finance ingestion layer around portfolio data.
+
+Core entities:
+
+- `ConnectedSource`
+- `ConnectedSourceAccount`
+- `ConnectedSyncRun`
+- `PortfolioSnapshot`
+
+Supported source kinds at the foundation level:
+
+- manual static
+- bank
+- brokerage
+- crypto
+
+Normalization rule:
+
+- provider or manual-static inputs are normalized into canonical `PortfolioSnapshot` records
+- downstream AI reports and financial health scores consume snapshots rather than provider payloads directly
 
 ---
 
@@ -271,16 +297,15 @@ Instead they change asset distribution.
 Financial data flows through the system as follows.
 
 ```text
-Transactions
-  |
-  v
-Financial Analytics
-  |
-  v
-Insight Engine
-  |
-  v
-AI Insights
+Transactions --------------------\
+                                  \
+Connected Sources -> Snapshots ----> Financial Analytics and Snapshot Mappers
+                                    |
+                                    v
+                               Insight Engine
+                                    |
+                                    v
+                                 AI Insights
 ```
 
 This structure allows Aurum to transform raw financial data into financial intelligence.
@@ -295,6 +320,8 @@ Examples:
 
 - Investment tracking
 - Bank integrations
+- Brokerage integrations
+- Crypto integrations
 - Automated transaction imports
 - AI budgeting
 - Financial goal planning

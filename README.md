@@ -20,6 +20,7 @@ This document serves as both a product overview and developer reference for Auru
 - [Current Status](#current-status)
 - [Milestone Summary](#milestone-summary)
 - [What Milestone 11 Changed](#what-milestone-11-changed)
+- [What Milestone 12 Changed](#what-milestone-12-changed)
 - [Current Architecture](#current-architecture)
 - [Long-term Vision](#long-term-vision)
 - [Architecture Documents](#architecture-documents)
@@ -70,19 +71,27 @@ Give users a quick snapshot of their financial status.
 
 Multi-account asset tracking.
 
-**Tracks:**
+**Tracks and materializes through snapshots:**
 
 - bank accounts
 - brokerage accounts
 - crypto accounts
+- manual static accounts
 - asset allocation
 - account breakdown
 
-**Future plans:**
+**Current foundation includes:**
 
-- automatic account syncing (Plaid / brokerage APIs)
-- investment tracking
-- asset allocation analysis
+- connected-finance sources and source accounts
+- append-only manual static valuation history
+- lineage-aware snapshot materialization for manual static and connected sync flows
+- bank, brokerage, and crypto provider foundations inside the connected-finance model
+
+**Still ahead:**
+
+- deeper investment performance analytics
+- broader provider coverage and production hardening
+- richer portfolio analysis workflows
 
 ### Transactions
 
@@ -172,11 +181,12 @@ This allows fast interactions without navigating across multiple pages.
 
 ## Current Status
 
-Milestone 1-10 are completed as foundation work. Milestone 11 is also completed as the AI foundation and snapshot-driven analysis foundation. The current focus is Milestone 12: Connected Finance & Real Ingestion.
+Milestones 1-12 are now completed at the foundation level. Milestone 12 delivered the connected-finance and real-ingestion foundation on top of the Milestone 11 snapshot-driven analysis architecture. The next focus is Milestone 13: AI Product Layer.
 
 - Foundation status: Aurum now has stable monorepo, API, web, auth, ledger, taxonomy, analytics, import/export, and dashboard foundations.
-- AI foundation status: snapshot-driven report and score generation is implemented end-to-end with persistence, history, and server-backed creation flows.
-- Current execution focus: move from demo and validation ingestion toward real connected finance ingestion, normalization, and sync pipelines.
+- Connected-finance status: connected sources, source accounts, sync runs, encrypted provider secret storage, and lineage-aware `PortfolioSnapshot` materialization are implemented.
+- AI foundation status: snapshot-driven report and score generation remains implemented end-to-end with persistence, history, and server-backed creation flows over the same canonical snapshot object.
+- Current execution focus: build the Milestone 13 AI product layer on top of the now-shared ledger + connected-finance + snapshot-analysis foundation.
 
 ## Milestone Summary
 
@@ -189,8 +199,8 @@ Milestone 1-10 are completed as foundation work. Milestone 11 is also completed 
 | 9 | Transactions UX + Data Tooling | Done | Transaction list UX, filtering/editing, CSV import/export, backup/restore, and import idempotency. |
 | 10 | Web UX Foundation | Done | App shell, page structure, settings/logout, design tokens/primitives, and dashboard foundation. |
 | 11 | AI Foundation / Snapshot-Driven Analysis | Done | Shared AI contracts, prompt/task/provider/router/run foundations, workbench validation, canonical `PortfolioSnapshot`, snapshot-driven report/score flows, report persistence, score persistence, and snapshot-linked history with server-backed creation. |
-| 12 | Connected Finance & Real Ingestion | Current Focus | Bank integrations, brokerage integrations, production-grade ingestion workflows, snapshot ingestion hardening, and provider normalization/sync pipeline. |
-| 13 | AI Product Layer | Planned | Prompt pack expansion, conversation model, AI Insights templates, planning/budgeting/goals, and richer AI workflows. |
+| 12 | Connected Finance & Real Ingestion | Done | Connected source foundation, source accounts, sync runs, snapshot lineage and ingestion hardening, manual static accounts with valuation history, Plaid bank foundation, SnapTrade brokerage holdings foundation, Coinbase crypto foundation, and provider-aware fallback guidance to Manual Create when backend provider config is missing. |
+| 13 | AI Product Layer | Current Focus | Prompt pack expansion, conversation model, AI Insights templates, planning/budgeting/goals, and richer AI workflows on top of the snapshot-driven data foundation. |
 | 14 | Experience Layer (Desktop + Mobile UX) | Planned | Desktop UX refinement, mobile implementation aligned with Aurum-Mobile-UX-Demo, cross-platform design consistency, command menu UX, and AI-first interaction polish. |
 | 15 | Connected Finance Expansion / Financial OS Direction | Future | Deeper portfolio and institution modeling, financial execution experiments, and broader Financial OS exploration. |
 
@@ -204,6 +214,15 @@ Milestone 1-10 are completed as foundation work. Milestone 11 is also completed 
 - `/ai-insights` snapshot-driven flow, report persistence plus snapshot-linked history, and score persistence plus snapshot-linked history
 - server-backed report creation, server-backed score creation, and snapshot deletion lifecycle v1 that blocks deletion when linked artifacts exist
 
+**Milestone 12 delivered:**
+
+- shared connected-finance contracts for `ConnectedSource`, `ConnectedSourceAccount`, `ConnectedSyncRun`, ingestion modes, provider adapters, and stronger snapshot lineage metadata
+- append-only manual static account and valuation flow with snapshot materialization through the same canonical `PortfolioSnapshot` pipeline
+- Plaid Sandbox bank balance sync foundation with encrypted provider secret storage and lineage-aware sync runs
+- SnapTrade brokerage holdings foundation with provider-user bootstrap, source import, and holdings-first snapshot materialization
+- Coinbase read-only crypto self-connect foundation with encrypted credentials and balance-first snapshot materialization
+- connected-finance web/admin validation flows plus provider-aware UI guidance that falls back to Manual Create when backend provider config is not available
+
 ## What Milestone 11 Changed
 
 Milestone 11 changed Aurum from an AI-demo-oriented foundation into a snapshot-driven analysis architecture.
@@ -216,6 +235,17 @@ Milestone 11 changed Aurum from an AI-demo-oriented foundation into a snapshot-d
 - Snapshot lifecycle rules now recognize downstream analysis artifacts, including deletion blocking when linked reports exist.
 
 In practical terms, this means Aurum now has an analysis system with upstream source objects, persistent downstream artifacts, and explicit resource relationships across web, API, and database layers.
+
+## What Milestone 12 Changed
+
+Milestone 12 changed Aurum from a mostly demo/manual snapshot ingestion path into a connected-finance ingestion architecture.
+
+- `PortfolioSnapshot` remains the canonical upstream truth for downstream analysis, but snapshots can now originate from manual static sources and connected sources.
+- `ConnectedSource`, `ConnectedSourceAccount`, and `ConnectedSyncRun` are now first-class system objects rather than future placeholders.
+- Source adapters normalize manual static valuations, bank balances, brokerage holdings, and crypto balances into the same canonical snapshot shape.
+- Snapshots now carry stronger lineage through source, sync run, ingestion mode, normalization version, and source fingerprint fields.
+- The same downstream AI report and financial health score flows continue to operate on those snapshots without changing their core contract.
+- Provider integrations are intentionally foundation-level: they establish connection, normalization, credential handling, and sync/materialization paths without claiming full production breadth yet.
 
 ## Current Architecture
 
@@ -233,16 +263,24 @@ In practical terms, this means Aurum now has an analysis system with upstream so
 
 **Shared-core stack:**
 
-- `packages/core` for canonical portfolio, AI, report, and score domain contracts
-- shared adapters and mappers for snapshot ingestion and snapshot-driven analysis inputs
+- `packages/core` for canonical portfolio, connected-finance, AI, report, and score domain contracts
+- shared adapters and mappers for source normalization, snapshot ingestion, and snapshot-driven analysis inputs
 
 **Key platform surfaces:**
 
 - ledger APIs for accounts, categories, subcategories, transactions, import/export, and analytics
+- connected-finance APIs for sources, source accounts, sync runs, manual static valuations, provider connect flows, and snapshot materialization
 - snapshot persistence and verification APIs for canonical `PortfolioSnapshot`
 - snapshot-scoped report creation and report history APIs
 - snapshot-scoped financial health score creation and score history APIs
 - lifecycle protection that blocks snapshot deletion when persisted linked report artifacts exist
+
+**Connected-finance foundation:**
+
+- `ConnectedSource` models the user-owned source boundary for manual static, bank, brokerage, and crypto ingestion.
+- `ConnectedSourceAccount` models provider-backed or manual-static accounts without collapsing them into ledger `Account`.
+- `ConnectedSyncRun` records materialization attempts and sync lineage.
+- `PortfolioSnapshot` remains the canonical analysis input, now with explicit ingestion and lineage metadata.
 
 **Application architecture overview:**
 
@@ -259,9 +297,16 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  CSV[CSV-shaped input or future provider input]
-  CSV --> ADAPTER[Snapshot adapter]
-  ADAPTER --> SNAPSHOT[Canonical PortfolioSnapshot]
+  MANUAL[Manual Static Source]
+  BANK[Bank Provider]
+  BROKERAGE[Brokerage Provider]
+  CRYPTO[Crypto Provider]
+  MANUAL --> ADAPTERS[Source adapters and normalization]
+  BANK --> ADAPTERS
+  BROKERAGE --> ADAPTERS
+  CRYPTO --> ADAPTERS
+  ADAPTERS --> CONNECTED[ConnectedSource plus SourceAccounts plus SyncRun]
+  CONNECTED --> SNAPSHOT[Canonical PortfolioSnapshot]
   SNAPSHOT --> API[Portfolio snapshot API]
   API --> DB[(PostgreSQL)]
   SNAPSHOT --> REPORTMAP[Snapshot to report input mapper]
@@ -420,6 +465,27 @@ Troubleshooting:
 | `AURUM_LLM_MODEL` | `gpt-4.1-mini` | LLM model id. |
 | `AURUM_LLM_TIMEOUT_MS` | `8000` | LLM HTTP timeout (ms). |
 
+### Connected Finance Provider Config
+
+Connected-finance provider setup is optional by environment. If a provider is not configured, the web flow stays visible and Aurum falls back to friendly guidance that points users to Manual Create / manual static accounts instead of surfacing a generic internal error.
+
+| Key | Example | Purpose |
+| --- | --- | --- |
+| `CONNECTED_SOURCE_SECRET_KEY` | `change-me` | Required for encrypting provider credentials and secrets at rest. |
+| `PLAID_CLIENT_ID` | `<id>` | Enables Plaid bank link-token and token exchange flows. |
+| `PLAID_SECRET` | `<secret>` | Enables Plaid bank token exchange and balance sync flows. |
+| `PLAID_ENV` | `sandbox` | Plaid environment selector for the current deployment. |
+| `PLAID_PRODUCTS` | `auth` | Plaid product list for Link token creation. |
+| `PLAID_COUNTRY_CODES` | `US` | Plaid country codes for Link token creation. |
+| `PLAID_REDIRECT_URI` | `<uri>` | Optional redirect URI for Plaid Link flows. |
+| `SNAPTRADE_CLIENT_ID` | `<id>` | Enables SnapTrade brokerage connection and sync flows. |
+| `SNAPTRADE_CONSUMER_KEY` | `<key>` | Enables SnapTrade brokerage API access. |
+| `SNAPTRADE_REDIRECT_URI` | `http://localhost:3000/portfolio` | Optional redirect target for the SnapTrade connection portal. |
+| `SNAPTRADE_BASE_URL` | `<url>` | Optional SnapTrade API base override. |
+| `COINBASE_ENABLED` | `true` / `false` | Enables Coinbase self-connect flows in the current environment. |
+| `COINBASE_API_BASE_URL` | `https://api.coinbase.com` | Optional Coinbase API base override. |
+| `COINBASE_API_TIMEOUT_MS` | `10000` | Coinbase API request timeout in milliseconds. |
+
 ## API Reference
 
 Base URL: `http://localhost:3001`
@@ -427,6 +493,7 @@ Base URL: `http://localhost:3001`
 Key API surfaces:
 
 - ledger and analytics for the finance system of record
+- connected-finance source, account, valuation, connect, and sync flows
 - canonical portfolio snapshot create, list, get, and lifecycle-protected delete
 - snapshot-scoped report creation and snapshot-linked report history queries
 - snapshot-scoped financial health score creation and snapshot-linked score history queries
@@ -461,6 +528,13 @@ Key API surfaces:
 | `/v1/analytics/summary-series` | GET | Yes | Monthly summary series (`months`, `endYear`, `endMonth`) ordered oldest -> newest. |
 | `/v1/analytics/category-breakdown` | GET | Yes | Monthly expense breakdown by category. |
 | `/v1/ai/monthly-report` | GET | Yes | Monthly AI report payload with generated insights. |
+| `/v1/connected-finance/sources` | GET / POST | Yes | List or create connected-finance sources for the current user. |
+| `/v1/connected-finance/sources/:id/accounts` | GET / POST | Yes | List or create source accounts for a user-owned source. |
+| `/v1/connected-finance/accounts/:accountId/manual-valuations` | GET / POST | Yes | List or append manual static valuation history for a user-owned source account. |
+| `/v1/connected-finance/bank/plaid/link-token` | POST | Yes | Create a Plaid Link token when Plaid backend credentials are configured. |
+| `/v1/connected-finance/brokerage/snaptrade/connection-portal-url` | POST | Yes | Create a SnapTrade connection portal URL when SnapTrade backend credentials are configured. |
+| `/v1/connected-finance/crypto/coinbase/connect` | POST | Yes | Connect a read-only Coinbase crypto source for the current user when enabled. |
+| `/v1/connected-finance/sources/:id/sync` | POST | Yes | Run a user-scoped connected source sync and materialize a canonical snapshot with lineage. |
 | `/v1/portfolio-snapshots` | POST | Yes | Create canonical portfolio snapshot with nested positions. |
 | `/v1/portfolio-snapshots` | GET | Yes | List persisted portfolio snapshots (newest first). |
 | `/v1/portfolio-snapshots/:id` | GET | Yes | Get single portfolio snapshot by id. |
