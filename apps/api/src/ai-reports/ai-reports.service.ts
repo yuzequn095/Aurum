@@ -1,6 +1,10 @@
 import type { AIReportArtifact } from '@aurum/core';
 import { randomUUID } from 'node:crypto';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { PortfolioSnapshotsService } from '../portfolio-snapshots/portfolio-snapshots.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -24,7 +28,26 @@ export class AIReportsService {
     private readonly portfolioSnapshotsService: PortfolioSnapshotsService,
   ) {}
 
-  async createReport(report: AIReportArtifact): Promise<AIReportArtifact> {
+  async createReport(
+    report: AIReportArtifact,
+    userId: string,
+  ): Promise<AIReportArtifact> {
+    if (!report.sourceSnapshotId?.trim()) {
+      throw new BadRequestException(
+        'AI report must reference a source portfolio snapshot.',
+      );
+    }
+
+    const snapshot = await this.portfolioSnapshotsService.getSnapshotById(
+      report.sourceSnapshotId,
+      userId,
+    );
+    if (!snapshot) {
+      throw new NotFoundException(
+        `Portfolio snapshot not found: ${report.sourceSnapshotId}`,
+      );
+    }
+
     const created = await this.prisma.aIReportRecord.create({
       data: {
         id: report.id,
@@ -44,9 +67,19 @@ export class AIReportsService {
     return mapAIReportRecordToArtifact(created);
   }
 
-  async getReportById(id: string): Promise<AIReportArtifact | null> {
-    const found = await this.prisma.aIReportRecord.findUnique({
-      where: { id },
+  async getReportById(
+    id: string,
+    userId: string,
+  ): Promise<AIReportArtifact | null> {
+    const found = await this.prisma.aIReportRecord.findFirst({
+      where: {
+        id,
+        sourceSnapshot: {
+          is: {
+            userId,
+          },
+        },
+      },
     });
 
     if (!found) {
@@ -56,8 +89,15 @@ export class AIReportsService {
     return mapAIReportRecordToArtifact(found);
   }
 
-  async listReports(): Promise<AIReportArtifact[]> {
+  async listReports(userId: string): Promise<AIReportArtifact[]> {
     const records = await this.prisma.aIReportRecord.findMany({
+      where: {
+        sourceSnapshot: {
+          is: {
+            userId,
+          },
+        },
+      },
       orderBy: [{ createdAt: 'desc' }],
     });
 
@@ -66,9 +106,17 @@ export class AIReportsService {
 
   async listReportsBySourceSnapshotId(
     sourceSnapshotId: string,
+    userId: string,
   ): Promise<AIReportArtifact[]> {
     const records = await this.prisma.aIReportRecord.findMany({
-      where: { sourceSnapshotId },
+      where: {
+        sourceSnapshotId,
+        sourceSnapshot: {
+          is: {
+            userId,
+          },
+        },
+      },
       orderBy: [{ createdAt: 'desc' }],
     });
 
@@ -111,18 +159,21 @@ export class AIReportsService {
       metadata.snapshotDate = snapshotDate;
     }
 
-    return this.createReport({
-      id: randomUUID(),
-      reportType: 'portfolio_report_v1',
-      taskType: 'portfolio_report_v1',
-      sourceRunId,
-      sourceSnapshotId: command.sourceSnapshotId,
-      title,
-      contentMarkdown: command.contentMarkdown,
-      promptVersion: command.promptVersion,
-      createdAt: now,
-      updatedAt: now,
-      metadata,
-    });
+    return this.createReport(
+      {
+        id: randomUUID(),
+        reportType: 'portfolio_report_v1',
+        taskType: 'portfolio_report_v1',
+        sourceRunId,
+        sourceSnapshotId: command.sourceSnapshotId,
+        title,
+        contentMarkdown: command.contentMarkdown,
+        promptVersion: command.promptVersion,
+        createdAt: now,
+        updatedAt: now,
+        metadata,
+      },
+      command.userId,
+    );
   }
 }

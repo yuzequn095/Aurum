@@ -54,9 +54,17 @@ export class FinancialHealthScoresService {
 
   async getScoreArtifactById(
     id: string,
+    userId: string,
   ): Promise<FinancialHealthScoreArtifact | null> {
-    const found = await this.prisma.financialHealthScoreRecord.findUnique({
-      where: { id },
+    const found = await this.prisma.financialHealthScoreRecord.findFirst({
+      where: {
+        id,
+        sourceSnapshot: {
+          is: {
+            userId,
+          },
+        },
+      },
     });
 
     if (!found) {
@@ -66,8 +74,17 @@ export class FinancialHealthScoresService {
     return mapFinancialHealthScoreRecordToArtifact(found);
   }
 
-  async listScoreArtifacts(): Promise<FinancialHealthScoreArtifact[]> {
+  async listScoreArtifacts(
+    userId: string,
+  ): Promise<FinancialHealthScoreArtifact[]> {
     const records = await this.prisma.financialHealthScoreRecord.findMany({
+      where: {
+        sourceSnapshot: {
+          is: {
+            userId,
+          },
+        },
+      },
       orderBy: [{ createdAt: 'desc' }],
     });
 
@@ -76,9 +93,17 @@ export class FinancialHealthScoresService {
 
   async listScoreArtifactsBySourceSnapshotId(
     sourceSnapshotId: string,
+    userId: string,
   ): Promise<FinancialHealthScoreArtifact[]> {
     const records = await this.prisma.financialHealthScoreRecord.findMany({
-      where: { sourceSnapshotId },
+      where: {
+        sourceSnapshotId,
+        sourceSnapshot: {
+          is: {
+            userId,
+          },
+        },
+      },
       orderBy: [{ createdAt: 'desc' }],
     });
 
