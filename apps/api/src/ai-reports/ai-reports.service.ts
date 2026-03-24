@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 import { PortfolioSnapshotsService } from '../portfolio-snapshots/portfolio-snapshots.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { mapAIReportRecordToArtifact } from './ai-report.mapper';
@@ -25,6 +26,7 @@ function mapMetadataToPrisma(
 export class AIReportsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly entitlementsService: EntitlementsService,
     private readonly portfolioSnapshotsService: PortfolioSnapshotsService,
   ) {}
 
@@ -37,6 +39,11 @@ export class AIReportsService {
         'AI report must reference a source portfolio snapshot.',
       );
     }
+
+    await this.entitlementsService.assertFeatureEnabled(
+      userId,
+      'ai.report.snapshot_portfolio_report',
+    );
 
     const snapshot = await this.portfolioSnapshotsService.getSnapshotById(
       report.sourceSnapshotId,
@@ -126,6 +133,11 @@ export class AIReportsService {
   async createReportFromSnapshot(
     command: CreateReportFromSnapshotCommand,
   ): Promise<AIReportArtifact> {
+    await this.entitlementsService.assertFeatureEnabled(
+      command.userId,
+      'ai.report.snapshot_portfolio_report',
+    );
+
     const snapshot = await this.portfolioSnapshotsService.getSnapshotById(
       command.sourceSnapshotId,
       command.userId,

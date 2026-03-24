@@ -38,6 +38,9 @@ describe('FinancialHealthScoresService', () => {
       }),
     },
   };
+  const entitlementsService = {
+    assertFeatureEnabled: jest.fn(),
+  };
   const portfolioSnapshotsService = {
     getSnapshotById: jest.fn(),
   };
@@ -52,6 +55,7 @@ describe('FinancialHealthScoresService', () => {
 
     const service = new FinancialHealthScoresService(
       prisma as never,
+      entitlementsService as never,
       portfolioSnapshotsService as never,
     );
 
@@ -68,9 +72,36 @@ describe('FinancialHealthScoresService', () => {
       },
       orderBy: [{ createdAt: 'desc' }],
     });
+    expect(entitlementsService.assertFeatureEnabled).not.toHaveBeenCalled();
+  });
+
+  it('blocks score generation when entitlement access is denied', async () => {
+    entitlementsService.assertFeatureEnabled.mockRejectedValue(
+      new Error('blocked'),
+    );
+
+    const service = new FinancialHealthScoresService(
+      prisma as never,
+      entitlementsService as never,
+      portfolioSnapshotsService as never,
+    );
+
+    await expect(
+      service.createScoreArtifactFromSnapshot({
+        userId: 'user_1',
+        sourceSnapshotId: 'snapshot_1',
+        scoringVersion: '1.0.0',
+      }),
+    ).rejects.toThrow('blocked');
+
+    expect(entitlementsService.assertFeatureEnabled).toHaveBeenCalledWith(
+      'user_1',
+      'ai.analysis.financial_health_score',
+    );
   });
 
   it('preserves snapshot-scoped score creation for the owning user', async () => {
+    entitlementsService.assertFeatureEnabled.mockResolvedValue(undefined);
     portfolioSnapshotsService.getSnapshotById.mockResolvedValue({
       id: 'snapshot_1',
       metadata: {
@@ -90,6 +121,7 @@ describe('FinancialHealthScoresService', () => {
 
     const service = new FinancialHealthScoresService(
       prisma as never,
+      entitlementsService as never,
       portfolioSnapshotsService as never,
     );
 
@@ -102,6 +134,10 @@ describe('FinancialHealthScoresService', () => {
     expect(portfolioSnapshotsService.getSnapshotById).toHaveBeenCalledWith(
       'snapshot_1',
       'user_1',
+    );
+    expect(entitlementsService.assertFeatureEnabled).toHaveBeenCalledWith(
+      'user_1',
+      'ai.analysis.financial_health_score',
     );
     expect(capturedCreateArgs).toMatchObject({
       data: {

@@ -7,6 +7,7 @@ import type { FinancialHealthScoreArtifact } from '@aurum/core';
 import { randomUUID } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 import { PortfolioSnapshotsService } from '../portfolio-snapshots/portfolio-snapshots.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateScoreArtifactFromSnapshotCommand } from './commands/create-score-artifact-from-snapshot.command';
@@ -30,6 +31,7 @@ function mapMetadataToPrisma(
 export class FinancialHealthScoresService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly entitlementsService: EntitlementsService,
     private readonly portfolioSnapshotsService: PortfolioSnapshotsService,
   ) {}
 
@@ -113,6 +115,11 @@ export class FinancialHealthScoresService {
   async createScoreArtifactFromSnapshot(
     command: CreateScoreArtifactFromSnapshotCommand,
   ): Promise<FinancialHealthScoreArtifact> {
+    await this.entitlementsService.assertFeatureEnabled(
+      command.userId,
+      'ai.analysis.financial_health_score',
+    );
+
     const snapshot = await this.portfolioSnapshotsService.getSnapshotById(
       command.sourceSnapshotId,
       command.userId,

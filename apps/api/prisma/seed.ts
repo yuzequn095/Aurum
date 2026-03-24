@@ -1,5 +1,11 @@
 import 'dotenv/config';
-import { AuthProvider, PrismaClient, TransactionType } from '@prisma/client';
+import {
+  AIEntitlementFeatureKey,
+  AIEntitlementStatus,
+  AuthProvider,
+  PrismaClient,
+  TransactionType,
+} from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const adapter = new PrismaPg({
@@ -61,6 +67,43 @@ async function main() {
       merchant: 'Whole Foods',
       note: 'Demo transaction',
       categoryId: food.id,
+    },
+  });
+
+  await prisma.aIEntitlementRecord.upsert({
+    where: { userId: user.id },
+    create: {
+      userId: user.id,
+      planKey: 'dev_full_access',
+      status: AIEntitlementStatus.ACTIVE,
+      featureKeys: [
+        AIEntitlementFeatureKey.AI_QUICK_CHAT,
+        AIEntitlementFeatureKey.AI_CONVERSATIONS_SAVE,
+        AIEntitlementFeatureKey.AI_CONVERSATIONS_REPLY,
+        AIEntitlementFeatureKey.AI_REPORT_SNAPSHOT_PORTFOLIO_REPORT,
+        AIEntitlementFeatureKey.AI_REPORT_MONTHLY_FINANCIAL_REVIEW,
+        AIEntitlementFeatureKey.AI_REPORT_DAILY_MARKET_BRIEF,
+        AIEntitlementFeatureKey.AI_ANALYSIS_FINANCIAL_HEALTH_SCORE,
+        AIEntitlementFeatureKey.AI_ANALYSIS_PORTFOLIO_ANALYSIS,
+        AIEntitlementFeatureKey.AI_PLANNING_BUDGET,
+        AIEntitlementFeatureKey.AI_PLANNING_GOALS,
+      ],
+    },
+    update: {
+      planKey: 'dev_full_access',
+      status: AIEntitlementStatus.ACTIVE,
+      featureKeys: [
+        AIEntitlementFeatureKey.AI_QUICK_CHAT,
+        AIEntitlementFeatureKey.AI_CONVERSATIONS_SAVE,
+        AIEntitlementFeatureKey.AI_CONVERSATIONS_REPLY,
+        AIEntitlementFeatureKey.AI_REPORT_SNAPSHOT_PORTFOLIO_REPORT,
+        AIEntitlementFeatureKey.AI_REPORT_MONTHLY_FINANCIAL_REVIEW,
+        AIEntitlementFeatureKey.AI_REPORT_DAILY_MARKET_BRIEF,
+        AIEntitlementFeatureKey.AI_ANALYSIS_FINANCIAL_HEALTH_SCORE,
+        AIEntitlementFeatureKey.AI_ANALYSIS_PORTFOLIO_ANALYSIS,
+        AIEntitlementFeatureKey.AI_PLANNING_BUDGET,
+        AIEntitlementFeatureKey.AI_PLANNING_GOALS,
+      ],
     },
   });
 

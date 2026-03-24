@@ -75,6 +75,25 @@ enum ConnectedSourceSecretType {
   PROVIDER_CREDENTIALS
 }
 
+enum AIEntitlementStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+}
+
+enum AIEntitlementFeatureKey {
+  AI_QUICK_CHAT
+  AI_CONVERSATIONS_SAVE
+  AI_CONVERSATIONS_REPLY
+  AI_REPORT_SNAPSHOT_PORTFOLIO_REPORT
+  AI_REPORT_MONTHLY_FINANCIAL_REVIEW
+  AI_REPORT_DAILY_MARKET_BRIEF
+  AI_ANALYSIS_FINANCIAL_HEALTH_SCORE
+  AI_ANALYSIS_PORTFOLIO_ANALYSIS
+  AI_PLANNING_BUDGET
+  AI_PLANNING_GOALS
+}
+
 model ConnectedProviderUserRecord {
   id               String   @id @default(cuid())
   userId           String
@@ -115,7 +134,8 @@ model User {
   connectedSourceSecrets ConnectedSourceSecretRecord[]
   connectedSyncRuns      ConnectedSyncRunRecord[]
   manualStaticValuations ManualStaticValuationRecord[]
-  portfolioSnapshots PortfolioSnapshotRecord[]
+  portfolioSnapshots     PortfolioSnapshotRecord[]
+  aiEntitlement          AIEntitlementRecord?
 }
 
 model AuthIdentity {
@@ -145,11 +165,11 @@ model RefreshToken {
   expiresAt         DateTime
   createdAt         DateTime  @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parentToken       RefreshToken?  @relation("RefreshTokenParent", fields: [parentTokenId], references: [id])
-  childTokens       RefreshToken[] @relation("RefreshTokenParent")
-  replacedByToken   RefreshToken?  @relation("RefreshTokenReplacement", fields: [replacedByTokenId], references: [id])
-  replacesTokens    RefreshToken[] @relation("RefreshTokenReplacement")
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentToken     RefreshToken?  @relation("RefreshTokenParent", fields: [parentTokenId], references: [id])
+  childTokens     RefreshToken[] @relation("RefreshTokenParent")
+  replacedByToken RefreshToken?  @relation("RefreshTokenReplacement", fields: [replacedByTokenId], references: [id])
+  replacesTokens  RefreshToken[] @relation("RefreshTokenReplacement")
 
   @@index([userId])
   @@index([tokenHash])
@@ -166,8 +186,8 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent   Category? @relation("CategoryToParent", fields: [parentId], references: [id])
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Category?  @relation("CategoryToParent", fields: [parentId], references: [id])
   children Category[] @relation("CategoryToParent")
 
   transactions  Transaction[]
@@ -210,24 +230,24 @@ model Account {
 }
 
 model Transaction {
-  id          String          @id @default(cuid())
-  userId      String
-  accountId   String
-  type        TransactionType
-  amountCents Int
-  currency    String          @default("USD")
-  occurredAt  DateTime
-  merchant    String?
-  note        String?
-  categoryId  String?
+  id            String          @id @default(cuid())
+  userId        String
+  accountId     String
+  type          TransactionType
+  amountCents   Int
+  currency      String          @default("USD")
+  occurredAt    DateTime
+  merchant      String?
+  note          String?
+  categoryId    String?
   subcategoryId String?
-  transferId  String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  transferId    String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
-  user        User        @relation(fields: [userId], references: [id])
-  account     Account     @relation(fields: [accountId], references: [id])
-  category    Category?   @relation(fields: [categoryId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+  account     Account      @relation(fields: [accountId], references: [id])
+  category    Category?    @relation(fields: [categoryId], references: [id])
   subcategory Subcategory? @relation(fields: [subcategoryId], references: [id])
 
   @@index([userId, occurredAt])
@@ -265,38 +285,38 @@ model ConnectedSourceRecord {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
-  user                   User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                   User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
   accounts               ConnectedSourceAccountRecord[]
   secrets                ConnectedSourceSecretRecord[]
   syncRuns               ConnectedSyncRunRecord[]
   manualStaticValuations ManualStaticValuationRecord[]
   snapshots              PortfolioSnapshotRecord[]
 
+  @@unique([userId, providerKey, providerConnectionId])
   @@index([userId, createdAt])
   @@index([userId, kind])
   @@index([userId, status])
   @@index([providerKey, providerConnectionId])
-  @@unique([userId, providerKey, providerConnectionId])
 }
 
 model ConnectedSourceAccountRecord {
-  id                String   @id @default(cuid())
-  sourceId          String
-  externalAccountId String?
-  displayName       String
-  officialName      String?
-  accountType       String
-  currency          String   @default("USD")
-  assetType         PortfolioAssetCategoryType?
-  assetSubType      String?
+  id                  String                      @id @default(cuid())
+  sourceId            String
+  externalAccountId   String?
+  displayName         String
+  officialName        String?
+  accountType         String
+  currency            String                      @default("USD")
+  assetType           PortfolioAssetCategoryType?
+  assetSubType        String?
   institutionOrIssuer String?
-  maskLast4         String?
-  isActive          Boolean  @default(true)
-  metadata          Json?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  maskLast4           String?
+  isActive            Boolean                     @default(true)
+  metadata            Json?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
 
-  source                 ConnectedSourceRecord       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source                 ConnectedSourceRecord         @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   manualStaticValuations ManualStaticValuationRecord[]
 
   @@index([sourceId, isActive])
@@ -337,8 +357,8 @@ model ManualStaticValuationRecord {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  user          User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  source        ConnectedSourceRecord      @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  user          User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source        ConnectedSourceRecord        @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   sourceAccount ConnectedSourceAccountRecord @relation(fields: [sourceAccountId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
@@ -363,8 +383,8 @@ model ConnectedSyncRunRecord {
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
 
-  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  source           ConnectedSourceRecord   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  user             User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source           ConnectedSourceRecord     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   sourceSnapshots  PortfolioSnapshotRecord[] @relation("PortfolioSnapshotSourceSyncRun")
   producedSnapshot PortfolioSnapshotRecord?  @relation("ConnectedSyncRunProducedSnapshot", fields: [producedSnapshotId], references: [id], onDelete: SetNull)
 
@@ -374,27 +394,27 @@ model ConnectedSyncRunRecord {
 }
 
 model PortfolioSnapshotRecord {
-  id                String                     @id @default(cuid())
-  userId            String
-  sourceId          String?
-  sourceSyncRunId   String?
-  ingestionMode     PortfolioSnapshotIngestionMode?
+  id                   String                          @id @default(cuid())
+  userId               String
+  sourceId             String?
+  sourceSyncRunId      String?
+  ingestionMode        PortfolioSnapshotIngestionMode?
   normalizationVersion String?
-  sourceFingerprint String?
-  portfolioName     String?
-  sourceType        PortfolioSnapshotSourceType?
-  sourceLabel       String?
-  snapshotDate      DateTime
-  valuationCurrency String?
-  totalValue        Decimal
-  cashValue         Decimal?
-  createdAt         DateTime                   @default(now())
-  updatedAt         DateTime                   @updatedAt
+  sourceFingerprint    String?
+  portfolioName        String?
+  sourceType           PortfolioSnapshotSourceType?
+  sourceLabel          String?
+  snapshotDate         DateTime
+  valuationCurrency    String?
+  totalValue           Decimal
+  cashValue            Decimal?
+  createdAt            DateTime                        @default(now())
+  updatedAt            DateTime                        @updatedAt
 
-  user                  User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  source                ConnectedSourceRecord?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
-  sourceSyncRun         ConnectedSyncRunRecord?  @relation("PortfolioSnapshotSourceSyncRun", fields: [sourceSyncRunId], references: [id], onDelete: SetNull)
-  producedBySyncRun     ConnectedSyncRunRecord?  @relation("ConnectedSyncRunProducedSnapshot")
+  user                  User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source                ConnectedSourceRecord?       @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  sourceSyncRun         ConnectedSyncRunRecord?      @relation("PortfolioSnapshotSourceSyncRun", fields: [sourceSyncRunId], references: [id], onDelete: SetNull)
+  producedBySyncRun     ConnectedSyncRunRecord?      @relation("ConnectedSyncRunProducedSnapshot")
   positions             PortfolioPositionRecord[]
   reports               AIReportRecord[]
   financialHealthScores FinancialHealthScoreRecord[]
@@ -407,7 +427,7 @@ model PortfolioSnapshotRecord {
 }
 
 model PortfolioPositionRecord {
-  id              String                    @id @default(cuid())
+  id              String                      @id @default(cuid())
   snapshotId      String
   assetKey        String
   symbol          String?
@@ -463,4 +483,19 @@ model FinancialHealthScoreRecord {
 
   @@index([createdAt])
   @@index([sourceSnapshotId])
+}
+
+model AIEntitlementRecord {
+  id          String                    @id @default(cuid())
+  userId      String                    @unique
+  planKey     String?
+  status      AIEntitlementStatus       @default(INACTIVE)
+  featureKeys AIEntitlementFeatureKey[]
+  expiresAt   DateTime?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
 }

@@ -30,6 +30,9 @@ describe('AIReportsService', () => {
       }),
     },
   };
+  const entitlementsService = {
+    assertFeatureEnabled: jest.fn(),
+  };
   const portfolioSnapshotsService = {
     getSnapshotById: jest.fn(),
   };
@@ -44,6 +47,7 @@ describe('AIReportsService', () => {
 
     const service = new AIReportsService(
       prisma as never,
+      entitlementsService as never,
       portfolioSnapshotsService as never,
     );
 
@@ -59,9 +63,37 @@ describe('AIReportsService', () => {
         },
       },
     });
+    expect(entitlementsService.assertFeatureEnabled).not.toHaveBeenCalled();
+  });
+
+  it('blocks snapshot report creation when entitlement access is denied', async () => {
+    entitlementsService.assertFeatureEnabled.mockRejectedValue(
+      new Error('blocked'),
+    );
+
+    const service = new AIReportsService(
+      prisma as never,
+      entitlementsService as never,
+      portfolioSnapshotsService as never,
+    );
+
+    await expect(
+      service.createReportFromSnapshot({
+        userId: 'user_1',
+        sourceSnapshotId: 'snapshot_1',
+        contentMarkdown: '# Review',
+        promptVersion: '1.0.0',
+      }),
+    ).rejects.toThrow('blocked');
+
+    expect(entitlementsService.assertFeatureEnabled).toHaveBeenCalledWith(
+      'user_1',
+      'ai.report.snapshot_portfolio_report',
+    );
   });
 
   it('preserves snapshot-scoped report creation for the owning user', async () => {
+    entitlementsService.assertFeatureEnabled.mockResolvedValue(undefined);
     portfolioSnapshotsService.getSnapshotById.mockResolvedValue({
       id: 'snapshot_1',
       metadata: {
@@ -72,6 +104,7 @@ describe('AIReportsService', () => {
 
     const service = new AIReportsService(
       prisma as never,
+      entitlementsService as never,
       portfolioSnapshotsService as never,
     );
 
@@ -86,6 +119,10 @@ describe('AIReportsService', () => {
     expect(portfolioSnapshotsService.getSnapshotById).toHaveBeenCalledWith(
       'snapshot_1',
       'user_1',
+    );
+    expect(entitlementsService.assertFeatureEnabled).toHaveBeenCalledWith(
+      'user_1',
+      'ai.report.snapshot_portfolio_report',
     );
     expect(capturedCreateArgs).toMatchObject({
       data: {

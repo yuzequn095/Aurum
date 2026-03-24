@@ -15,6 +15,7 @@ import { PortfolioSnapshotsModule } from './portfolio-snapshots/portfolio-snapsh
 import { AIReportsModule } from './ai-reports/ai-reports.module';
 import { FinancialHealthScoresModule } from './financial-health-scores/financial-health-scores.module';
 import { ConnectedFinanceModule } from './connected-finance/connected-finance.module';
+import { EntitlementsModule } from './entitlements/entitlements.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ConnectedFinanceModule } from './connected-finance/connected-finance.mo
     ExportModule,
     ImportModule,
     PortfolioSnapshotsModule,
+    EntitlementsModule,
     AIReportsModule,
     FinancialHealthScoresModule,
     ConnectedFinanceModule,
