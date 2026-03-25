@@ -56,9 +56,9 @@ export const aiInsightsCatalogEntries: AIInsightsCatalogEntry[] = [
     section: 'reports',
     title: 'Monthly Financial Review',
     description:
-      'First-class report entry built on the current snapshot-linked report artifact flow.',
+      'First-class monthly review workflow grounded in ledger analytics and snapshot-linked report history.',
     state: 'available',
-    featureKey: 'ai.report.snapshot_portfolio_report',
+    featureKey: 'ai.report.monthly_financial_review',
     actionLabel: 'Generate review',
     anchor: 'reports-monthly-review',
   },
@@ -88,7 +88,7 @@ export const aiInsightsCatalogEntries: AIInsightsCatalogEntry[] = [
     section: 'analysis',
     title: 'Portfolio Analysis',
     description:
-      'Use Quick Chat with selected context today while richer structured portfolio analysis evolves.',
+      'Guided portfolio analysis entry that prepares Quick Chat from your selected snapshot context.',
     state: 'preview',
     featureKey: 'ai.analysis.portfolio_analysis',
     actionLabel: 'Use Quick Chat',

@@ -11,6 +11,7 @@ import { PortfolioSnapshotsService } from '../portfolio-snapshots/portfolio-snap
 import { PrismaService } from '../prisma/prisma.service';
 import { mapAIReportRecordToArtifact } from './ai-report.mapper';
 import type { CreateReportFromSnapshotCommand } from './commands/create-report-from-snapshot.command';
+import type { AIEntitlementFeatureKey } from '../entitlements/entitlements.types';
 
 function mapMetadataToPrisma(
   metadata: AIReportArtifact['metadata'],
@@ -34,44 +35,43 @@ export class AIReportsService {
     report: AIReportArtifact,
     userId: string,
   ): Promise<AIReportArtifact> {
-    if (!report.sourceSnapshotId?.trim()) {
-      throw new BadRequestException(
-        'AI report must reference a source portfolio snapshot.',
-      );
-    }
-
-    await this.entitlementsService.assertFeatureEnabled(
+    return this.createOwnedSnapshotReport(
+      report,
       userId,
       'ai.report.snapshot_portfolio_report',
     );
+  }
 
-    const snapshot = await this.portfolioSnapshotsService.getSnapshotById(
-      report.sourceSnapshotId,
-      userId,
-    );
-    if (!snapshot) {
-      throw new NotFoundException(
-        `Portfolio snapshot not found: ${report.sourceSnapshotId}`,
-      );
-    }
+  async createMonthlyFinancialReviewReport(input: {
+    userId: string;
+    sourceSnapshotId: string;
+    title: string;
+    contentMarkdown: string;
+    promptVersion: string;
+    sourceRunId?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<AIReportArtifact> {
+    const now = new Date().toISOString();
 
-    const created = await this.prisma.aIReportRecord.create({
-      data: {
-        id: report.id,
-        reportType: report.reportType,
-        taskType: report.taskType,
-        sourceRunId: report.sourceRunId,
-        sourceSnapshotId: report.sourceSnapshotId,
-        title: report.title,
-        contentMarkdown: report.contentMarkdown,
-        promptVersion: report.promptVersion,
-        metadata: mapMetadataToPrisma(report.metadata),
-        createdAt: new Date(report.createdAt),
-        updatedAt: new Date(report.updatedAt),
+    return this.createOwnedSnapshotReport(
+      {
+        id: randomUUID(),
+        reportType: 'monthly_financial_review_v1',
+        taskType: 'monthly_financial_review_v1',
+        sourceRunId:
+          input.sourceRunId?.trim() ||
+          `monthly-review:${input.sourceSnapshotId}:${now}`,
+        sourceSnapshotId: input.sourceSnapshotId,
+        title: input.title,
+        contentMarkdown: input.contentMarkdown,
+        promptVersion: input.promptVersion,
+        createdAt: now,
+        updatedAt: now,
+        metadata: input.metadata,
       },
-    });
-
-    return mapAIReportRecordToArtifact(created);
+      input.userId,
+      'ai.report.monthly_financial_review',
+    );
   }
 
   async getReportById(
@@ -133,20 +133,11 @@ export class AIReportsService {
   async createReportFromSnapshot(
     command: CreateReportFromSnapshotCommand,
   ): Promise<AIReportArtifact> {
-    await this.entitlementsService.assertFeatureEnabled(
+    const snapshot = await this.requireOwnedSnapshot(
+      command.sourceSnapshotId,
       command.userId,
       'ai.report.snapshot_portfolio_report',
     );
-
-    const snapshot = await this.portfolioSnapshotsService.getSnapshotById(
-      command.sourceSnapshotId,
-      command.userId,
-    );
-    if (!snapshot) {
-      throw new NotFoundException(
-        `Portfolio snapshot not found: ${command.sourceSnapshotId}`,
-      );
-    }
 
     const now = new Date().toISOString();
     const portfolioName = snapshot.metadata.portfolioName?.trim() || undefined;
@@ -171,21 +162,80 @@ export class AIReportsService {
       metadata.snapshotDate = snapshotDate;
     }
 
-    return this.createReport(
-      {
-        id: randomUUID(),
-        reportType: 'portfolio_report_v1',
-        taskType: 'portfolio_report_v1',
-        sourceRunId,
-        sourceSnapshotId: command.sourceSnapshotId,
-        title,
-        contentMarkdown: command.contentMarkdown,
-        promptVersion: command.promptVersion,
-        createdAt: now,
-        updatedAt: now,
-        metadata,
-      },
-      command.userId,
+    return this.persistReport({
+      id: randomUUID(),
+      reportType: 'portfolio_report_v1',
+      taskType: 'portfolio_report_v1',
+      sourceRunId,
+      sourceSnapshotId: command.sourceSnapshotId,
+      title,
+      contentMarkdown: command.contentMarkdown,
+      promptVersion: command.promptVersion,
+      createdAt: now,
+      updatedAt: now,
+      metadata,
+    });
+  }
+
+  private async createOwnedSnapshotReport(
+    report: AIReportArtifact,
+    userId: string,
+    featureKey: AIEntitlementFeatureKey,
+  ): Promise<AIReportArtifact> {
+    if (!report.sourceSnapshotId?.trim()) {
+      throw new BadRequestException(
+        'AI report must reference a source portfolio snapshot.',
+      );
+    }
+
+    await this.requireOwnedSnapshot(
+      report.sourceSnapshotId,
+      userId,
+      featureKey,
     );
+
+    return this.persistReport(report);
+  }
+
+  private async requireOwnedSnapshot(
+    sourceSnapshotId: string,
+    userId: string,
+    featureKey: AIEntitlementFeatureKey,
+  ) {
+    await this.entitlementsService.assertFeatureEnabled(userId, featureKey);
+
+    const snapshot = await this.portfolioSnapshotsService.getSnapshotById(
+      sourceSnapshotId,
+      userId,
+    );
+    if (!snapshot) {
+      throw new NotFoundException(
+        `Portfolio snapshot not found: ${sourceSnapshotId}`,
+      );
+    }
+
+    return snapshot;
+  }
+
+  private async persistReport(
+    report: AIReportArtifact,
+  ): Promise<AIReportArtifact> {
+    const created = await this.prisma.aIReportRecord.create({
+      data: {
+        id: report.id,
+        reportType: report.reportType,
+        taskType: report.taskType,
+        sourceRunId: report.sourceRunId,
+        sourceSnapshotId: report.sourceSnapshotId,
+        title: report.title,
+        contentMarkdown: report.contentMarkdown,
+        promptVersion: report.promptVersion,
+        metadata: mapMetadataToPrisma(report.metadata),
+        createdAt: new Date(report.createdAt),
+        updatedAt: new Date(report.updatedAt),
+      },
+    });
+
+    return mapAIReportRecordToArtifact(created);
   }
 }

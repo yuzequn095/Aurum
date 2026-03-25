@@ -3,9 +3,6 @@
 import { useEffect, useState } from 'react';
 import {
   CsvPortfolioSnapshotAdapter,
-  portfolioSnapshotToReportInput,
-  createPreparedAIRunRecord,
-  submitManualResult,
   type AIReportArtifact,
   type FinancialHealthScoreArtifact,
   type PortfolioSnapshot,
@@ -14,14 +11,13 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { mockPortfolioCsvImportInput, mockPortfolioReportManualOutput } from '@/lib/ai/dev-seeds';
+import { mockPortfolioCsvImportInput } from '@/lib/ai/dev-seeds';
 import {
   aiInsightsCatalogEntries,
   aiInsightsCatalogSections,
   type AIInsightsCatalogEntry,
   type AIInsightsSectionKey,
 } from '@/lib/ai/insights-catalog';
-import { aiRunRepository } from '@/lib/ai/repositories';
 import {
   createAIConversation,
   deleteAIConversation,
@@ -32,7 +28,7 @@ import {
   type AIConversationSummaryView,
 } from '@/lib/api/ai-conversations';
 import { createPortfolioSnapshot, listPortfolioSnapshots } from '@/lib/api/portfolio-snapshots';
-import { createReportForSnapshot, listAIReportsBySourceSnapshotId } from '@/lib/api/ai-reports';
+import { listAIReportsBySourceSnapshotId } from '@/lib/api/ai-reports';
 import {
   createFinancialHealthScoreForSnapshot,
   listFinancialHealthScoresBySourceSnapshotId,
@@ -41,9 +37,8 @@ import {
   getCurrentUserEntitlements,
   type CurrentUserEntitlementsView,
 } from '@/lib/api/entitlements';
+import { createMonthlyFinancialReview } from '@/lib/api/monthly-financial-review';
 import { runQuickChat } from '@/lib/api/quick-chat';
-
-const runRepository = aiRunRepository;
 
 type QuickChatTranscriptMessage = {
   role: 'user' | 'assistant';
@@ -72,6 +67,31 @@ function formatDateTime(value: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function formatMonthLabel(year: number, month: number): string {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+function getLatestCompletedMonthPreset(referenceDate = new Date()) {
+  const year = referenceDate.getUTCFullYear();
+  const monthIndex = referenceDate.getUTCMonth();
+
+  if (monthIndex === 0) {
+    return {
+      year: year - 1,
+      month: 12,
+    };
+  }
+
+  return {
+    year,
+    month: monthIndex,
+  };
 }
 
 function getStringMetadataValue(
@@ -212,6 +232,7 @@ function scrollToAnchor(anchor: string) {
 }
 
 export default function AiInsightsPage() {
+  const defaultReviewPeriod = getLatestCompletedMonthPreset();
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null);
   const [isSnapshotsLoading, setIsSnapshotsLoading] = useState(false);
@@ -223,6 +244,9 @@ export default function AiInsightsPage() {
   const [reportsStatusMessage, setReportsStatusMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [reviewYear, setReviewYear] = useState<number>(defaultReviewPeriod.year);
+  const [reviewMonth, setReviewMonth] = useState<number>(defaultReviewPeriod.month);
+  const [useSelectedSnapshotOverride, setUseSelectedSnapshotOverride] = useState(false);
   const [scores, setScores] = useState<FinancialHealthScoreArtifact[]>([]);
   const [selectedScoreId, setSelectedScoreId] = useState<string | null>(null);
   const [isScoresLoading, setIsScoresLoading] = useState(false);
@@ -276,6 +300,15 @@ export default function AiInsightsPage() {
     entitlements,
     'ai.analysis.financial_health_score',
   );
+  const portfolioAnalysisEnabled = hasEnabledFeature(
+    entitlements,
+    'ai.analysis.portfolio_analysis',
+  );
+  const monthlyReviewEnabled = hasEnabledFeature(
+    entitlements,
+    'ai.report.monthly_financial_review',
+  );
+  const effectiveReviewMonthLabel = formatMonthLabel(reviewYear, reviewMonth);
   const sectionEntries = aiInsightsCatalogSections.reduce(
     (accumulator, section) => ({
       ...accumulator,
@@ -485,43 +518,35 @@ export default function AiInsightsPage() {
     void loadConversationDetail(selectedConversationId);
   }, [selectedConversationId]);
 
-  const onGenerateDemoReport = async () => {
+  const onGenerateMonthlyFinancialReview = async () => {
     setIsGenerating(true);
     setStatusMessage('');
 
     try {
-      if (!selectedSnapshot) {
-        setStatusMessage('Select a portfolio snapshot before generating a report.');
+      if (useSelectedSnapshotOverride && (!selectedSnapshot || !selectedSnapshot.id)) {
+        setStatusMessage('Select a portfolio snapshot before using the snapshot override.');
         return;
       }
-      if (!selectedSnapshot.id) {
-        setStatusMessage('Selected snapshot is missing an id and cannot load API report history.');
-        return;
+      const createdReport = await createMonthlyFinancialReview({
+        year: reviewYear,
+        month: reviewMonth,
+        sourceSnapshotId:
+          useSelectedSnapshotOverride && selectedSnapshot?.id ? selectedSnapshot.id : undefined,
+      });
+      if (createdReport.sourceSnapshotId) {
+        setSelectedSnapshotId(createdReport.sourceSnapshotId);
+        await loadReportsForSelectedSnapshot(createdReport.sourceSnapshotId);
+      } else {
+        await loadReportsForSelectedSnapshot(selectedSnapshotId);
       }
-
-      const reportInput = portfolioSnapshotToReportInput(selectedSnapshot);
-      const preparedRun = createPreparedAIRunRecord(runRepository, {
-        taskType: 'portfolio_report_v1',
-        payload: reportInput as unknown as Record<string, unknown>,
-      });
-
-      const completedRun = submitManualResult(
-        runRepository,
-        preparedRun.id,
-        mockPortfolioReportManualOutput,
-      );
-
-      const createdReport = await createReportForSnapshot(selectedSnapshot.id, {
-        contentMarkdown: completedRun.rawOutput ?? mockPortfolioReportManualOutput,
-        promptVersion: preparedRun.promptVersion,
-        sourceRunId: preparedRun.id,
-      });
-
-      await loadReportsForSelectedSnapshot(selectedSnapshot.id);
       setSelectedReportId(createdReport.id);
-      setStatusMessage(`Server-created snapshot report generated: ${createdReport.id}`);
+      setStatusMessage(
+        `Monthly Financial Review created for ${effectiveReviewMonthLabel}: ${createdReport.id}`,
+      );
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to generate demo report');
+      setStatusMessage(
+        error instanceof Error ? error.message : 'Failed to generate monthly financial review.',
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -529,6 +554,11 @@ export default function AiInsightsPage() {
 
   const selectedPortfolioName = getStringMetadataValue(selectedReport, 'portfolioName');
   const selectedSnapshotDate = getStringMetadataValue(selectedReport, 'snapshotDate');
+  const selectedReviewMonthLabel = getStringMetadataValue(selectedReport, 'reviewMonthLabel');
+  const selectedSnapshotSelectionStrategy = getStringMetadataValue(
+    selectedReport,
+    'snapshotSelectionStrategy',
+  );
   const selectedSnapshotPortfolioName =
     selectedSnapshot?.metadata.portfolioName ?? 'Untitled Portfolio';
 
@@ -581,6 +611,32 @@ export default function AiInsightsPage() {
     } finally {
       setIsGeneratingScore(false);
     }
+  };
+
+  const onStartPortfolioAnalysis = () => {
+    if (!portfolioAnalysisEnabled) {
+      setQuickChatStatusMessage('Current entitlement does not enable portfolio analysis yet.');
+      scrollToAnchor('quick-chat-section');
+      return;
+    }
+
+    if (!selectedSnapshot) {
+      setQuickChatStatusMessage('Select a portfolio snapshot before starting portfolio analysis.');
+      scrollToAnchor('reports');
+      return;
+    }
+
+    const prompt = [
+      `Analyze my selected portfolio snapshot${selectedSnapshot.metadata.portfolioName ? ` for ${selectedSnapshot.metadata.portfolioName}` : ''}.`,
+      'Focus on concentration, diversification, cash position, key risks, and the three most useful next actions.',
+    ].join(' ');
+
+    setQuickChatContext(selectedContext);
+    setQuickChatDraft(prompt);
+    setQuickChatStatusMessage(
+      'Portfolio Analysis prepared a Quick Chat draft using your selected snapshot context.',
+    );
+    scrollToAnchor('quick-chat-section');
   };
 
   const onRunQuickChat = async () => {
@@ -731,13 +787,14 @@ export default function AiInsightsPage() {
 
     switch (entry.id) {
       case 'monthly-financial-review':
-        return !selectedSnapshot?.id || isGenerating;
+        return isGenerating || (useSelectedSnapshotOverride && !selectedSnapshot?.id);
       case 'financial-health-score':
         return !selectedSnapshot?.id || isGeneratingScore;
       case 'quick-chat':
         return !quickChatEnabled;
-      case 'saved-conversations':
       case 'portfolio-analysis':
+        return !selectedSnapshot?.id;
+      case 'saved-conversations':
         return false;
       default:
         return true;
@@ -763,9 +820,11 @@ export default function AiInsightsPage() {
 
     switch (entry.id) {
       case 'monthly-financial-review':
-        return selectedSnapshot?.id
-          ? 'Current release uses the existing snapshot report foundation while richer monthly review execution comes next.'
-          : 'Select a portfolio snapshot to activate this report entry.';
+        return useSelectedSnapshotOverride
+          ? selectedSnapshot?.id
+            ? `Creates a server-backed ${effectiveReviewMonthLabel} review using the selected snapshot override.`
+            : 'Select a portfolio snapshot before using the snapshot override.'
+          : `Creates a server-backed ${effectiveReviewMonthLabel} review using deterministic snapshot anchoring.`;
       case 'daily-market-brief':
         return 'Product slot reserved for the next market-brief execution milestone.';
       case 'financial-health-score':
@@ -773,7 +832,9 @@ export default function AiInsightsPage() {
           ? 'Generates and stores a snapshot-linked analysis artifact.'
           : 'Select a portfolio snapshot to activate score generation.';
       case 'portfolio-analysis':
-        return 'Use Quick Chat with the selected snapshot context while structured portfolio analysis expands.';
+        return selectedSnapshot?.id
+          ? 'Prepares an entitlement-aware Quick Chat draft grounded in the selected snapshot, report, and score context.'
+          : 'Select a portfolio snapshot to prepare a portfolio analysis draft.';
       case 'budget-planning':
       case 'goals-planning':
         return 'Planning workflows are intentionally reserved for the next milestone.';
@@ -789,13 +850,13 @@ export default function AiInsightsPage() {
   const onCatalogEntryAction = (entry: AIInsightsCatalogEntry) => {
     switch (entry.id) {
       case 'monthly-financial-review':
-        void onGenerateDemoReport();
+        void onGenerateMonthlyFinancialReview();
         return;
       case 'financial-health-score':
         void onGenerateDemoScore();
         return;
       case 'portfolio-analysis':
-        scrollToAnchor('quick-chat-section');
+        onStartPortfolioAnalysis();
         return;
       case 'quick-chat':
         scrollToAnchor('quick-chat-section');
@@ -816,7 +877,7 @@ export default function AiInsightsPage() {
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="info">AI Product Layer</Badge>
-                <Badge variant="neutral">Milestone 13.3</Badge>
+                <Badge variant="neutral">Milestone 13.4</Badge>
               </div>
               <div className="space-y-1">
                 <CardTitle>AI Insights</CardTitle>
@@ -1269,13 +1330,84 @@ export default function AiInsightsPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Selected Snapshot Summary</CardTitle>
-            <CardDescription>
-              Snapshot selection foundation for upcoming snapshot-driven report/score flow.
-            </CardDescription>
+          <CardHeader className="space-y-3">
+            <div className="space-y-1">
+              <CardTitle>Monthly Financial Review Workflow</CardTitle>
+              <CardDescription>
+                Choose a review window, then let the server anchor the report to a deterministic
+                snapshot strategy or your explicit snapshot override.
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="primary"
+                onClick={() => void onGenerateMonthlyFinancialReview()}
+                disabled={
+                  isGenerating ||
+                  !monthlyReviewEnabled ||
+                  (useSelectedSnapshotOverride && !selectedSnapshot?.id)
+                }
+              >
+                {isGenerating ? 'Generating...' : 'Generate Monthly Financial Review'}
+              </Button>
+              <span className="text-xs text-aurum-muted">
+                Historical report reads remain available after subscription changes.
+              </span>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <label className="space-y-2 text-sm">
+                <span className="text-xs uppercase tracking-wide text-aurum-muted">
+                  Review Year
+                </span>
+                <input
+                  type="number"
+                  min={2000}
+                  max={9999}
+                  value={reviewYear}
+                  onChange={(event) => setReviewYear(Number(event.target.value))}
+                  className="w-full rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text outline-none transition focus:border-[var(--aurum-accent)]"
+                />
+              </label>
+              <label className="space-y-2 text-sm">
+                <span className="text-xs uppercase tracking-wide text-aurum-muted">
+                  Review Month
+                </span>
+                <select
+                  value={reviewMonth}
+                  onChange={(event) => setReviewMonth(Number(event.target.value))}
+                  className="w-full rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text outline-none transition focus:border-[var(--aurum-accent)]"
+                >
+                  {Array.from({ length: 12 }, (_, index) => {
+                    const monthValue = index + 1;
+
+                    return (
+                      <option key={monthValue} value={monthValue}>
+                        {formatMonthLabel(reviewYear, monthValue)}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+              <label className="flex items-start gap-3 rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3 text-sm md:col-span-2 xl:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={useSelectedSnapshotOverride}
+                  onChange={(event) => setUseSelectedSnapshotOverride(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-aurum-border"
+                />
+                <span className="space-y-1">
+                  <span className="block text-sm font-medium text-aurum-text">
+                    Use selected snapshot override
+                  </span>
+                  <span className="block text-xs text-aurum-muted">
+                    Leave this off to use the latest snapshot on or before the review month end.
+                  </span>
+                </span>
+              </label>
+            </div>
+
             {!selectedSnapshot ? (
               <p className="text-sm text-aurum-muted">Select a snapshot from the list.</p>
             ) : (
@@ -1306,6 +1438,10 @@ export default function AiInsightsPage() {
                   </p>
                   <p className="text-aurum-text">{selectedSnapshot.positions.length}</p>
                 </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Review Window</p>
+                  <p className="text-aurum-text">{effectiveReviewMonthLabel}</p>
+                </div>
               </div>
             )}
           </CardContent>
@@ -1334,7 +1470,8 @@ export default function AiInsightsPage() {
               <p className="text-sm text-aurum-muted">Loading snapshot-scoped report history...</p>
             ) : reports.length === 0 ? (
               <p className="text-sm text-aurum-muted">
-                No reports yet. Click &quot;Generate Demo Report&quot; to create one.
+                No reports yet. Generate a Monthly Financial Review to create the first persisted
+                report.
               </p>
             ) : (
               reports.map((report) => (
@@ -1361,7 +1498,7 @@ export default function AiInsightsPage() {
           <CardHeader>
             <CardTitle>Report Detail</CardTitle>
             <CardDescription>
-              Selected formal report artifact generated from a completed run.
+              Selected persisted report artifact from the monthly review workflow.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1406,6 +1543,24 @@ export default function AiInsightsPage() {
                       <p className="text-aurum-text">{selectedSnapshotDate}</p>
                     </div>
                   ) : null}
+                  {selectedReviewMonthLabel ? (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-aurum-muted">
+                        Review Window
+                      </p>
+                      <p className="text-aurum-text">{selectedReviewMonthLabel}</p>
+                    </div>
+                  ) : null}
+                  {selectedSnapshotSelectionStrategy ? (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-aurum-muted">
+                        Snapshot Selection
+                      </p>
+                      <p className="break-all text-aurum-text">
+                        {selectedSnapshotSelectionStrategy}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="space-y-2">
@@ -1433,6 +1588,53 @@ export default function AiInsightsPage() {
       </section>
 
       <section className="space-y-6">
+        <Card id="analysis-portfolio-analysis">
+          <CardHeader className="space-y-3">
+            <div className="space-y-1">
+              <CardTitle>Portfolio Analysis Preview</CardTitle>
+              <CardDescription>
+                Prepare a guided Quick Chat prompt from the selected snapshot, report, and score
+                context while richer structured portfolio analysis continues to evolve.
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={onStartPortfolioAnalysis}
+                disabled={!selectedSnapshot?.id || !portfolioAnalysisEnabled}
+              >
+                Open Guided Quick Chat
+              </Button>
+              <span className="text-xs text-aurum-muted">
+                Uses the current snapshot selection and keeps Quick Chat ephemeral unless you save
+                it.
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3">
+                <p className="text-xs uppercase tracking-wide text-aurum-muted">Snapshot</p>
+                <p className="mt-1 text-aurum-text">
+                  {selectedSnapshot?.metadata.portfolioName ?? 'Select a portfolio snapshot'}
+                </p>
+              </div>
+              <div className="rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3">
+                <p className="text-xs uppercase tracking-wide text-aurum-muted">Report Context</p>
+                <p className="mt-1 text-aurum-text">
+                  {selectedReport?.title ?? 'Optional monthly review context'}
+                </p>
+              </div>
+              <div className="rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3">
+                <p className="text-xs uppercase tracking-wide text-aurum-muted">Score Context</p>
+                <p className="mt-1 text-aurum-text">
+                  {selectedScoreInsight?.headline ?? 'Optional Financial Health Score context'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="space-y-3">
             <div className="space-y-1">

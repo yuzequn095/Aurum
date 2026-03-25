@@ -1,29 +1,25 @@
 export type AITaskType =
-  | "portfolio_report_v1"
-  | "portfolio_review_v1"
-  | "health_score_explainer_v1"
-  | "budget_analysis_v1"
-  | "followup_qa_v1";
+  | 'portfolio_report_v1'
+  | 'monthly_financial_review_v1'
+  | 'portfolio_review_v1'
+  | 'health_score_explainer_v1'
+  | 'budget_analysis_v1'
+  | 'followup_qa_v1';
 
-export type AIProviderKind =
-  | "manual_chatgpt"
-  | "openai"
-  | "anthropic"
-  | "local_model"
-  | "bedrock";
+export type AIProviderKind = 'manual_chatgpt' | 'openai' | 'anthropic' | 'local_model' | 'bedrock';
 
-export type AIExecutionMode = "manual" | "api";
+export type AIExecutionMode = 'manual' | 'api';
 
 export type AIRunStatus =
-  | "draft"
-  | "prepared"
-  | "waiting_for_external_result"
-  | "completed"
-  | "failed";
+  | 'draft'
+  | 'prepared'
+  | 'waiting_for_external_result'
+  | 'completed'
+  | 'failed';
 
-export type PromptMessageRole = "system" | "user" | "assistant";
+export type PromptMessageRole = 'system' | 'user' | 'assistant';
 
-export type AIOutputFormat = "markdown" | "json" | "text";
+export type AIOutputFormat = 'markdown' | 'json' | 'text';
 
 export interface PromptMessage {
   role: PromptMessageRole;

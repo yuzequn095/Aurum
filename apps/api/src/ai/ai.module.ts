@@ -13,6 +13,7 @@ import { INSIGHT_ENGINE } from './insights/insight-engine.token';
 import { OpenAiCompatibleLlmClient } from './insights/llm/llm-client';
 import { LLMInsightEngine } from './insights/llm-insight.engine';
 import { RuleInsightEngine } from './insights/rule-insight.engine';
+import { MonthlyFinancialReviewService } from './monthly-financial-review/monthly-financial-review.service';
 import { OpenAiCompatibleChatClient } from './quick-chat/openai-compatible-chat.client';
 import { QuickChatService } from './quick-chat/quick-chat.service';
 
@@ -33,6 +34,7 @@ import { QuickChatService } from './quick-chat/quick-chat.service';
     LLMInsightEngine,
     HybridInsightEngine,
     QuickChatService,
+    MonthlyFinancialReviewService,
     {
       provide: INSIGHT_ENGINE,
       inject: [

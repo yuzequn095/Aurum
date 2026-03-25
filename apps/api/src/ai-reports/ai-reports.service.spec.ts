@@ -138,4 +138,76 @@ describe('AIReportsService', () => {
       title: 'Retirement - Portfolio Report',
     });
   });
+
+  it('gates monthly financial review creation with its dedicated entitlement key', async () => {
+    entitlementsService.assertFeatureEnabled.mockRejectedValue(
+      new Error('monthly-blocked'),
+    );
+
+    const service = new AIReportsService(
+      prisma as never,
+      entitlementsService as never,
+      portfolioSnapshotsService as never,
+    );
+
+    await expect(
+      service.createMonthlyFinancialReviewReport({
+        userId: 'user_1',
+        sourceSnapshotId: 'snapshot_1',
+        title: 'February 2026 Monthly Financial Review',
+        contentMarkdown: '# Monthly Review',
+        promptVersion: '1.0.0',
+      }),
+    ).rejects.toThrow('monthly-blocked');
+
+    expect(entitlementsService.assertFeatureEnabled).toHaveBeenCalledWith(
+      'user_1',
+      'ai.report.monthly_financial_review',
+    );
+  });
+
+  it('persists monthly financial review artifacts against the owned snapshot chain', async () => {
+    entitlementsService.assertFeatureEnabled.mockResolvedValue(undefined);
+    portfolioSnapshotsService.getSnapshotById.mockResolvedValue({
+      id: 'snapshot_1',
+      metadata: {
+        portfolioName: 'Retirement',
+        snapshotDate: '2026-02-28',
+      },
+    });
+
+    const service = new AIReportsService(
+      prisma as never,
+      entitlementsService as never,
+      portfolioSnapshotsService as never,
+    );
+
+    await service.createMonthlyFinancialReviewReport({
+      userId: 'user_1',
+      sourceSnapshotId: 'snapshot_1',
+      title: 'February 2026 Monthly Financial Review',
+      contentMarkdown: '# Monthly Review',
+      promptVersion: '1.0.0',
+      sourceRunId: 'monthly-review:2026-02:snapshot_1',
+      metadata: {
+        sourceTaskType: 'monthly_financial_review_v1',
+        reviewYear: 2026,
+        reviewMonth: 2,
+      },
+    });
+
+    expect(portfolioSnapshotsService.getSnapshotById).toHaveBeenCalledWith(
+      'snapshot_1',
+      'user_1',
+    );
+    expect(capturedCreateArgs).toMatchObject({
+      data: {
+        reportType: 'monthly_financial_review_v1',
+        taskType: 'monthly_financial_review_v1',
+        sourceSnapshotId: 'snapshot_1',
+        title: 'February 2026 Monthly Financial Review',
+        contentMarkdown: '# Monthly Review',
+      },
+    });
+  });
 });

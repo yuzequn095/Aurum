@@ -6,6 +6,8 @@ import type {
   MonthlyReportContext,
   MonthlyReportResponse,
 } from './insights/types';
+import { CreateMonthlyFinancialReviewDto } from './monthly-financial-review/dto/create-monthly-financial-review.dto';
+import { MonthlyFinancialReviewService } from './monthly-financial-review/monthly-financial-review.service';
 import { QuickChatRequestDto } from './quick-chat/dto/quick-chat.dto';
 import { QuickChatService } from './quick-chat/quick-chat.service';
 import type { QuickChatResponseView } from './quick-chat/quick-chat.types';
@@ -15,6 +17,7 @@ export class AiService {
   constructor(
     private readonly analyticsService: AnalyticsService,
     private readonly quickChatService: QuickChatService,
+    private readonly monthlyFinancialReviewService: MonthlyFinancialReviewService,
     @Inject(INSIGHT_ENGINE) private readonly insightEngine: InsightEngine,
   ) {}
 
@@ -47,5 +50,15 @@ export class AiService {
       categoryBreakdown,
       insights,
     };
+  }
+
+  async createMonthlyFinancialReview(
+    userId: string,
+    dto: CreateMonthlyFinancialReviewDto,
+  ) {
+    return this.monthlyFinancialReviewService.createMonthlyFinancialReview(
+      userId,
+      dto,
+    );
   }
 }

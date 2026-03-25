@@ -4,6 +4,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GetMonthlySummaryQueryDto } from '../analytics/dto/get-monthly-summary-query.dto';
 import { AiService } from './ai.service';
+import { CreateMonthlyFinancialReviewDto } from './monthly-financial-review/dto/create-monthly-financial-review.dto';
 import { QuickChatRequestDto } from './quick-chat/dto/quick-chat.dto';
 import type { QuickChatResponseView } from './quick-chat/quick-chat.types';
 
@@ -18,6 +19,14 @@ export class AiController {
     @Body() body: QuickChatRequestDto,
   ): Promise<QuickChatResponseView> {
     return this.aiService.runQuickChat(user.userId, body);
+  }
+
+  @Post('monthly-financial-review')
+  async createMonthlyFinancialReview(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: CreateMonthlyFinancialReviewDto,
+  ) {
+    return this.aiService.createMonthlyFinancialReview(user.userId, body);
   }
 
   @Get('monthly-report')
