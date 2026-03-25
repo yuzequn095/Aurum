@@ -13,6 +13,9 @@ import { INSIGHT_ENGINE } from './insights/insight-engine.token';
 import { OpenAiCompatibleLlmClient } from './insights/llm/llm-client';
 import { LLMInsightEngine } from './insights/llm-insight.engine';
 import { RuleInsightEngine } from './insights/rule-insight.engine';
+import { DailyMarketBriefPreferencesService } from './daily-market-brief/daily-market-brief-preferences.service';
+import { DailyMarketBriefService } from './daily-market-brief/daily-market-brief.service';
+import { MarketContextService } from './daily-market-brief/market-context.service';
 import { MonthlyFinancialReviewService } from './monthly-financial-review/monthly-financial-review.service';
 import { OpenAiCompatibleChatClient } from './quick-chat/openai-compatible-chat.client';
 import { QuickChatService } from './quick-chat/quick-chat.service';
@@ -34,6 +37,9 @@ import { QuickChatService } from './quick-chat/quick-chat.service';
     LLMInsightEngine,
     HybridInsightEngine,
     QuickChatService,
+    MarketContextService,
+    DailyMarketBriefService,
+    DailyMarketBriefPreferencesService,
     MonthlyFinancialReviewService,
     {
       provide: INSIGHT_ENGINE,

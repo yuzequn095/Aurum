@@ -100,6 +100,22 @@ enum AIConversationMessageRole {
   ASSISTANT
 }
 
+enum AIDailyMarketBriefCadence {
+  DAILY
+  WEEKDAYS
+  WEEKLY
+}
+
+enum AIDailyMarketBriefScope {
+  PORTFOLIO_AWARE
+  MARKET_OVERVIEW
+}
+
+enum AIDailyMarketBriefDeliveryChannel {
+  IN_APP
+  EMAIL_PLACEHOLDER
+}
+
 model ConnectedProviderUserRecord {
   id               String   @id @default(cuid())
   userId           String
@@ -128,21 +144,22 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  identities             AuthIdentity[]
-  refreshTokens          RefreshToken[]
-  accounts               Account[]
-  categories             Category[]
-  subcategories          Subcategory[]
-  transactions           Transaction[]
-  importLogs             ImportLog[]
-  connectedSources       ConnectedSourceRecord[]
-  connectedProviderUsers ConnectedProviderUserRecord[]
-  connectedSourceSecrets ConnectedSourceSecretRecord[]
-  connectedSyncRuns      ConnectedSyncRunRecord[]
-  manualStaticValuations ManualStaticValuationRecord[]
-  portfolioSnapshots     PortfolioSnapshotRecord[]
-  aiEntitlement          AIEntitlementRecord?
-  aiConversations        AIConversationRecord[]
+  identities                 AuthIdentity[]
+  refreshTokens              RefreshToken[]
+  accounts                   Account[]
+  categories                 Category[]
+  subcategories              Subcategory[]
+  transactions               Transaction[]
+  importLogs                 ImportLog[]
+  connectedSources           ConnectedSourceRecord[]
+  connectedProviderUsers     ConnectedProviderUserRecord[]
+  connectedSourceSecrets     ConnectedSourceSecretRecord[]
+  connectedSyncRuns          ConnectedSyncRunRecord[]
+  manualStaticValuations     ManualStaticValuationRecord[]
+  portfolioSnapshots         PortfolioSnapshotRecord[]
+  aiEntitlement              AIEntitlementRecord?
+  aiConversations            AIConversationRecord[]
+  dailyMarketBriefPreference AIDailyMarketBriefPreferenceRecord?
 }
 
 model AuthIdentity {
@@ -418,14 +435,15 @@ model PortfolioSnapshotRecord {
   createdAt            DateTime                        @default(now())
   updatedAt            DateTime                        @updatedAt
 
-  user                  User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  source                ConnectedSourceRecord?       @relation(fields: [sourceId], references: [id], onDelete: SetNull)
-  sourceSyncRun         ConnectedSyncRunRecord?      @relation("PortfolioSnapshotSourceSyncRun", fields: [sourceSyncRunId], references: [id], onDelete: SetNull)
-  producedBySyncRun     ConnectedSyncRunRecord?      @relation("ConnectedSyncRunProducedSnapshot")
-  positions             PortfolioPositionRecord[]
-  reports               AIReportRecord[]
-  financialHealthScores FinancialHealthScoreRecord[]
-  conversations         AIConversationRecord[]
+  user                        User                                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source                      ConnectedSourceRecord?               @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  sourceSyncRun               ConnectedSyncRunRecord?              @relation("PortfolioSnapshotSourceSyncRun", fields: [sourceSyncRunId], references: [id], onDelete: SetNull)
+  producedBySyncRun           ConnectedSyncRunRecord?              @relation("ConnectedSyncRunProducedSnapshot")
+  positions                   PortfolioPositionRecord[]
+  reports                     AIReportRecord[]
+  financialHealthScores       FinancialHealthScoreRecord[]
+  conversations               AIConversationRecord[]
+  dailyMarketBriefPreferences AIDailyMarketBriefPreferenceRecord[]
 
   @@index([userId, snapshotDate])
   @@index([sourceId])
@@ -546,4 +564,23 @@ model AIConversationMessageRecord {
 
   @@unique([conversationId, sortOrder])
   @@index([conversationId, createdAt])
+}
+
+model AIDailyMarketBriefPreferenceRecord {
+  id                String                            @id @default(cuid())
+  userId            String                            @unique
+  enabled           Boolean                           @default(false)
+  cadence           AIDailyMarketBriefCadence         @default(DAILY)
+  deliveryTimeLocal String                            @default("08:00")
+  timezone          String                            @default("America/Los_Angeles")
+  reportScope       AIDailyMarketBriefScope           @default(PORTFOLIO_AWARE)
+  deliveryChannel   AIDailyMarketBriefDeliveryChannel @default(IN_APP)
+  sourceSnapshotId  String?
+  createdAt         DateTime                          @default(now())
+  updatedAt         DateTime                          @updatedAt
+
+  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceSnapshot PortfolioSnapshotRecord? @relation(fields: [sourceSnapshotId], references: [id], onDelete: SetNull)
+
+  @@index([sourceSnapshotId])
 }

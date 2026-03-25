@@ -67,10 +67,10 @@ export const aiInsightsCatalogEntries: AIInsightsCatalogEntry[] = [
     section: 'reports',
     title: 'Daily Market Brief',
     description:
-      'Reserved product slot for the daily brief workflow without overbuilding market execution yet.',
-    state: 'coming-soon',
+      'First-class daily brief workflow with persisted history and delivery preferences foundation.',
+    state: 'available',
     featureKey: 'ai.report.daily_market_brief',
-    actionLabel: 'Coming next',
+    actionLabel: 'Generate brief',
     anchor: 'reports-daily-market-brief',
   },
   {

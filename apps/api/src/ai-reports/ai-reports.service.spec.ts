@@ -210,4 +210,75 @@ describe('AIReportsService', () => {
       },
     });
   });
+
+  it('gates daily market brief creation with its dedicated entitlement key', async () => {
+    entitlementsService.assertFeatureEnabled.mockRejectedValue(
+      new Error('daily-brief-blocked'),
+    );
+
+    const service = new AIReportsService(
+      prisma as never,
+      entitlementsService as never,
+      portfolioSnapshotsService as never,
+    );
+
+    await expect(
+      service.createDailyMarketBriefReport({
+        userId: 'user_1',
+        sourceSnapshotId: 'snapshot_1',
+        title: '2026-03-24 Daily Market Brief',
+        contentMarkdown: '# Daily Market Brief',
+        promptVersion: '1.0.0',
+      }),
+    ).rejects.toThrow('daily-brief-blocked');
+
+    expect(entitlementsService.assertFeatureEnabled).toHaveBeenCalledWith(
+      'user_1',
+      'ai.report.daily_market_brief',
+    );
+  });
+
+  it('persists daily market brief artifacts against the owned snapshot chain', async () => {
+    entitlementsService.assertFeatureEnabled.mockResolvedValue(undefined);
+    portfolioSnapshotsService.getSnapshotById.mockResolvedValue({
+      id: 'snapshot_1',
+      metadata: {
+        portfolioName: 'Retirement',
+        snapshotDate: '2026-03-24',
+      },
+    });
+
+    const service = new AIReportsService(
+      prisma as never,
+      entitlementsService as never,
+      portfolioSnapshotsService as never,
+    );
+
+    await service.createDailyMarketBriefReport({
+      userId: 'user_1',
+      sourceSnapshotId: 'snapshot_1',
+      title: '2026-03-24 Daily Market Brief',
+      contentMarkdown: '# Daily Market Brief',
+      promptVersion: '1.0.0',
+      sourceRunId: 'daily-market-brief:2026-03-24:snapshot_1',
+      metadata: {
+        sourceTaskType: 'daily_market_brief_v1',
+        briefDate: '2026-03-24',
+      },
+    });
+
+    expect(portfolioSnapshotsService.getSnapshotById).toHaveBeenCalledWith(
+      'snapshot_1',
+      'user_1',
+    );
+    expect(capturedCreateArgs).toMatchObject({
+      data: {
+        reportType: 'daily_market_brief_v1',
+        taskType: 'daily_market_brief_v1',
+        sourceSnapshotId: 'snapshot_1',
+        title: '2026-03-24 Daily Market Brief',
+        contentMarkdown: '# Daily Market Brief',
+      },
+    });
+  });
 });

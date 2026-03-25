@@ -1,6 +1,7 @@
 export type AITaskType =
   | 'portfolio_report_v1'
   | 'monthly_financial_review_v1'
+  | 'daily_market_brief_v1'
   | 'portfolio_review_v1'
   | 'health_score_explainer_v1'
   | 'budget_analysis_v1'

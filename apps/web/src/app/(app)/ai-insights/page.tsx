@@ -28,7 +28,14 @@ import {
   type AIConversationSummaryView,
 } from '@/lib/api/ai-conversations';
 import { createPortfolioSnapshot, listPortfolioSnapshots } from '@/lib/api/portfolio-snapshots';
-import { listAIReportsBySourceSnapshotId } from '@/lib/api/ai-reports';
+import { listAIReports } from '@/lib/api/ai-reports';
+import {
+  createDailyMarketBrief,
+  getDailyMarketBriefPreferences,
+  updateDailyMarketBriefPreferences,
+  type DailyMarketBriefPreferenceView,
+  type DailyMarketBriefScope,
+} from '@/lib/api/daily-market-brief';
 import {
   createFinancialHealthScoreForSnapshot,
   listFinancialHealthScoresBySourceSnapshotId,
@@ -75,6 +82,18 @@ function formatMonthLabel(year: number, month: number): string {
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+function formatReportTypeLabel(reportType: AIReportArtifact['reportType']): string {
+  switch (reportType) {
+    case 'monthly_financial_review_v1':
+      return 'Monthly Financial Review';
+    case 'daily_market_brief_v1':
+      return 'Daily Market Brief';
+    case 'portfolio_report_v1':
+    default:
+      return 'Portfolio Report';
+  }
 }
 
 function getLatestCompletedMonthPreset(referenceDate = new Date()) {
@@ -242,11 +261,27 @@ export default function AiInsightsPage() {
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [isReportsLoading, setIsReportsLoading] = useState(false);
   const [reportsStatusMessage, setReportsStatusMessage] = useState('');
-  const [statusMessage, setStatusMessage] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [monthlyReviewStatusMessage, setMonthlyReviewStatusMessage] = useState<string>('');
+  const [isGeneratingMonthlyReview, setIsGeneratingMonthlyReview] = useState(false);
   const [reviewYear, setReviewYear] = useState<number>(defaultReviewPeriod.year);
   const [reviewMonth, setReviewMonth] = useState<number>(defaultReviewPeriod.month);
   const [useSelectedSnapshotOverride, setUseSelectedSnapshotOverride] = useState(false);
+  const [isGeneratingDailyMarketBrief, setIsGeneratingDailyMarketBrief] = useState(false);
+  const [dailyMarketBriefStatusMessage, setDailyMarketBriefStatusMessage] = useState('');
+  const [dailyMarketBriefScope, setDailyMarketBriefScope] =
+    useState<DailyMarketBriefScope>('portfolio_aware');
+  const [useSelectedSnapshotForDailyMarketBrief, setUseSelectedSnapshotForDailyMarketBrief] =
+    useState(false);
+  const [dailyMarketBriefPreferences, setDailyMarketBriefPreferences] =
+    useState<DailyMarketBriefPreferenceView | null>(null);
+  const [
+    useSelectedSnapshotForDailyMarketBriefDelivery,
+    setUseSelectedSnapshotForDailyMarketBriefDelivery,
+  ] = useState(false);
+  const [isDailyMarketBriefPreferencesSaving, setIsDailyMarketBriefPreferencesSaving] =
+    useState(false);
+  const [dailyMarketBriefPreferencesStatusMessage, setDailyMarketBriefPreferencesStatusMessage] =
+    useState('');
   const [scores, setScores] = useState<FinancialHealthScoreArtifact[]>([]);
   const [selectedScoreId, setSelectedScoreId] = useState<string | null>(null);
   const [isScoresLoading, setIsScoresLoading] = useState(false);
@@ -308,6 +343,7 @@ export default function AiInsightsPage() {
     entitlements,
     'ai.report.monthly_financial_review',
   );
+  const dailyMarketBriefEnabled = hasEnabledFeature(entitlements, 'ai.report.daily_market_brief');
   const effectiveReviewMonthLabel = formatMonthLabel(reviewYear, reviewMonth);
   const sectionEntries = aiInsightsCatalogSections.reduce(
     (accumulator, section) => ({
@@ -366,6 +402,22 @@ export default function AiInsightsPage() {
     }
   };
 
+  const loadDailyMarketBriefPreferences = async () => {
+    setDailyMarketBriefPreferencesStatusMessage('');
+
+    try {
+      const nextPreferences = await getDailyMarketBriefPreferences();
+      setDailyMarketBriefPreferences(nextPreferences);
+      setUseSelectedSnapshotForDailyMarketBriefDelivery(Boolean(nextPreferences.sourceSnapshotId));
+    } catch (error) {
+      setDailyMarketBriefPreferencesStatusMessage(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load Daily Market Brief delivery preferences.',
+      );
+    }
+  };
+
   const loadConversations = async (preferredConversationId?: string) => {
     setIsConversationsLoading(true);
     setConversationStatusMessage('');
@@ -415,30 +467,27 @@ export default function AiInsightsPage() {
     }
   };
 
-  const loadReportsForSelectedSnapshot = async (sourceSnapshotId: string | null) => {
-    if (!sourceSnapshotId) {
-      setReports([]);
-      setSelectedReportId(null);
-      setReportsStatusMessage('Select a portfolio snapshot to view report history.');
-      return;
-    }
-
+  const loadReports = async (preferredReportId?: string) => {
     setIsReportsLoading(true);
     setReportsStatusMessage('');
 
     try {
-      const nextReports = await listAIReportsBySourceSnapshotId(sourceSnapshotId);
+      const nextReports = await listAIReports();
       setReports(nextReports);
       setSelectedReportId((currentSelectedId) => {
+        if (preferredReportId && nextReports.some((report) => report.id === preferredReportId)) {
+          return preferredReportId;
+        }
+
         const hasCurrent = currentSelectedId
           ? nextReports.some((report) => report.id === currentSelectedId)
           : false;
         return hasCurrent ? currentSelectedId : (nextReports[0]?.id ?? null);
       });
       if (nextReports.length === 0) {
-        setReportsStatusMessage('No reports found for the selected snapshot yet.');
+        setReportsStatusMessage('No persisted reports found yet.');
       } else {
-        setReportsStatusMessage(`Loaded ${nextReports.length} reports for selected snapshot.`);
+        setReportsStatusMessage(`Loaded ${nextReports.length} persisted reports.`);
       }
     } catch (error) {
       setReportsStatusMessage(
@@ -486,12 +535,10 @@ export default function AiInsightsPage() {
   useEffect(() => {
     void loadSnapshots();
     void loadEntitlements();
+    void loadReports();
+    void loadDailyMarketBriefPreferences();
     void loadConversations();
   }, []);
-
-  useEffect(() => {
-    void loadReportsForSelectedSnapshot(selectedSnapshotId);
-  }, [selectedSnapshotId]);
 
   useEffect(() => {
     void loadScoresForSelectedSnapshot(selectedSnapshotId);
@@ -519,12 +566,14 @@ export default function AiInsightsPage() {
   }, [selectedConversationId]);
 
   const onGenerateMonthlyFinancialReview = async () => {
-    setIsGenerating(true);
-    setStatusMessage('');
+    setIsGeneratingMonthlyReview(true);
+    setMonthlyReviewStatusMessage('');
 
     try {
       if (useSelectedSnapshotOverride && (!selectedSnapshot || !selectedSnapshot.id)) {
-        setStatusMessage('Select a portfolio snapshot before using the snapshot override.');
+        setMonthlyReviewStatusMessage(
+          'Select a portfolio snapshot before using the snapshot override.',
+        );
         return;
       }
       const createdReport = await createMonthlyFinancialReview({
@@ -535,32 +584,66 @@ export default function AiInsightsPage() {
       });
       if (createdReport.sourceSnapshotId) {
         setSelectedSnapshotId(createdReport.sourceSnapshotId);
-        await loadReportsForSelectedSnapshot(createdReport.sourceSnapshotId);
-      } else {
-        await loadReportsForSelectedSnapshot(selectedSnapshotId);
       }
-      setSelectedReportId(createdReport.id);
-      setStatusMessage(
+      await loadReports(createdReport.id);
+      setMonthlyReviewStatusMessage(
         `Monthly Financial Review created for ${effectiveReviewMonthLabel}: ${createdReport.id}`,
       );
     } catch (error) {
-      setStatusMessage(
+      setMonthlyReviewStatusMessage(
         error instanceof Error ? error.message : 'Failed to generate monthly financial review.',
       );
     } finally {
-      setIsGenerating(false);
+      setIsGeneratingMonthlyReview(false);
     }
   };
 
   const selectedPortfolioName = getStringMetadataValue(selectedReport, 'portfolioName');
   const selectedSnapshotDate = getStringMetadataValue(selectedReport, 'snapshotDate');
   const selectedReviewMonthLabel = getStringMetadataValue(selectedReport, 'reviewMonthLabel');
+  const selectedBriefDate = getStringMetadataValue(selectedReport, 'briefDate');
+  const selectedMarketSessionLabel = getStringMetadataValue(selectedReport, 'marketSessionLabel');
+  const selectedReportScope = getStringMetadataValue(selectedReport, 'reportScope');
   const selectedSnapshotSelectionStrategy = getStringMetadataValue(
     selectedReport,
     'snapshotSelectionStrategy',
   );
   const selectedSnapshotPortfolioName =
     selectedSnapshot?.metadata.portfolioName ?? 'Untitled Portfolio';
+
+  const onGenerateDailyMarketBrief = async () => {
+    setIsGeneratingDailyMarketBrief(true);
+    setDailyMarketBriefStatusMessage('');
+
+    try {
+      if (useSelectedSnapshotForDailyMarketBrief && (!selectedSnapshot || !selectedSnapshot.id)) {
+        setDailyMarketBriefStatusMessage(
+          'Select a portfolio snapshot before using the Daily Market Brief snapshot override.',
+        );
+        return;
+      }
+
+      const createdReport = await createDailyMarketBrief({
+        reportScope: dailyMarketBriefScope,
+        sourceSnapshotId:
+          useSelectedSnapshotForDailyMarketBrief && selectedSnapshot?.id
+            ? selectedSnapshot.id
+            : undefined,
+      });
+
+      if (createdReport.sourceSnapshotId) {
+        setSelectedSnapshotId(createdReport.sourceSnapshotId);
+      }
+      await loadReports(createdReport.id);
+      setDailyMarketBriefStatusMessage(`Daily Market Brief created: ${createdReport.id}`);
+    } catch (error) {
+      setDailyMarketBriefStatusMessage(
+        error instanceof Error ? error.message : 'Failed to generate Daily Market Brief.',
+      );
+    } finally {
+      setIsGeneratingDailyMarketBrief(false);
+    }
+  };
 
   const onCreateDemoSnapshot = async () => {
     setIsCreatingSnapshot(true);
@@ -580,6 +663,51 @@ export default function AiInsightsPage() {
       );
     } finally {
       setIsCreatingSnapshot(false);
+    }
+  };
+
+  const onSaveDailyMarketBriefPreferences = async () => {
+    if (!dailyMarketBriefPreferences) {
+      setDailyMarketBriefPreferencesStatusMessage(
+        'Daily Market Brief preferences are still loading.',
+      );
+      return;
+    }
+
+    if (
+      useSelectedSnapshotForDailyMarketBriefDelivery &&
+      (!selectedSnapshot || !selectedSnapshot.id)
+    ) {
+      setDailyMarketBriefPreferencesStatusMessage(
+        'Select a portfolio snapshot before using it as the delivery anchor.',
+      );
+      return;
+    }
+
+    setIsDailyMarketBriefPreferencesSaving(true);
+    setDailyMarketBriefPreferencesStatusMessage('');
+
+    try {
+      const updatedPreferences = await updateDailyMarketBriefPreferences({
+        ...dailyMarketBriefPreferences,
+        sourceSnapshotId:
+          useSelectedSnapshotForDailyMarketBriefDelivery && selectedSnapshot?.id
+            ? selectedSnapshot.id
+            : undefined,
+      });
+      setDailyMarketBriefPreferences(updatedPreferences);
+      setUseSelectedSnapshotForDailyMarketBriefDelivery(
+        Boolean(updatedPreferences.sourceSnapshotId),
+      );
+      setDailyMarketBriefPreferencesStatusMessage('Daily Market Brief delivery preferences saved.');
+    } catch (error) {
+      setDailyMarketBriefPreferencesStatusMessage(
+        error instanceof Error
+          ? error.message
+          : 'Failed to save Daily Market Brief delivery preferences.',
+      );
+    } finally {
+      setIsDailyMarketBriefPreferencesSaving(false);
     }
   };
 
@@ -787,7 +915,17 @@ export default function AiInsightsPage() {
 
     switch (entry.id) {
       case 'monthly-financial-review':
-        return isGenerating || (useSelectedSnapshotOverride && !selectedSnapshot?.id);
+        return (
+          isGeneratingMonthlyReview ||
+          snapshots.length === 0 ||
+          (useSelectedSnapshotOverride && !selectedSnapshot?.id)
+        );
+      case 'daily-market-brief':
+        return (
+          isGeneratingDailyMarketBrief ||
+          snapshots.length === 0 ||
+          (useSelectedSnapshotForDailyMarketBrief && !selectedSnapshot?.id)
+        );
       case 'financial-health-score':
         return !selectedSnapshot?.id || isGeneratingScore;
       case 'quick-chat':
@@ -804,7 +942,9 @@ export default function AiInsightsPage() {
   const getEntryActionLabel = (entry: AIInsightsCatalogEntry): string => {
     switch (entry.id) {
       case 'monthly-financial-review':
-        return isGenerating ? 'Generating...' : entry.actionLabel;
+        return isGeneratingMonthlyReview ? 'Generating...' : entry.actionLabel;
+      case 'daily-market-brief':
+        return isGeneratingDailyMarketBrief ? 'Generating...' : entry.actionLabel;
       case 'financial-health-score':
         return isGeneratingScore ? 'Generating...' : entry.actionLabel;
       default:
@@ -820,13 +960,23 @@ export default function AiInsightsPage() {
 
     switch (entry.id) {
       case 'monthly-financial-review':
+        if (snapshots.length === 0) {
+          return 'Create or import a portfolio snapshot first so Reports can stay grounded in the current artifact ownership model.';
+        }
         return useSelectedSnapshotOverride
           ? selectedSnapshot?.id
             ? `Creates a server-backed ${effectiveReviewMonthLabel} review using the selected snapshot override.`
             : 'Select a portfolio snapshot before using the snapshot override.'
           : `Creates a server-backed ${effectiveReviewMonthLabel} review using deterministic snapshot anchoring.`;
       case 'daily-market-brief':
-        return 'Product slot reserved for the next market-brief execution milestone.';
+        if (snapshots.length === 0) {
+          return 'Create or import a portfolio snapshot first so the Daily Market Brief can be persisted through the existing report artifact model.';
+        }
+        return useSelectedSnapshotForDailyMarketBrief
+          ? selectedSnapshot?.id
+            ? 'Creates a server-backed Daily Market Brief using the selected snapshot override and the current market context template.'
+            : 'Select a portfolio snapshot before using the Daily Market Brief snapshot override.'
+          : 'Creates a server-backed Daily Market Brief using the latest available snapshot and current market context template.';
       case 'financial-health-score':
         return selectedSnapshot?.id
           ? 'Generates and stores a snapshot-linked analysis artifact.'
@@ -851,6 +1001,9 @@ export default function AiInsightsPage() {
     switch (entry.id) {
       case 'monthly-financial-review':
         void onGenerateMonthlyFinancialReview();
+        return;
+      case 'daily-market-brief':
+        void onGenerateDailyMarketBrief();
         return;
       case 'financial-health-score':
         void onGenerateDemoScore();
@@ -877,7 +1030,7 @@ export default function AiInsightsPage() {
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="info">AI Product Layer</Badge>
-                <Badge variant="neutral">Milestone 13.4</Badge>
+                <Badge variant="neutral">Milestone 13.5</Badge>
               </div>
               <div className="space-y-1">
                 <CardTitle>AI Insights</CardTitle>
@@ -1343,12 +1496,13 @@ export default function AiInsightsPage() {
                 variant="primary"
                 onClick={() => void onGenerateMonthlyFinancialReview()}
                 disabled={
-                  isGenerating ||
+                  isGeneratingMonthlyReview ||
+                  snapshots.length === 0 ||
                   !monthlyReviewEnabled ||
                   (useSelectedSnapshotOverride && !selectedSnapshot?.id)
                 }
               >
-                {isGenerating ? 'Generating...' : 'Generate Monthly Financial Review'}
+                {isGeneratingMonthlyReview ? 'Generating...' : 'Generate Monthly Financial Review'}
               </Button>
               <span className="text-xs text-aurum-muted">
                 Historical report reads remain available after subscription changes.
@@ -1448,17 +1602,313 @@ export default function AiInsightsPage() {
         </Card>
       </section>
 
-      {statusMessage ? (
+      {monthlyReviewStatusMessage ? (
         <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-          {statusMessage}
+          {monthlyReviewStatusMessage}
         </p>
       ) : null}
+
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Card id="reports-daily-market-brief">
+          <CardHeader className="space-y-3">
+            <div className="space-y-1">
+              <CardTitle>Daily Market Brief Workflow</CardTitle>
+              <CardDescription>
+                Generate a server-backed Daily Market Brief now using the internal market context
+                assembler, with room for richer prompts and external context later.
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="primary"
+                onClick={() => void onGenerateDailyMarketBrief()}
+                disabled={
+                  isGeneratingDailyMarketBrief ||
+                  snapshots.length === 0 ||
+                  !dailyMarketBriefEnabled ||
+                  (useSelectedSnapshotForDailyMarketBrief && !selectedSnapshot?.id)
+                }
+              >
+                {isGeneratingDailyMarketBrief ? 'Generating...' : 'Generate Daily Market Brief'}
+              </Button>
+              <span className="text-xs text-aurum-muted">
+                V1 uses a lightweight internal market template and persists the result as a report
+                artifact.
+              </span>
+            </div>
+            {dailyMarketBriefStatusMessage ? (
+              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
+                {dailyMarketBriefStatusMessage}
+              </p>
+            ) : null}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="space-y-2 text-sm">
+                <span className="text-xs uppercase tracking-wide text-aurum-muted">
+                  Brief Scope
+                </span>
+                <select
+                  value={dailyMarketBriefScope}
+                  onChange={(event) =>
+                    setDailyMarketBriefScope(event.target.value as DailyMarketBriefScope)
+                  }
+                  className="w-full rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text outline-none transition focus:border-[var(--aurum-accent)]"
+                >
+                  <option value="portfolio_aware">Portfolio Aware</option>
+                  <option value="market_overview">Market Overview</option>
+                </select>
+              </label>
+              <label className="flex items-start gap-3 rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={useSelectedSnapshotForDailyMarketBrief}
+                  onChange={(event) =>
+                    setUseSelectedSnapshotForDailyMarketBrief(event.target.checked)
+                  }
+                  className="mt-1 h-4 w-4 rounded border-aurum-border"
+                />
+                <span className="space-y-1">
+                  <span className="block text-sm font-medium text-aurum-text">
+                    Use selected snapshot override
+                  </span>
+                  <span className="block text-xs text-aurum-muted">
+                    Leave this off to anchor the brief to the latest available snapshot.
+                  </span>
+                </span>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-aurum-muted">Current Scope</p>
+                <p className="text-aurum-text">
+                  {dailyMarketBriefScope === 'portfolio_aware'
+                    ? 'Portfolio-aware'
+                    : 'Market overview'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-aurum-muted">Snapshot Anchor</p>
+                <p className="text-aurum-text">
+                  {useSelectedSnapshotForDailyMarketBrief
+                    ? (selectedSnapshot?.metadata.portfolioName ?? 'Select a portfolio snapshot')
+                    : 'Latest available snapshot'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="space-y-3">
+            <div className="space-y-1">
+              <CardTitle>Daily Market Brief Delivery</CardTitle>
+              <CardDescription>
+                Current-user delivery preferences foundation for future scheduled generation and
+                subscription-aware delivery.
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => void onSaveDailyMarketBriefPreferences()}
+                disabled={isDailyMarketBriefPreferencesSaving || !dailyMarketBriefPreferences}
+              >
+                {isDailyMarketBriefPreferencesSaving ? 'Saving...' : 'Save Delivery Preferences'}
+              </Button>
+              <span className="text-xs text-aurum-muted">
+                Scheduling preferences are stored now; full scheduled execution and notifications
+                can layer in later.
+              </span>
+            </div>
+            {dailyMarketBriefPreferencesStatusMessage ? (
+              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
+                {dailyMarketBriefPreferencesStatusMessage}
+              </p>
+            ) : null}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!dailyMarketBriefPreferences ? (
+              <p className="text-sm text-aurum-muted">
+                Loading Daily Market Brief delivery preferences...
+              </p>
+            ) : (
+              <>
+                <label className="flex items-start gap-3 rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={dailyMarketBriefPreferences.enabled}
+                    onChange={(event) =>
+                      setDailyMarketBriefPreferences((current) =>
+                        current
+                          ? {
+                              ...current,
+                              enabled: event.target.checked,
+                            }
+                          : current,
+                      )
+                    }
+                    className="mt-1 h-4 w-4 rounded border-aurum-border"
+                  />
+                  <span className="space-y-1">
+                    <span className="block text-sm font-medium text-aurum-text">
+                      Enable scheduled delivery foundation
+                    </span>
+                    <span className="block text-xs text-aurum-muted">
+                      Future scheduled generation can respect these preferences and entitlement
+                      checks.
+                    </span>
+                  </span>
+                </label>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <label className="space-y-2 text-sm">
+                    <span className="text-xs uppercase tracking-wide text-aurum-muted">
+                      Cadence
+                    </span>
+                    <select
+                      value={dailyMarketBriefPreferences.cadence}
+                      onChange={(event) =>
+                        setDailyMarketBriefPreferences((current) =>
+                          current
+                            ? {
+                                ...current,
+                                cadence: event.target
+                                  .value as DailyMarketBriefPreferenceView['cadence'],
+                              }
+                            : current,
+                        )
+                      }
+                      className="w-full rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text outline-none transition focus:border-[var(--aurum-accent)]"
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekdays">Weekdays</option>
+                      <option value="weekly">Weekly</option>
+                    </select>
+                  </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-xs uppercase tracking-wide text-aurum-muted">
+                      Delivery Time
+                    </span>
+                    <input
+                      type="time"
+                      value={dailyMarketBriefPreferences.deliveryTimeLocal}
+                      onChange={(event) =>
+                        setDailyMarketBriefPreferences((current) =>
+                          current
+                            ? {
+                                ...current,
+                                deliveryTimeLocal: event.target.value,
+                              }
+                            : current,
+                        )
+                      }
+                      className="w-full rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text outline-none transition focus:border-[var(--aurum-accent)]"
+                    />
+                  </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-xs uppercase tracking-wide text-aurum-muted">
+                      Timezone
+                    </span>
+                    <input
+                      type="text"
+                      value={dailyMarketBriefPreferences.timezone}
+                      onChange={(event) =>
+                        setDailyMarketBriefPreferences((current) =>
+                          current
+                            ? {
+                                ...current,
+                                timezone: event.target.value,
+                              }
+                            : current,
+                        )
+                      }
+                      className="w-full rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text outline-none transition focus:border-[var(--aurum-accent)]"
+                    />
+                  </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-xs uppercase tracking-wide text-aurum-muted">
+                      Delivery Channel
+                    </span>
+                    <select
+                      value={dailyMarketBriefPreferences.deliveryChannel}
+                      onChange={(event) =>
+                        setDailyMarketBriefPreferences((current) =>
+                          current
+                            ? {
+                                ...current,
+                                deliveryChannel: event.target
+                                  .value as DailyMarketBriefPreferenceView['deliveryChannel'],
+                              }
+                            : current,
+                        )
+                      }
+                      className="w-full rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text outline-none transition focus:border-[var(--aurum-accent)]"
+                    >
+                      <option value="in_app">In-app</option>
+                      <option value="email_placeholder">Email placeholder</option>
+                    </select>
+                  </label>
+                  <label className="space-y-2 text-sm">
+                    <span className="text-xs uppercase tracking-wide text-aurum-muted">
+                      Scheduled Scope
+                    </span>
+                    <select
+                      value={dailyMarketBriefPreferences.reportScope}
+                      onChange={(event) =>
+                        setDailyMarketBriefPreferences((current) =>
+                          current
+                            ? {
+                                ...current,
+                                reportScope: event.target
+                                  .value as DailyMarketBriefPreferenceView['reportScope'],
+                              }
+                            : current,
+                        )
+                      }
+                      className="w-full rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text outline-none transition focus:border-[var(--aurum-accent)]"
+                    >
+                      <option value="portfolio_aware">Portfolio-aware</option>
+                      <option value="market_overview">Market overview</option>
+                    </select>
+                  </label>
+                  <label className="flex items-start gap-3 rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={useSelectedSnapshotForDailyMarketBriefDelivery}
+                      onChange={(event) =>
+                        setUseSelectedSnapshotForDailyMarketBriefDelivery(event.target.checked)
+                      }
+                      className="mt-1 h-4 w-4 rounded border-aurum-border"
+                    />
+                    <span className="space-y-1">
+                      <span className="block text-sm font-medium text-aurum-text">
+                        Use selected snapshot as delivery anchor
+                      </span>
+                      <span className="block text-xs text-aurum-muted">
+                        Current anchor:{' '}
+                        {useSelectedSnapshotForDailyMarketBriefDelivery
+                          ? (selectedSnapshot?.metadata.portfolioName ??
+                            'Select a portfolio snapshot')
+                          : 'Latest available snapshot'}
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Monthly Financial Review History</CardTitle>
-            <CardDescription>Snapshot-linked report artifacts loaded from the API.</CardDescription>
+            <CardTitle>Report History</CardTitle>
+            <CardDescription>
+              Persisted Monthly Financial Reviews and Daily Market Briefs loaded from the API.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {reportsStatusMessage ? (
@@ -1467,18 +1917,23 @@ export default function AiInsightsPage() {
               </p>
             ) : null}
             {isReportsLoading ? (
-              <p className="text-sm text-aurum-muted">Loading snapshot-scoped report history...</p>
+              <p className="text-sm text-aurum-muted">Loading report history...</p>
             ) : reports.length === 0 ? (
               <p className="text-sm text-aurum-muted">
-                No reports yet. Generate a Monthly Financial Review to create the first persisted
-                report.
+                No reports yet. Generate a Monthly Financial Review or Daily Market Brief to create
+                the first persisted report.
               </p>
             ) : (
               reports.map((report) => (
                 <button
                   key={report.id}
                   type="button"
-                  onClick={() => setSelectedReportId(report.id)}
+                  onClick={() => {
+                    if (report.sourceSnapshotId) {
+                      setSelectedSnapshotId(report.sourceSnapshotId);
+                    }
+                    setSelectedReportId(report.id);
+                  }}
                   className={`w-full rounded-[12px] border px-3 py-2 text-left text-xs transition ${
                     report.id === selectedReportId
                       ? 'border-[var(--aurum-accent)] bg-[var(--aurum-accent)]/10'
@@ -1486,7 +1941,9 @@ export default function AiInsightsPage() {
                   }`}
                 >
                   <p className="font-medium text-aurum-text">{report.title}</p>
-                  <p className="text-aurum-muted">type: {report.reportType}</p>
+                  <p className="text-aurum-muted">
+                    type: {formatReportTypeLabel(report.reportType)}
+                  </p>
                   <p className="text-aurum-muted">created: {formatDateTime(report.createdAt)}</p>
                 </button>
               ))
@@ -1498,7 +1955,7 @@ export default function AiInsightsPage() {
           <CardHeader>
             <CardTitle>Report Detail</CardTitle>
             <CardDescription>
-              Selected persisted report artifact from the monthly review workflow.
+              Selected persisted report artifact from the Reports workflow.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1549,6 +2006,28 @@ export default function AiInsightsPage() {
                         Review Window
                       </p>
                       <p className="text-aurum-text">{selectedReviewMonthLabel}</p>
+                    </div>
+                  ) : null}
+                  {selectedBriefDate ? (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-aurum-muted">Brief Date</p>
+                      <p className="text-aurum-text">{selectedBriefDate}</p>
+                    </div>
+                  ) : null}
+                  {selectedMarketSessionLabel ? (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-aurum-muted">
+                        Market Session
+                      </p>
+                      <p className="text-aurum-text">{selectedMarketSessionLabel}</p>
+                    </div>
+                  ) : null}
+                  {selectedReportScope ? (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-aurum-muted">
+                        Report Scope
+                      </p>
+                      <p className="text-aurum-text">{selectedReportScope}</p>
                     </div>
                   ) : null}
                   {selectedSnapshotSelectionStrategy ? (

@@ -51,26 +51,46 @@ export class AIReportsService {
     sourceRunId?: string;
     metadata?: Record<string, unknown>;
   }): Promise<AIReportArtifact> {
-    const now = new Date().toISOString();
-
-    return this.createOwnedSnapshotReport(
+    return this.createPresetSnapshotReport(
       {
-        id: randomUUID(),
+        userId: input.userId,
         reportType: 'monthly_financial_review_v1',
         taskType: 'monthly_financial_review_v1',
-        sourceRunId:
-          input.sourceRunId?.trim() ||
-          `monthly-review:${input.sourceSnapshotId}:${now}`,
         sourceSnapshotId: input.sourceSnapshotId,
         title: input.title,
         contentMarkdown: input.contentMarkdown,
         promptVersion: input.promptVersion,
-        createdAt: now,
-        updatedAt: now,
+        sourceRunId: input.sourceRunId,
         metadata: input.metadata,
       },
-      input.userId,
       'ai.report.monthly_financial_review',
+      'monthly-review',
+    );
+  }
+
+  async createDailyMarketBriefReport(input: {
+    userId: string;
+    sourceSnapshotId: string;
+    title: string;
+    contentMarkdown: string;
+    promptVersion: string;
+    sourceRunId?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<AIReportArtifact> {
+    return this.createPresetSnapshotReport(
+      {
+        userId: input.userId,
+        reportType: 'daily_market_brief_v1',
+        taskType: 'daily_market_brief_v1',
+        sourceSnapshotId: input.sourceSnapshotId,
+        title: input.title,
+        contentMarkdown: input.contentMarkdown,
+        promptVersion: input.promptVersion,
+        sourceRunId: input.sourceRunId,
+        metadata: input.metadata,
+      },
+      'ai.report.daily_market_brief',
+      'daily-market-brief',
     );
   }
 
@@ -175,6 +195,44 @@ export class AIReportsService {
       updatedAt: now,
       metadata,
     });
+  }
+
+  private async createPresetSnapshotReport(
+    input: {
+      userId: string;
+      reportType: AIReportArtifact['reportType'];
+      taskType: AIReportArtifact['taskType'];
+      sourceSnapshotId: string;
+      title: string;
+      contentMarkdown: string;
+      promptVersion: string;
+      sourceRunId?: string;
+      metadata?: Record<string, unknown>;
+    },
+    featureKey: AIEntitlementFeatureKey,
+    sourceRunPrefix: string,
+  ): Promise<AIReportArtifact> {
+    const now = new Date().toISOString();
+
+    return this.createOwnedSnapshotReport(
+      {
+        id: randomUUID(),
+        reportType: input.reportType,
+        taskType: input.taskType,
+        sourceRunId:
+          input.sourceRunId?.trim() ||
+          `${sourceRunPrefix}:${input.sourceSnapshotId}:${now}`,
+        sourceSnapshotId: input.sourceSnapshotId,
+        title: input.title,
+        contentMarkdown: input.contentMarkdown,
+        promptVersion: input.promptVersion,
+        createdAt: now,
+        updatedAt: now,
+        metadata: input.metadata,
+      },
+      input.userId,
+      featureKey,
+    );
   }
 
   private async createOwnedSnapshotReport(
