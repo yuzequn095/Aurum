@@ -94,6 +94,12 @@ enum AIEntitlementFeatureKey {
   AI_PLANNING_GOALS
 }
 
+enum AIConversationMessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+}
+
 model ConnectedProviderUserRecord {
   id               String   @id @default(cuid())
   userId           String
@@ -136,6 +142,7 @@ model User {
   manualStaticValuations ManualStaticValuationRecord[]
   portfolioSnapshots     PortfolioSnapshotRecord[]
   aiEntitlement          AIEntitlementRecord?
+  aiConversations        AIConversationRecord[]
 }
 
 model AuthIdentity {
@@ -418,6 +425,7 @@ model PortfolioSnapshotRecord {
   positions             PortfolioPositionRecord[]
   reports               AIReportRecord[]
   financialHealthScores FinancialHealthScoreRecord[]
+  conversations         AIConversationRecord[]
 
   @@index([userId, snapshotDate])
   @@index([sourceId])
@@ -463,6 +471,7 @@ model AIReportRecord {
   updatedAt        DateTime @updatedAt
 
   sourceSnapshot PortfolioSnapshotRecord? @relation(fields: [sourceSnapshotId], references: [id], onDelete: SetNull)
+  conversations  AIConversationRecord[]
 
   @@index([createdAt])
   @@index([sourceRunId])
@@ -480,6 +489,7 @@ model FinancialHealthScoreRecord {
   updatedAt        DateTime @updatedAt
 
   sourceSnapshot PortfolioSnapshotRecord @relation(fields: [sourceSnapshotId], references: [id], onDelete: Cascade)
+  conversations  AIConversationRecord[]
 
   @@index([createdAt])
   @@index([sourceSnapshotId])
@@ -498,4 +508,42 @@ model AIEntitlementRecord {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status])
+}
+
+model AIConversationRecord {
+  id                           String   @id @default(cuid())
+  userId                       String
+  title                        String
+  sourceSnapshotId             String?
+  sourceReportId               String?
+  sourceFinancialHealthScoreId String?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+
+  user                       User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceSnapshot             PortfolioSnapshotRecord?      @relation(fields: [sourceSnapshotId], references: [id], onDelete: SetNull)
+  sourceReport               AIReportRecord?               @relation(fields: [sourceReportId], references: [id], onDelete: SetNull)
+  sourceFinancialHealthScore FinancialHealthScoreRecord?   @relation(fields: [sourceFinancialHealthScoreId], references: [id], onDelete: SetNull)
+  messages                   AIConversationMessageRecord[]
+
+  @@index([userId, updatedAt])
+  @@index([sourceSnapshotId])
+  @@index([sourceReportId])
+  @@index([sourceFinancialHealthScoreId])
+}
+
+model AIConversationMessageRecord {
+  id             String                    @id @default(cuid())
+  conversationId String
+  sortOrder      Int
+  role           AIConversationMessageRole
+  content        String
+  metadata       Json?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  conversation AIConversationRecord @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, sortOrder])
+  @@index([conversationId, createdAt])
 }

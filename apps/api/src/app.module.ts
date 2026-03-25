@@ -16,6 +16,7 @@ import { AIReportsModule } from './ai-reports/ai-reports.module';
 import { FinancialHealthScoresModule } from './financial-health-scores/financial-health-scores.module';
 import { ConnectedFinanceModule } from './connected-finance/connected-finance.module';
 import { EntitlementsModule } from './entitlements/entitlements.module';
+import { AIConversationsModule } from './ai-conversations/ai-conversations.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { EntitlementsModule } from './entitlements/entitlements.module';
     ImportModule,
     PortfolioSnapshotsModule,
     EntitlementsModule,
+    AIConversationsModule,
     AIReportsModule,
     FinancialHealthScoresModule,
     ConnectedFinanceModule,
