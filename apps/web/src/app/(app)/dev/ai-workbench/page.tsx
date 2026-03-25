@@ -3,15 +3,16 @@
 import { useMemo, useState } from 'react';
 import {
   calculateFinancialHealthScore,
-  CsvPortfolioSnapshotAdapter,
-  createReportFromCompletedRun,
   createPreparedAIRunRecord,
+  createReportFromCompletedRun,
+  CsvPortfolioSnapshotAdapter,
   getAIRunById,
   listAIRuns,
   portfolioSnapshotToFinancialHealthScoreInput,
   portfolioSnapshotToReportInput,
   submitManualResult,
   type AIRunRecord,
+  type AITaskType,
 } from '@aurum/core';
 import { PageContainer } from '@/components/layout/PageContainer';
 import {
@@ -23,8 +24,8 @@ import {
 } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import {
+  AI_WORKBENCH_SCENARIOS,
   mockPortfolioCsvImportInput,
-  mockPortfolioReportInput,
 } from '@/lib/ai/dev-seeds';
 import { aiReportRepository, aiRunRepository } from '@/lib/ai/repositories';
 
@@ -49,27 +50,37 @@ function formatMoney(value: number): string {
   }).format(value);
 }
 
+function getScenarioByTaskType(taskType: AITaskType) {
+  return AI_WORKBENCH_SCENARIOS.find((scenario) => scenario.taskType === taskType);
+}
+
 export default function AIWorkbenchPage() {
   const [runs, setRuns] = useState<AIRunRecord[]>(() => listAIRuns(repository));
   const [selectedRunId, setSelectedRunId] = useState<string | null>(runs[0]?.id ?? null);
+  const [selectedScenarioTaskType, setSelectedScenarioTaskType] = useState<AITaskType>(
+    AI_WORKBENCH_SCENARIOS[0]?.taskType ?? 'portfolio_report_v1',
+  );
   const [rawOutput, setRawOutput] = useState('');
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [ingestionValidation, setIngestionValidation] =
     useState<IngestionValidationResult | null>(null);
 
+  const selectedScenario = useMemo(
+    () =>
+      getScenarioByTaskType(selectedScenarioTaskType) ?? AI_WORKBENCH_SCENARIOS[0],
+    [selectedScenarioTaskType],
+  );
   const selectedRun = selectedRunId ? getAIRunById(repository, selectedRunId) : undefined;
+  const selectedRunScenario = selectedRun
+    ? getScenarioByTaskType(selectedRun.taskType)
+    : selectedScenario;
   const systemMessage =
     selectedRun?.promptPack.messages.find((message) => message.role === 'system')?.content ?? '';
   const userMessage =
     selectedRun?.promptPack.messages.find((message) => message.role === 'user')?.content ?? '';
-
-  const topPositions = useMemo(
-    () =>
-      [...mockPortfolioReportInput.positions]
-        .sort((a, b) => b.marketValue - a.marketValue)
-        .slice(0, 3),
-    [],
-  );
+  const promptMetadata = selectedRun?.promptPack.metadata
+    ? JSON.stringify(selectedRun.promptPack.metadata, null, 2)
+    : '';
 
   const refreshRuns = () => {
     const next = listAIRuns(repository);
@@ -79,12 +90,14 @@ export default function AIWorkbenchPage() {
   const onCreatePreparedRun = () => {
     try {
       const created = createPreparedAIRunRecord(repository, {
-        taskType: 'portfolio_report_v1',
-        payload: mockPortfolioReportInput as unknown as Record<string, unknown>,
+        taskType: selectedScenario.taskType,
+        payload: selectedScenario.payload,
       });
       setSelectedRunId(created.id);
-      setRawOutput('');
-      setStatusMessage(`Prepared run created: ${created.id}`);
+      setRawOutput(selectedScenario.manualOutputExample ?? '');
+      setStatusMessage(
+        `Prepared run created for ${selectedScenario.title}: ${created.id}`,
+      );
       refreshRuns();
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Failed to create run');
@@ -97,13 +110,9 @@ export default function AIWorkbenchPage() {
       return;
     }
 
-    const combined = [
-      'System message:',
-      systemMessage,
-      '',
-      'User message:',
-      userMessage,
-    ].join('\n');
+    const combined = ['System message:', systemMessage, '', 'User message:', userMessage].join(
+      '\n',
+    );
 
     try {
       await navigator.clipboard.writeText(combined);
@@ -133,6 +142,16 @@ export default function AIWorkbenchPage() {
     }
   };
 
+  const onLoadExampleOutput = () => {
+    if (!selectedRunScenario?.manualOutputExample) {
+      setStatusMessage('No example output is defined for this scenario yet.');
+      return;
+    }
+
+    setRawOutput(selectedRunScenario.manualOutputExample);
+    setStatusMessage(`Loaded example output for ${selectedRunScenario.title}.`);
+  };
+
   const onGenerateReportFromRun = () => {
     if (!selectedRunId) {
       setStatusMessage('Select a run first.');
@@ -142,6 +161,12 @@ export default function AIWorkbenchPage() {
     const run = getAIRunById(repository, selectedRunId);
     if (!run) {
       setStatusMessage(`AI run not found for id: ${selectedRunId}`);
+      return;
+    }
+
+    const runScenario = getScenarioByTaskType(run.taskType);
+    if (!runScenario?.reportCapable) {
+      setStatusMessage('This task is analysis-only in the workbench and does not create a report artifact.');
       return;
     }
 
@@ -192,10 +217,12 @@ export default function AIWorkbenchPage() {
       <header className='space-y-2'>
         <h1 className='text-2xl font-semibold tracking-tight text-aurum-text'>AI Workbench</h1>
         <p className='text-sm text-aurum-muted'>
-          Developer validation page for Milestone 11.1 manual AI workflow.
+          Developer validation surface for preset task prompt packs, manual provider flows, and
+          no-key AI workflow checks.
         </p>
         <p className='text-xs text-aurum-muted'>
-          Data is persisted in browser localStorage and shared across AI pages.
+          Prepared runs and generated local report artifacts are stored in browser localStorage for
+          repeatable manual testing.
         </p>
       </header>
 
@@ -208,35 +235,40 @@ export default function AIWorkbenchPage() {
       <section className='grid grid-cols-1 gap-6 xl:grid-cols-2'>
         <Card>
           <CardHeader>
-            <CardTitle>1. Input / Scenario</CardTitle>
-            <CardDescription>Mock PortfolioReportInput used for validation.</CardDescription>
+            <CardTitle>1. Preset Task Scenarios</CardTitle>
+            <CardDescription>
+              Create prepared runs for system-owned prompt packs without requiring a live API key.
+            </CardDescription>
           </CardHeader>
-          <CardContent className='space-y-3 text-sm text-aurum-text'>
-            <p>
-              <span className='font-medium'>Portfolio:</span> {mockPortfolioReportInput.portfolioName}
-            </p>
-            <p>
-              <span className='font-medium'>Snapshot Date:</span>{' '}
-              {mockPortfolioReportInput.snapshotDate}
-            </p>
-            <p>
-              <span className='font-medium'>Total Value:</span>{' '}
-              {formatMoney(mockPortfolioReportInput.totalValue)}
-            </p>
-            <p>
-              <span className='font-medium'>Cash:</span>{' '}
-              {formatMoney(mockPortfolioReportInput.cashValue ?? 0)}
-            </p>
-            <div>
-              <p className='font-medium'>Top Positions:</p>
-              <ul className='ml-5 list-disc'>
-                {topPositions.map((position) => (
-                  <li key={position.symbol}>
-                    {position.symbol} - {formatMoney(position.marketValue)}
-                  </li>
-                ))}
-              </ul>
+          <CardContent className='space-y-3'>
+            <div className='grid gap-2'>
+              {AI_WORKBENCH_SCENARIOS.map((scenario) => (
+                <button
+                  key={scenario.taskType}
+                  type='button'
+                  onClick={() => setSelectedScenarioTaskType(scenario.taskType)}
+                  className={`w-full rounded-[12px] border px-3 py-3 text-left text-sm ${
+                    scenario.taskType === selectedScenario.taskType
+                      ? 'border-[var(--aurum-accent)] bg-[var(--aurum-accent)]/10'
+                      : 'border-[var(--aurum-border)] bg-[var(--aurum-surface)]'
+                  }`}
+                >
+                  <div className='font-medium text-aurum-text'>{scenario.title}</div>
+                  <div className='mt-1 text-xs text-aurum-muted'>{scenario.description}</div>
+                  <div className='mt-2 text-[11px] uppercase tracking-wide text-aurum-muted'>
+                    {scenario.taskType} • {scenario.reportCapable ? 'report-capable' : 'analysis-only'}
+                  </div>
+                </button>
+              ))}
             </div>
+
+            <div className='rounded-[12px] border border-aurum-border bg-aurum-surface p-3 text-xs text-aurum-text'>
+              <p className='font-medium'>{selectedScenario.title} payload preview</p>
+              <pre className='mt-2 max-h-64 overflow-auto whitespace-pre-wrap'>
+                {JSON.stringify(selectedScenario.payload, null, 2)}
+              </pre>
+            </div>
+
             <Button variant='primary' onClick={onCreatePreparedRun}>
               Create Prepared Run
             </Button>
@@ -245,8 +277,10 @@ export default function AIWorkbenchPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>2. Run List</CardTitle>
-            <CardDescription>Select a run to inspect or submit output.</CardDescription>
+            <CardTitle>2. Prepared Run List</CardTitle>
+            <CardDescription>
+              Inspect prepared runs, switch between prompt packs, and continue manual validation.
+            </CardDescription>
           </CardHeader>
           <CardContent className='space-y-2'>
             {runs.length === 0 ? (
@@ -259,6 +293,7 @@ export default function AIWorkbenchPage() {
                   onClick={() => {
                     setSelectedRunId(run.id);
                     setRawOutput(run.rawOutput ?? '');
+                    setSelectedScenarioTaskType(run.taskType);
                   }}
                   className={`w-full rounded-[12px] border px-3 py-2 text-left text-xs ${
                     run.id === selectedRunId
@@ -271,6 +306,9 @@ export default function AIWorkbenchPage() {
                     {run.taskType} | {run.status} | {run.provider}
                   </div>
                   <div className='text-aurum-muted'>createdAt: {run.createdAt}</div>
+                  {run.inputSummary ? (
+                    <div className='mt-1 text-aurum-muted'>{run.inputSummary}</div>
+                  ) : null}
                 </button>
               ))
             )}
@@ -281,14 +319,16 @@ export default function AIWorkbenchPage() {
       <Card>
         <CardHeader>
           <CardTitle>3. Prompt Pack Viewer</CardTitle>
-          <CardDescription>Inspect metadata and prompt messages for selected run.</CardDescription>
+          <CardDescription>
+            Inspect the structured prompt pack exactly as the manual provider prepares it.
+          </CardDescription>
         </CardHeader>
         <CardContent className='space-y-4'>
           {!selectedRun ? (
             <p className='text-sm text-aurum-muted'>Select or create a run first.</p>
           ) : (
             <>
-              <div className='grid grid-cols-1 gap-2 text-sm md:grid-cols-2 xl:grid-cols-4'>
+              <div className='grid grid-cols-1 gap-2 text-sm md:grid-cols-2 xl:grid-cols-5'>
                 <div>
                   <p className='text-xs uppercase tracking-wide text-aurum-muted'>Provider</p>
                   <p>{selectedRun.provider}</p>
@@ -302,10 +342,34 @@ export default function AIWorkbenchPage() {
                   <p>{selectedRun.promptVersion}</p>
                 </div>
                 <div>
+                  <p className='text-xs uppercase tracking-wide text-aurum-muted'>Output Format</p>
+                  <p>{selectedRun.promptPack.expectedOutputFormat ?? 'markdown'}</p>
+                </div>
+                <div>
                   <p className='text-xs uppercase tracking-wide text-aurum-muted'>Status</p>
                   <p>{selectedRun.status}</p>
                 </div>
               </div>
+
+              {selectedRun.promptPack.instructions?.length ? (
+                <div className='space-y-2'>
+                  <p className='text-sm font-medium'>Prompt Instructions</p>
+                  <ul className='ml-5 list-disc text-sm text-aurum-text'>
+                    {selectedRun.promptPack.instructions.map((instruction) => (
+                      <li key={instruction}>{instruction}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {promptMetadata ? (
+                <div className='space-y-2'>
+                  <p className='text-sm font-medium'>Prompt Metadata</p>
+                  <pre className='max-h-48 overflow-auto rounded-[12px] border border-aurum-border bg-aurum-surface p-3 text-xs whitespace-pre-wrap'>
+                    {promptMetadata}
+                  </pre>
+                </div>
+              ) : null}
 
               <div className='space-y-2'>
                 <p className='text-sm font-medium'>System Message</p>
@@ -332,7 +396,9 @@ export default function AIWorkbenchPage() {
       <Card>
         <CardHeader>
           <CardTitle>4. Manual Result Submission</CardTitle>
-          <CardDescription>Paste external model output and mark the run completed.</CardDescription>
+          <CardDescription>
+            Paste an external model response or load an example output to complete the run manually.
+          </CardDescription>
         </CardHeader>
         <CardContent className='space-y-3'>
           <textarea
@@ -342,14 +408,24 @@ export default function AIWorkbenchPage() {
             rows={10}
             className='w-full rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-sm text-aurum-text'
           />
-          <div className='flex gap-2'>
+          <div className='flex flex-wrap gap-2'>
             <Button variant='primary' onClick={onSubmitManualResult}>
               Submit Manual Result
             </Button>
             <Button variant='secondary' onClick={onGenerateReportFromRun}>
               Generate Report from Run
             </Button>
+            <Button variant='secondary' onClick={onLoadExampleOutput}>
+              Load Example Output
+            </Button>
           </div>
+          {selectedRunScenario ? (
+            <p className='text-xs text-aurum-muted'>
+              {selectedRunScenario.reportCapable
+                ? 'This task can generate a local report artifact after the manual result is submitted.'
+                : 'This task is currently validation-only in the workbench and does not map to a report artifact.'}
+            </p>
+          ) : null}
           {selectedRun?.rawOutput ? (
             <div className='space-y-2'>
               <p className='text-sm font-medium'>Saved Raw Output</p>
@@ -365,8 +441,8 @@ export default function AIWorkbenchPage() {
         <CardHeader>
           <CardTitle>5. Ingestion Validation</CardTitle>
           <CardDescription>
-            Validate adapter and mapper chain: CSV-shaped input to snapshot, report input, and
-            score input.
+            Validate the adapter and mapper chain from CSV-shaped input to snapshot, report input,
+            and score input.
           </CardDescription>
         </CardHeader>
         <CardContent className='space-y-3'>
@@ -375,9 +451,7 @@ export default function AIWorkbenchPage() {
           </Button>
 
           {!ingestionValidation ? (
-            <p className='text-sm text-aurum-muted'>
-              No ingestion validation result yet.
-            </p>
+            <p className='text-sm text-aurum-muted'>No ingestion validation result yet.</p>
           ) : (
             <div className='grid grid-cols-1 gap-2 text-sm md:grid-cols-2 xl:grid-cols-4'>
               <p>

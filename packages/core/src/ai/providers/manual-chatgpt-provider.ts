@@ -2,7 +2,14 @@ import { getAITaskDefinition } from '../tasks';
 import type { AIRouteDecision, AIRunInput } from '../types';
 import type { AIProviderAdapter, PrepareRunResult } from './provider-adapter';
 
-const MANUAL_CHATGPT_SUPPORTED_TASKS: AIRunInput['taskType'][] = ['portfolio_report_v1'];
+const MANUAL_CHATGPT_SUPPORTED_TASKS: AIRunInput['taskType'][] = [
+  'portfolio_report_v1',
+  'monthly_financial_review_v1',
+  'daily_market_brief_v1',
+  'portfolio_analysis_v1',
+  'health_score_explainer_v1',
+  'budget_analysis_v1',
+];
 
 export const manualChatGPTProvider: AIProviderAdapter = {
   kind: 'manual_chatgpt',
