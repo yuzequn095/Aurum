@@ -15,14 +15,35 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/Button';
 import { mockPortfolioCsvImportInput, mockPortfolioReportManualOutput } from '@/lib/ai/dev-seeds';
 import { aiRunRepository } from '@/lib/ai/repositories';
+import {
+  createAIConversation,
+  deleteAIConversation,
+  getAIConversationById,
+  listAIConversations,
+  type AIConversationContext,
+  type AIConversationDetailView,
+  type AIConversationSummaryView,
+} from '@/lib/api/ai-conversations';
 import { createPortfolioSnapshot, listPortfolioSnapshots } from '@/lib/api/portfolio-snapshots';
 import { createReportForSnapshot, listAIReportsBySourceSnapshotId } from '@/lib/api/ai-reports';
 import {
   createFinancialHealthScoreForSnapshot,
   listFinancialHealthScoresBySourceSnapshotId,
 } from '@/lib/api/financial-health-scores';
+import {
+  getCurrentUserEntitlements,
+  type CurrentUserEntitlementsView,
+} from '@/lib/api/entitlements';
+import { runQuickChat } from '@/lib/api/quick-chat';
 
 const runRepository = aiRunRepository;
+
+type QuickChatTranscriptMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+  mode?: 'llm' | 'fallback';
+};
 
 function formatMoney(value: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -65,6 +86,78 @@ function formatDimensionName(value: string): string {
     .join(' ');
 }
 
+function normalizeConversationContext(input: {
+  sourceSnapshotId?: string | null;
+  sourceReportId?: string | null;
+  sourceFinancialHealthScoreId?: string | null;
+}): AIConversationContext | undefined {
+  const context: AIConversationContext = {
+    sourceSnapshotId: input.sourceSnapshotId ?? undefined,
+    sourceReportId: input.sourceReportId ?? undefined,
+    sourceFinancialHealthScoreId: input.sourceFinancialHealthScoreId ?? undefined,
+  };
+
+  return Object.values(context).some((value) => value != null) ? context : undefined;
+}
+
+function formatConversationContextSummary(context?: AIConversationContext): string {
+  if (!context) {
+    return 'No linked snapshot, report, or score context.';
+  }
+
+  const labels: string[] = [];
+  if (context.sourceSnapshotId) {
+    labels.push(`Snapshot ${context.sourceSnapshotId}`);
+  }
+  if (context.sourceReportId) {
+    labels.push(`Report ${context.sourceReportId}`);
+  }
+  if (context.sourceFinancialHealthScoreId) {
+    labels.push(`Score ${context.sourceFinancialHealthScoreId}`);
+  }
+
+  return labels.join(' · ');
+}
+
+function getFirstUserMessage(
+  messages: QuickChatTranscriptMessage[],
+): QuickChatTranscriptMessage | undefined {
+  return messages.find((message) => message.role === 'user');
+}
+
+function buildConversationTitle(input: {
+  messages: QuickChatTranscriptMessage[];
+  snapshotName?: string;
+  reportTitle?: string;
+  scoreHeadline?: string;
+}): string {
+  if (input.reportTitle?.trim()) {
+    return `${input.reportTitle.trim()} Chat`.slice(0, 160);
+  }
+
+  if (input.snapshotName?.trim()) {
+    return `${input.snapshotName.trim()} Quick Chat`.slice(0, 160);
+  }
+
+  if (input.scoreHeadline?.trim()) {
+    return input.scoreHeadline.trim().slice(0, 160);
+  }
+
+  const firstUserMessage = getFirstUserMessage(input.messages)?.content.trim();
+  if (firstUserMessage) {
+    return firstUserMessage.slice(0, 160);
+  }
+
+  return 'Saved Quick Chat';
+}
+
+function hasEnabledFeature(
+  entitlements: CurrentUserEntitlementsView | null,
+  featureKey: CurrentUserEntitlementsView['enabledFeatureKeys'][number],
+): boolean {
+  return entitlements == null || entitlements.enabledFeatureKeys.includes(featureKey);
+}
+
 export default function AiInsightsPage() {
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null);
@@ -82,6 +175,24 @@ export default function AiInsightsPage() {
   const [isScoresLoading, setIsScoresLoading] = useState(false);
   const [isGeneratingScore, setIsGeneratingScore] = useState(false);
   const [scoreStatusMessage, setScoreStatusMessage] = useState<string>('');
+  const [entitlements, setEntitlements] = useState<CurrentUserEntitlementsView | null>(null);
+  const [entitlementsStatusMessage, setEntitlementsStatusMessage] = useState('');
+  const [quickChatMessages, setQuickChatMessages] = useState<QuickChatTranscriptMessage[]>([]);
+  const [quickChatDraft, setQuickChatDraft] = useState('');
+  const [quickChatContext, setQuickChatContext] = useState<AIConversationContext | undefined>();
+  const [quickChatStatusMessage, setQuickChatStatusMessage] = useState('');
+  const [isQuickChatRunning, setIsQuickChatRunning] = useState(false);
+  const [isSavingConversation, setIsSavingConversation] = useState(false);
+  const [lastSavedConversationId, setLastSavedConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<AIConversationSummaryView[]>([]);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<AIConversationDetailView | null>(
+    null,
+  );
+  const [isConversationsLoading, setIsConversationsLoading] = useState(false);
+  const [isConversationDetailLoading, setIsConversationDetailLoading] = useState(false);
+  const [isDeletingConversation, setIsDeletingConversation] = useState(false);
+  const [conversationStatusMessage, setConversationStatusMessage] = useState('');
 
   const selectedReport = reports.find((report) => report.id === selectedReportId);
   const selectedSnapshot = selectedSnapshotId
@@ -90,6 +201,24 @@ export default function AiInsightsPage() {
   const selectedScore = scores.find((score) => score.id === selectedScoreId);
   const selectedScoreResult = selectedScore?.result;
   const selectedScoreInsight = selectedScore?.insight;
+  const selectedContext = normalizeConversationContext({
+    sourceSnapshotId: selectedSnapshotId,
+    sourceReportId: selectedReportId,
+    sourceFinancialHealthScoreId: selectedScoreId,
+  });
+  const activeQuickChatContext =
+    quickChatMessages.length > 0 ? quickChatContext : (quickChatContext ?? selectedContext);
+  const quickChatEnabled = hasEnabledFeature(entitlements, 'ai.quick_chat');
+  const conversationSaveEnabled = hasEnabledFeature(entitlements, 'ai.conversations.save');
+  const quickChatSnapshot = activeQuickChatContext?.sourceSnapshotId
+    ? snapshots.find((snapshot) => snapshot.id === activeQuickChatContext.sourceSnapshotId)
+    : undefined;
+  const quickChatReport = activeQuickChatContext?.sourceReportId
+    ? reports.find((report) => report.id === activeQuickChatContext.sourceReportId)
+    : undefined;
+  const quickChatScore = activeQuickChatContext?.sourceFinancialHealthScoreId
+    ? scores.find((score) => score.id === activeQuickChatContext.sourceFinancialHealthScoreId)
+    : undefined;
 
   const loadSnapshots = async () => {
     setIsSnapshotsLoading(true);
@@ -118,6 +247,68 @@ export default function AiInsightsPage() {
       );
     } finally {
       setIsSnapshotsLoading(false);
+    }
+  };
+
+  const loadEntitlements = async () => {
+    setEntitlementsStatusMessage('');
+
+    try {
+      const nextEntitlements = await getCurrentUserEntitlements();
+      setEntitlements(nextEntitlements);
+    } catch (error) {
+      setEntitlementsStatusMessage(
+        error instanceof Error ? error.message : 'Failed to load AI entitlements.',
+      );
+    }
+  };
+
+  const loadConversations = async (preferredConversationId?: string) => {
+    setIsConversationsLoading(true);
+    setConversationStatusMessage('');
+
+    try {
+      const nextConversations = await listAIConversations();
+      setConversations(nextConversations);
+      setSelectedConversationId((currentSelectedId) => {
+        if (
+          preferredConversationId &&
+          nextConversations.some((conversation) => conversation.id === preferredConversationId)
+        ) {
+          return preferredConversationId;
+        }
+
+        const hasCurrent = currentSelectedId
+          ? nextConversations.some((conversation) => conversation.id === currentSelectedId)
+          : false;
+        return hasCurrent ? currentSelectedId : (nextConversations[0]?.id ?? null);
+      });
+      if (nextConversations.length === 0) {
+        setSelectedConversation(null);
+        setConversationStatusMessage('No saved conversations yet.');
+      }
+    } catch (error) {
+      setConversationStatusMessage(
+        error instanceof Error ? error.message : 'Failed to load saved conversations.',
+      );
+    } finally {
+      setIsConversationsLoading(false);
+    }
+  };
+
+  const loadConversationDetail = async (conversationId: string) => {
+    setIsConversationDetailLoading(true);
+
+    try {
+      const nextConversation = await getAIConversationById(conversationId);
+      setSelectedConversation(nextConversation);
+    } catch (error) {
+      setSelectedConversation(null);
+      setConversationStatusMessage(
+        error instanceof Error ? error.message : 'Failed to load saved conversation detail.',
+      );
+    } finally {
+      setIsConversationDetailLoading(false);
     }
   };
 
@@ -191,6 +382,8 @@ export default function AiInsightsPage() {
 
   useEffect(() => {
     void loadSnapshots();
+    void loadEntitlements();
+    void loadConversations();
   }, []);
 
   useEffect(() => {
@@ -200,6 +393,27 @@ export default function AiInsightsPage() {
   useEffect(() => {
     void loadScoresForSelectedSnapshot(selectedSnapshotId);
   }, [selectedSnapshotId]);
+
+  useEffect(() => {
+    if (quickChatMessages.length === 0) {
+      setQuickChatContext(
+        normalizeConversationContext({
+          sourceSnapshotId: selectedSnapshotId,
+          sourceReportId: selectedReportId,
+          sourceFinancialHealthScoreId: selectedScoreId,
+        }),
+      );
+    }
+  }, [quickChatMessages.length, selectedSnapshotId, selectedReportId, selectedScoreId]);
+
+  useEffect(() => {
+    if (!selectedConversationId) {
+      setSelectedConversation(null);
+      return;
+    }
+
+    void loadConversationDetail(selectedConversationId);
+  }, [selectedConversationId]);
 
   const onGenerateDemoReport = async () => {
     setIsGenerating(true);
@@ -299,6 +513,143 @@ export default function AiInsightsPage() {
     }
   };
 
+  const onRunQuickChat = async () => {
+    const content = quickChatDraft.trim();
+    if (!content) {
+      setQuickChatStatusMessage('Enter a message to start Quick Chat.');
+      return;
+    }
+
+    const nextContext = quickChatMessages.length === 0 ? selectedContext : activeQuickChatContext;
+    const nextUserMessage: QuickChatTranscriptMessage = {
+      role: 'user',
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    const nextTranscript = [...quickChatMessages, nextUserMessage];
+
+    setQuickChatMessages(nextTranscript);
+    setQuickChatDraft('');
+    setQuickChatContext(nextContext);
+    setQuickChatStatusMessage('');
+    setLastSavedConversationId(null);
+    setIsQuickChatRunning(true);
+
+    try {
+      const response = await runQuickChat({
+        messages: nextTranscript.map((message) => ({
+          role: message.role,
+          content: message.content,
+        })),
+        sourceSnapshotId: nextContext?.sourceSnapshotId,
+        sourceReportId: nextContext?.sourceReportId,
+        sourceFinancialHealthScoreId: nextContext?.sourceFinancialHealthScoreId,
+      });
+
+      setQuickChatMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          role: 'assistant',
+          content: response.reply.content,
+          createdAt: response.reply.createdAt,
+          mode: response.mode,
+        },
+      ]);
+      setQuickChatContext(response.context ?? nextContext);
+      setQuickChatStatusMessage(
+        response.mode === 'fallback'
+          ? 'Quick Chat replied from local fallback context. The draft is still ephemeral until you save it.'
+          : 'Quick Chat replied. The draft is still ephemeral until you save it.',
+      );
+    } catch (error) {
+      setQuickChatStatusMessage(
+        error instanceof Error ? error.message : 'Quick Chat failed to generate a reply.',
+      );
+    } finally {
+      setIsQuickChatRunning(false);
+    }
+  };
+
+  const onClearQuickChat = () => {
+    setQuickChatMessages([]);
+    setQuickChatDraft('');
+    setQuickChatStatusMessage('Quick Chat draft cleared. Nothing was persisted.');
+    setQuickChatContext(selectedContext);
+    setLastSavedConversationId(null);
+  };
+
+  const onSaveQuickChat = async () => {
+    if (quickChatMessages.length === 0) {
+      setQuickChatStatusMessage('Quick Chat has no transcript to save yet.');
+      return;
+    }
+
+    const draftContext = activeQuickChatContext;
+    setIsSavingConversation(true);
+    setQuickChatStatusMessage('');
+    setConversationStatusMessage('');
+
+    try {
+      const createdConversation = await createAIConversation({
+        title: buildConversationTitle({
+          messages: quickChatMessages,
+          snapshotName: quickChatSnapshot?.metadata.portfolioName,
+          reportTitle: quickChatReport?.title,
+          scoreHeadline: quickChatScore?.insight.headline,
+        }),
+        sourceSnapshotId: draftContext?.sourceSnapshotId,
+        sourceReportId: draftContext?.sourceReportId,
+        sourceFinancialHealthScoreId: draftContext?.sourceFinancialHealthScoreId,
+        messages: quickChatMessages.map((message) => ({
+          role: message.role,
+          content: message.content,
+        })),
+      });
+
+      setLastSavedConversationId(createdConversation.id);
+      setSelectedConversation(createdConversation);
+      setSelectedConversationId(createdConversation.id);
+      await loadConversations(createdConversation.id);
+      setConversationStatusMessage(
+        `Saved quick chat to Conversations: ${createdConversation.title}`,
+      );
+      setQuickChatStatusMessage('Quick Chat saved. Future access now comes from Conversations.');
+    } catch (error) {
+      setQuickChatStatusMessage(
+        error instanceof Error ? error.message : 'Failed to save quick chat.',
+      );
+    } finally {
+      setIsSavingConversation(false);
+    }
+  };
+
+  const onDeleteSelectedConversation = async () => {
+    if (!selectedConversationId) {
+      return;
+    }
+
+    setIsDeletingConversation(true);
+    setConversationStatusMessage('');
+
+    try {
+      await deleteAIConversation(selectedConversationId);
+      const deletedConversationId = selectedConversationId;
+      setSelectedConversationId(null);
+      setSelectedConversation(null);
+      await loadConversations();
+      if (lastSavedConversationId === deletedConversationId) {
+        setLastSavedConversationId(null);
+      }
+      setConversationStatusMessage('Saved conversation deleted.');
+    } catch (error) {
+      setConversationStatusMessage(
+        error instanceof Error ? error.message : 'Failed to delete saved conversation.',
+      );
+    } finally {
+      setIsDeletingConversation(false);
+    }
+  };
+
   return (
     <PageContainer className="space-y-6">
       <Card>
@@ -306,8 +657,8 @@ export default function AiInsightsPage() {
           <div className="space-y-1">
             <CardTitle>AI Insights</CardTitle>
             <CardDescription>
-              Report artifact view for Milestone 11.2. Generate demo data to validate the
-              run-to-report pipeline end-to-end.
+              Snapshot-driven AI product surface with Quick Chat, saved conversations, persisted
+              reports, and financial health scores.
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -325,6 +676,292 @@ export default function AiInsightsPage() {
           ) : null}
         </CardHeader>
       </Card>
+
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <Card>
+          <CardHeader className="space-y-3">
+            <div className="space-y-1">
+              <CardTitle>Quick Chat</CardTitle>
+              <CardDescription>
+                Ephemeral by default. Use selected snapshot, report, or score context when you want
+                grounded answers, then explicitly save the transcript if you want it in
+                Conversations.
+              </CardDescription>
+            </div>
+            <div className="rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3 text-xs text-aurum-text">
+              <p className="font-medium">Draft context</p>
+              <p className="mt-1 text-aurum-muted">
+                {formatConversationContextSummary(activeQuickChatContext)}
+              </p>
+            </div>
+            {entitlementsStatusMessage ? (
+              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
+                {entitlementsStatusMessage}
+              </p>
+            ) : null}
+            {!quickChatEnabled ? (
+              <p className="rounded-[10px] border border-[var(--aurum-danger)]/30 bg-[var(--aurum-danger)]/10 px-3 py-2 text-xs text-aurum-text">
+                Quick Chat is currently unavailable for this account.
+              </p>
+            ) : null}
+            {!conversationSaveEnabled ? (
+              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
+                Saving is currently unavailable, but historical saved conversations remain readable.
+              </p>
+            ) : null}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="max-h-[420px] space-y-3 overflow-auto rounded-[16px] border border-aurum-border bg-[var(--aurum-surface-alt)] p-4">
+              {quickChatMessages.length === 0 ? (
+                <div className="space-y-2 text-sm text-aurum-muted">
+                  <p>Quick Chat starts as a local draft.</p>
+                  <p>Select a snapshot, report, or score if you want grounded context.</p>
+                </div>
+              ) : (
+                quickChatMessages.map((message, index) => (
+                  <div
+                    key={`${message.createdAt}-${index}`}
+                    className={`rounded-[14px] border px-3 py-3 text-sm ${
+                      message.role === 'assistant'
+                        ? 'border-[var(--aurum-accent)]/25 bg-[var(--aurum-accent)]/10'
+                        : 'border-aurum-border bg-aurum-surface'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-medium uppercase tracking-wide text-aurum-muted">
+                        {message.role === 'assistant' ? 'Aurum' : 'You'}
+                      </p>
+                      <p className="text-[11px] text-aurum-muted">
+                        {formatDateTime(message.createdAt)}
+                      </p>
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap text-aurum-text">{message.content}</p>
+                    {message.mode ? (
+                      <p className="mt-2 text-[11px] text-aurum-muted">
+                        Reply mode: {message.mode === 'llm' ? 'provider-backed' : 'fallback'}
+                      </p>
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-aurum-text">Message</span>
+              <textarea
+                value={quickChatDraft}
+                onChange={(event) => setQuickChatDraft(event.target.value)}
+                rows={4}
+                placeholder="Ask a question about your selected snapshot, report, or score."
+                className="w-full rounded-[16px] border border-aurum-border bg-aurum-surface px-4 py-3 text-sm text-aurum-text outline-none transition focus:border-[var(--aurum-accent)] focus:ring-2 focus:ring-[var(--aurum-accent)]/20"
+              />
+            </label>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="primary"
+                onClick={() => void onRunQuickChat()}
+                disabled={!quickChatEnabled || isQuickChatRunning}
+              >
+                {isQuickChatRunning ? 'Replying...' : 'Send Quick Chat'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => void onSaveQuickChat()}
+                disabled={
+                  !conversationSaveEnabled || quickChatMessages.length === 0 || isSavingConversation
+                }
+              >
+                {isSavingConversation ? 'Saving...' : 'Save to Conversations'}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={onClearQuickChat}
+                disabled={quickChatMessages.length === 0 && quickChatDraft.trim().length === 0}
+              >
+                Clear Draft
+              </Button>
+              {lastSavedConversationId ? (
+                <span className="text-xs text-aurum-muted">
+                  Saved as conversation {lastSavedConversationId}
+                </span>
+              ) : (
+                <span className="text-xs text-aurum-muted">Quick Chat is not auto-saved.</span>
+              )}
+            </div>
+
+            {quickChatStatusMessage ? (
+              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
+                {quickChatStatusMessage}
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Conversation Flow</CardTitle>
+            <CardDescription>
+              Quick Chat stays local until you save it. Saved chats then appear in Conversations and
+              remain readable later without changing the snapshot-first architecture.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-aurum-text">
+            <div className="rounded-[12px] border border-aurum-border bg-aurum-surface px-4 py-3">
+              <p className="font-medium">1. Start in Quick Chat</p>
+              <p className="mt-1 text-aurum-muted">
+                Ask a grounded question using the selected snapshot, report, or financial health
+                score.
+              </p>
+            </div>
+            <div className="rounded-[12px] border border-aurum-border bg-aurum-surface px-4 py-3">
+              <p className="font-medium">2. Save only when it matters</p>
+              <p className="mt-1 text-aurum-muted">
+                Saving is explicit and writes into the persistent conversation foundation from
+                Milestone 13.1C.
+              </p>
+            </div>
+            <div className="rounded-[12px] border border-aurum-border bg-aurum-surface px-4 py-3">
+              <p className="font-medium">3. Reopen from Conversations</p>
+              <p className="mt-1 text-aurum-muted">
+                Saved conversations can be listed, opened, and deleted later from the same AI
+                Insights surface.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]">
+        <Card>
+          <CardHeader className="space-y-3">
+            <div className="space-y-1">
+              <CardTitle>Conversations</CardTitle>
+              <CardDescription>
+                Saved Quick Chat transcripts that belong to the current user.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => void loadConversations(selectedConversationId ?? undefined)}
+                disabled={isConversationsLoading}
+              >
+                {isConversationsLoading ? 'Loading...' : 'Refresh Conversations'}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => void onDeleteSelectedConversation()}
+                disabled={!selectedConversationId || isDeletingConversation}
+              >
+                {isDeletingConversation ? 'Deleting...' : 'Delete Selected'}
+              </Button>
+            </div>
+            {conversationStatusMessage ? (
+              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
+                {conversationStatusMessage}
+              </p>
+            ) : null}
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {isConversationsLoading ? (
+              <p className="text-sm text-aurum-muted">Loading saved conversations...</p>
+            ) : conversations.length === 0 ? (
+              <p className="text-sm text-aurum-muted">
+                No saved conversations yet. Save a Quick Chat to start this history.
+              </p>
+            ) : (
+              conversations.map((conversation) => (
+                <button
+                  key={conversation.id}
+                  type="button"
+                  onClick={() => setSelectedConversationId(conversation.id)}
+                  className={`w-full rounded-[12px] border px-3 py-3 text-left text-xs transition ${
+                    conversation.id === selectedConversationId
+                      ? 'border-[var(--aurum-accent)] bg-[var(--aurum-accent)]/10'
+                      : 'border-[var(--aurum-border)] bg-[var(--aurum-surface)] hover:bg-[var(--aurum-surface-alt)]'
+                  }`}
+                >
+                  <p className="font-medium text-aurum-text">{conversation.title}</p>
+                  <p className="mt-1 text-aurum-muted">
+                    {conversation.messageCount} messages
+                    {conversation.lastMessageAt
+                      ? ` · last activity ${formatDateTime(conversation.lastMessageAt)}`
+                      : ''}
+                  </p>
+                  <p className="mt-1 text-aurum-muted">
+                    {formatConversationContextSummary(conversation.context)}
+                  </p>
+                </button>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Saved Conversation Detail</CardTitle>
+            <CardDescription>
+              Persistent transcript detail loaded from the conversation API.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isConversationDetailLoading ? (
+              <p className="text-sm text-aurum-muted">Loading conversation...</p>
+            ) : !selectedConversation ? (
+              <p className="text-sm text-aurum-muted">
+                Select a saved conversation to inspect its transcript.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-aurum-muted">Title</p>
+                    <p className="text-aurum-text">{selectedConversation.title}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-aurum-muted">Last Updated</p>
+                    <p className="text-aurum-text">
+                      {formatDateTime(selectedConversation.updatedAt)}
+                    </p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-xs uppercase tracking-wide text-aurum-muted">Context</p>
+                    <p className="text-aurum-text">
+                      {formatConversationContextSummary(selectedConversation.context)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {selectedConversation.messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`rounded-[14px] border px-3 py-3 text-sm ${
+                        message.role === 'assistant'
+                          ? 'border-[var(--aurum-accent)]/25 bg-[var(--aurum-accent)]/10'
+                          : message.role === 'system'
+                            ? 'border-dashed border-aurum-border bg-aurum-surface'
+                            : 'border-aurum-border bg-aurum-surface'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-medium uppercase tracking-wide text-aurum-muted">
+                          {message.role}
+                        </p>
+                        <p className="text-[11px] text-aurum-muted">
+                          {formatDateTime(message.createdAt)}
+                        </p>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-aurum-text">{message.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]">
         <Card>

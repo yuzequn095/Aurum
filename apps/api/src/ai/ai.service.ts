@@ -6,13 +6,24 @@ import type {
   MonthlyReportContext,
   MonthlyReportResponse,
 } from './insights/types';
+import { QuickChatRequestDto } from './quick-chat/dto/quick-chat.dto';
+import { QuickChatService } from './quick-chat/quick-chat.service';
+import type { QuickChatResponseView } from './quick-chat/quick-chat.types';
 
 @Injectable()
 export class AiService {
   constructor(
     private readonly analyticsService: AnalyticsService,
+    private readonly quickChatService: QuickChatService,
     @Inject(INSIGHT_ENGINE) private readonly insightEngine: InsightEngine,
   ) {}
+
+  async runQuickChat(
+    userId: string,
+    dto: QuickChatRequestDto,
+  ): Promise<QuickChatResponseView> {
+    return this.quickChatService.runQuickChat(userId, dto);
+  }
 
   async getMonthlyReport(
     userId: string,
