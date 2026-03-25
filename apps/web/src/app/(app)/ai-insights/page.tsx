@@ -13,7 +13,14 @@ import {
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { mockPortfolioCsvImportInput, mockPortfolioReportManualOutput } from '@/lib/ai/dev-seeds';
+import {
+  aiInsightsCatalogEntries,
+  aiInsightsCatalogSections,
+  type AIInsightsCatalogEntry,
+  type AIInsightsSectionKey,
+} from '@/lib/ai/insights-catalog';
 import { aiRunRepository } from '@/lib/ai/repositories';
 import {
   createAIConversation,
@@ -158,6 +165,52 @@ function hasEnabledFeature(
   return entitlements == null || entitlements.enabledFeatureKeys.includes(featureKey);
 }
 
+function getCatalogEntryStateVariant(
+  entry: AIInsightsCatalogEntry,
+  enabled: boolean,
+): 'good' | 'info' | 'warn' | 'neutral' {
+  if (!enabled) {
+    return 'warn';
+  }
+
+  switch (entry.state) {
+    case 'available':
+      return 'good';
+    case 'preview':
+      return 'info';
+    case 'coming-soon':
+    default:
+      return 'neutral';
+  }
+}
+
+function getCatalogEntryStateLabel(entry: AIInsightsCatalogEntry, enabled: boolean): string {
+  if (!enabled) {
+    return 'Locked';
+  }
+
+  switch (entry.state) {
+    case 'available':
+      return 'Available';
+    case 'preview':
+      return 'Preview';
+    case 'coming-soon':
+    default:
+      return 'Coming Soon';
+  }
+}
+
+function scrollToAnchor(anchor: string) {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  document.getElementById(anchor)?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  });
+}
+
 export default function AiInsightsPage() {
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null);
@@ -219,6 +272,23 @@ export default function AiInsightsPage() {
   const quickChatScore = activeQuickChatContext?.sourceFinancialHealthScoreId
     ? scores.find((score) => score.id === activeQuickChatContext.sourceFinancialHealthScoreId)
     : undefined;
+  const financialHealthScoreEnabled = hasEnabledFeature(
+    entitlements,
+    'ai.analysis.financial_health_score',
+  );
+  const sectionEntries = aiInsightsCatalogSections.reduce(
+    (accumulator, section) => ({
+      ...accumulator,
+      [section.key]: aiInsightsCatalogEntries.filter((entry) => entry.section === section.key),
+    }),
+    {} as Record<AIInsightsSectionKey, AIInsightsCatalogEntry[]>,
+  );
+  const sectionCounts: Record<AIInsightsSectionKey, number> = {
+    reports: reports.length,
+    analysis: scores.length,
+    planning: sectionEntries.planning.length,
+    conversations: conversations.length,
+  };
 
   const loadSnapshots = async () => {
     setIsSnapshotsLoading(true);
@@ -650,35 +720,198 @@ export default function AiInsightsPage() {
     }
   };
 
+  const getEntryEnabled = (entry: AIInsightsCatalogEntry): boolean =>
+    entry.featureKey ? hasEnabledFeature(entitlements, entry.featureKey) : true;
+
+  const getEntryActionDisabled = (entry: AIInsightsCatalogEntry): boolean => {
+    const enabled = getEntryEnabled(entry);
+    if (!enabled || entry.state === 'coming-soon') {
+      return true;
+    }
+
+    switch (entry.id) {
+      case 'monthly-financial-review':
+        return !selectedSnapshot?.id || isGenerating;
+      case 'financial-health-score':
+        return !selectedSnapshot?.id || isGeneratingScore;
+      case 'quick-chat':
+        return !quickChatEnabled;
+      case 'saved-conversations':
+      case 'portfolio-analysis':
+        return false;
+      default:
+        return true;
+    }
+  };
+
+  const getEntryActionLabel = (entry: AIInsightsCatalogEntry): string => {
+    switch (entry.id) {
+      case 'monthly-financial-review':
+        return isGenerating ? 'Generating...' : entry.actionLabel;
+      case 'financial-health-score':
+        return isGeneratingScore ? 'Generating...' : entry.actionLabel;
+      default:
+        return entry.actionLabel;
+    }
+  };
+
+  const getEntryHint = (entry: AIInsightsCatalogEntry): string => {
+    const enabled = getEntryEnabled(entry);
+    if (!enabled) {
+      return 'Current entitlement does not enable this action yet.';
+    }
+
+    switch (entry.id) {
+      case 'monthly-financial-review':
+        return selectedSnapshot?.id
+          ? 'Current release uses the existing snapshot report foundation while richer monthly review execution comes next.'
+          : 'Select a portfolio snapshot to activate this report entry.';
+      case 'daily-market-brief':
+        return 'Product slot reserved for the next market-brief execution milestone.';
+      case 'financial-health-score':
+        return selectedSnapshot?.id
+          ? 'Generates and stores a snapshot-linked analysis artifact.'
+          : 'Select a portfolio snapshot to activate score generation.';
+      case 'portfolio-analysis':
+        return 'Use Quick Chat with the selected snapshot context while structured portfolio analysis expands.';
+      case 'budget-planning':
+      case 'goals-planning':
+        return 'Planning workflows are intentionally reserved for the next milestone.';
+      case 'quick-chat':
+        return 'Ephemeral by default. Save only when the transcript deserves a place in history.';
+      case 'saved-conversations':
+        return 'Historical saved conversation reads remain available after subscription changes.';
+      default:
+        return '';
+    }
+  };
+
+  const onCatalogEntryAction = (entry: AIInsightsCatalogEntry) => {
+    switch (entry.id) {
+      case 'monthly-financial-review':
+        void onGenerateDemoReport();
+        return;
+      case 'financial-health-score':
+        void onGenerateDemoScore();
+        return;
+      case 'portfolio-analysis':
+        scrollToAnchor('quick-chat-section');
+        return;
+      case 'quick-chat':
+        scrollToAnchor('quick-chat-section');
+        return;
+      case 'saved-conversations':
+        scrollToAnchor('saved-conversations-section');
+        return;
+      default:
+        return;
+    }
+  };
+
   return (
     <PageContainer className="space-y-6">
       <Card>
-        <CardHeader className="space-y-3">
-          <div className="space-y-1">
-            <CardTitle>AI Insights</CardTitle>
-            <CardDescription>
-              Snapshot-driven AI product surface with Quick Chat, saved conversations, persisted
-              reports, and financial health scores.
-            </CardDescription>
+        <CardHeader className="space-y-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="info">AI Product Layer</Badge>
+                <Badge variant="neutral">Milestone 13.3</Badge>
+              </div>
+              <div className="space-y-1">
+                <CardTitle>AI Insights</CardTitle>
+                <CardDescription>
+                  Aurum&apos;s AI financial intelligence center, organized into Reports, Analysis,
+                  Planning, and Conversations while keeping PortfolioSnapshot as the canonical
+                  upstream truth.
+                </CardDescription>
+              </div>
+            </div>
+            <div className="rounded-[16px] border border-aurum-border bg-[var(--aurum-surface-alt)] px-4 py-3 text-sm text-aurum-text">
+              <p className="font-medium">Access status</p>
+              <p className="mt-1 text-aurum-muted">
+                {entitlements?.status === 'active'
+                  ? 'Premium creation actions are available where enabled.'
+                  : 'Historical artifacts and saved conversations remain readable.'}
+              </p>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="primary" onClick={onGenerateDemoReport} disabled={isGenerating}>
-              {isGenerating ? 'Generating...' : 'Generate Report from Selected Snapshot'}
-            </Button>
-            <span className="text-xs text-aurum-muted">
-              Report history is loaded from API, scoped by selected snapshot.
-            </span>
-          </div>
-          {statusMessage ? (
+          {entitlementsStatusMessage ? (
             <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-              {statusMessage}
+              {entitlementsStatusMessage}
             </p>
           ) : null}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {aiInsightsCatalogSections.map((section) => (
+              <button
+                key={section.key}
+                type="button"
+                onClick={() => scrollToAnchor(section.anchor)}
+                className="rounded-[18px] border border-aurum-border bg-[var(--aurum-surface-alt)] px-4 py-4 text-left transition hover:border-[var(--aurum-accent)]/35 hover:bg-[var(--aurum-accent)]/5"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-aurum-text">{section.title}</p>
+                  <Badge variant="neutral">{sectionCounts[section.key]}</Badge>
+                </div>
+                <p className="mt-2 text-sm text-aurum-muted">{section.description}</p>
+              </button>
+            ))}
+          </div>
         </CardHeader>
       </Card>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card>
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {aiInsightsCatalogEntries.map((entry) => {
+          const enabled = getEntryEnabled(entry);
+          const actionDisabled = getEntryActionDisabled(entry);
+
+          return (
+            <Card key={entry.id} id={entry.anchor}>
+              <CardHeader className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base">{entry.title}</CardTitle>
+                    <CardDescription>{entry.description}</CardDescription>
+                  </div>
+                  <Badge variant={getCatalogEntryStateVariant(entry, enabled)}>
+                    {getCatalogEntryStateLabel(entry, enabled)}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-aurum-muted">{getEntryHint(entry)}</p>
+                <Button
+                  variant={
+                    entry.section === 'reports' || entry.id === 'quick-chat'
+                      ? 'primary'
+                      : 'secondary'
+                  }
+                  onClick={() => onCatalogEntryAction(entry)}
+                  disabled={actionDisabled}
+                >
+                  {getEntryActionLabel(entry)}
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </section>
+
+      <section className="space-y-4">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold text-aurum-text">Conversations</h2>
+            <Badge variant="info">Ephemeral + Saved</Badge>
+          </div>
+          <p className="text-sm text-aurum-muted">
+            Quick Chat remains ephemeral by default, and persistent history mainly enters through
+            Quick Chat -&gt; Save -&gt; Conversations.
+          </p>
+        </div>
+      </section>
+
+      <section id="conversations" className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <Card id="quick-chat-section">
           <CardHeader className="space-y-3">
             <div className="space-y-1">
               <CardTitle>Quick Chat</CardTitle>
@@ -832,7 +1065,10 @@ export default function AiInsightsPage() {
         </Card>
       </section>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]">
+      <section
+        id="saved-conversations-section"
+        className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]"
+      >
         <Card>
           <CardHeader className="space-y-3">
             <div className="space-y-1">
@@ -963,13 +1199,25 @@ export default function AiInsightsPage() {
         </Card>
       </section>
 
+      <section id="reports" className="space-y-4">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold text-aurum-text">Reports</h2>
+            <Badge variant="info">Monthly Financial Review</Badge>
+          </div>
+          <p className="text-sm text-aurum-muted">
+            Formal AI deliverables linked to canonical snapshots and persisted as report artifacts.
+          </p>
+        </div>
+      </section>
+
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]">
         <Card>
           <CardHeader className="space-y-3">
             <div className="space-y-1">
-              <CardTitle>Portfolio Snapshots</CardTitle>
+              <CardTitle>Portfolio Snapshot Context</CardTitle>
               <CardDescription>
-                Persisted canonical snapshots from API, used as upcoming analysis source.
+                Canonical snapshot selection used to ground Reports, Analysis, and Quick Chat.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -1064,11 +1312,17 @@ export default function AiInsightsPage() {
         </Card>
       </section>
 
+      {statusMessage ? (
+        <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
+          {statusMessage}
+        </p>
+      ) : null}
+
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Report List</CardTitle>
-            <CardDescription>Select a report artifact to inspect details.</CardDescription>
+            <CardTitle>Monthly Financial Review History</CardTitle>
+            <CardDescription>Snapshot-linked report artifacts loaded from the API.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {reportsStatusMessage ? (
@@ -1166,6 +1420,18 @@ export default function AiInsightsPage() {
         </Card>
       </section>
 
+      <section id="analysis" className="space-y-4">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold text-aurum-text">Analysis</h2>
+            <Badge variant="info">Diagnostics</Badge>
+          </div>
+          <p className="text-sm text-aurum-muted">
+            Scores and diagnostic views that help explain portfolio and financial health.
+          </p>
+        </div>
+      </section>
+
       <section className="space-y-6">
         <Card>
           <CardHeader className="space-y-3">
@@ -1179,7 +1445,7 @@ export default function AiInsightsPage() {
               <Button
                 variant="primary"
                 onClick={() => void onGenerateDemoScore()}
-                disabled={isGeneratingScore}
+                disabled={isGeneratingScore || !financialHealthScoreEnabled}
               >
                 {isGeneratingScore ? 'Generating...' : 'Generate Score from Selected Snapshot'}
               </Button>
@@ -1357,6 +1623,47 @@ export default function AiInsightsPage() {
             </CardContent>
           </Card>
         </section>
+      </section>
+
+      <section id="planning" className="space-y-4">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold text-aurum-text">Planning</h2>
+            <Badge variant="warn">Reserved Slots</Badge>
+          </div>
+          <p className="text-sm text-aurum-muted">
+            System-owned planning entries are visible now so budget and goals workflows can land in
+            a clear place without another IA rewrite.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {sectionEntries.planning.map((entry) => {
+            const enabled = getEntryEnabled(entry);
+
+            return (
+              <Card key={entry.id} id={entry.anchor}>
+                <CardHeader className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <CardTitle>{entry.title}</CardTitle>
+                      <CardDescription>{entry.description}</CardDescription>
+                    </div>
+                    <Badge variant={getCatalogEntryStateVariant(entry, enabled)}>
+                      {getCatalogEntryStateLabel(entry, enabled)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-aurum-muted">{getEntryHint(entry)}</p>
+                  <Button variant="secondary" disabled>
+                    {entry.actionLabel}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </section>
     </PageContainer>
   );
