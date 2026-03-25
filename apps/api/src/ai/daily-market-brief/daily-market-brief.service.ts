@@ -102,7 +102,7 @@ function buildDailyMarketBriefContent(input: {
     );
   } else {
     lines.push(
-      `- Use this brief to frame today’s market read against your current portfolio concentration, cash optionality, and leading watchlist symbols.`,
+      `- Use this brief to frame today's market read against your current portfolio concentration, cash optionality, and leading watchlist symbols.`,
     );
   }
 

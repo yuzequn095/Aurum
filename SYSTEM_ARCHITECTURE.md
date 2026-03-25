@@ -2,484 +2,287 @@
 
 ## Overview
 
-Aurum is an **AI-driven Personal Wealth Operating System** designed to help users manage, understand, and optimize their financial lives.
+Aurum is a modular monolith for an AI-driven Personal Wealth Operating System.
 
-The system integrates:
+The current system architecture combines:
 
-- financial transaction tracking
-- multi-account portfolio monitoring
-- financial analytics
-- AI-powered insights and reports
-- long-term financial planning
+- finance and ledger services
+- connected-finance ingestion
+- canonical portfolio snapshots
+- AI product workflows
+- web and API product surfaces
 
-Aurum is designed with modular architecture so it can evolve from a **manual finance tracking system** into a **connected financial platform** with real-time financial integrations. Milestone 12 completed the foundation-level connected-finance architecture while preserving `PortfolioSnapshot` as the canonical upstream object for analysis.
+Milestone 13 completed the AI Product Layer on top of the earlier snapshot-driven and connected-finance foundations.
 
 ---
 
-## High-Level Architecture
-
-The system consists of three main layers:
-
-1. Frontend Layer
-2. Backend Services
-3. AI Intelligence Layer
+## High-Level Layers
 
 ```text
-Frontend (Web / Mobile)
+Frontend (Next.js)
   |
   v
-Backend API Layer (NestJS)
+Backend API (NestJS)
   |
   v
-Data Layer (PostgreSQL + Prisma)
+Persistence (PostgreSQL + Prisma)
   |
   v
-AI Intelligence Layer
+Shared Domain + AI Contracts (packages/core)
 ```
+
+This is still a modular monolith, not a split-service system.
 
 ---
 
 ## Frontend Architecture
 
-Current stack:
+The web app is responsible for:
 
-- Next.js
-- TypeScript
-- TailwindCSS
+- navigation and product flow
+- authenticated API consumption
+- AI Insights productization
+- developer validation via AI Workbench
 
-Frontend responsibilities:
+Primary user-facing surfaces:
 
-- user interface
-- page routing
-- API integration
-- visualization of financial data
-- user interaction with AI
+- Dashboard
+- Portfolio
+- Transactions
+- AI Insights
+- Settings
 
-Primary application pages:
+Developer-only validation surface:
 
-### Dashboard
+- `/dev/ai-workbench`
 
-Financial overview including:
-
-- Net Worth
-- Assets vs Liabilities
-- Monthly income / expense
-- Portfolio summary
-- Financial health score
-- AI brief
+The workbench remains useful, but it is intentionally separate from the main product path.
 
 ---
 
-### Portfolio
+## Backend Modules
 
-Asset and account tracking.
+### Finance and Ledger Modules
 
-Tracks:
+Core operational modules include:
 
-- bank accounts
-- brokerage accounts
-- crypto wallets
-- manual static accounts
-- asset allocation
+- auth
+- accounts
+- categories and subcategories
+- transactions
+- analytics
+- import/export
+- backup and restore
 
-Current foundation:
-
-- connected sources, source accounts, and sync runs
-- manual static valuation history
-- balance-first bank and crypto sync foundations
-- holdings-first brokerage sync foundation
-
-Future expansions:
-
-- broader provider coverage
-- investment performance analysis
-- deeper institution integrations
-
----
-
-### Transactions
-
-Financial ledger for income and expenses.
-
-Features:
-
-- transaction creation
-- category & subcategory classification
-- merchant tracking
-- account association
-- filtering and search
-- CSV import/export
-
-Transactions represent the **cash flow layer** of the system.
-
----
-
-### AI Insights
-
-The financial intelligence center.
-
-Provides:
-
-Reports
-- monthly financial report
-- quarterly financial review
-- yearly financial report
-
-Analysis
-- spending breakdown
-- trend analysis
-- financial health score
-
-Planning
-- budgeting
-- goal tracking
-
-Conversations
-- saved AI conversations
-
----
-
-## Backend Architecture
-
-Backend stack:
-
-- NestJS
-- Prisma ORM
-- PostgreSQL
-
-The backend is structured into modular services.
-
-Core modules:
-
-### Auth Module
-
-Handles:
-
-- user registration
-- login
-- refresh tokens
-- authentication guards
-
-Future support:
-
-- OAuth providers
-- social login
-
----
-
-### Accounts Module
-
-Represents financial accounts.
-
-Examples:
-
-- checking accounts
-- savings accounts
-- brokerage accounts
-- crypto wallets
-
-Accounts are the foundation of **portfolio tracking**.
-
----
-
-### Transactions Module
-
-Handles all transaction operations.
-
-Responsibilities:
-
-- create transactions
-- update transactions
-- list transactions
-- transaction filtering
-- account linkage
-- category validation
-
-Transactions are scoped per user.
-
----
-
-### Categories & Subcategories
-
-Transaction taxonomy.
-
-Structure:
-
-```text
-Category
-\- Subcategory
-```
-
-Example:
-
-```text
-Food
- \- Dining
-
-Transportation
- \- Ride Sharing
-```
-
-Users can create custom categories.
-
----
-
-### Analytics Module
-
-Provides financial analysis APIs.
-
-Examples:
-
-- monthly summary
-- category breakdown
-- trend analysis
-- net cash flow
-
-Analytics APIs power both the Dashboard and AI Insights.
-
----
+These modules remain the financial system of record for cashflow and user data.
 
 ### Connected Finance Module
 
-Handles provider-ready portfolio ingestion and snapshot materialization.
+Connected-finance modules handle:
 
-Responsibilities:
+- `ConnectedSource`
+- `ConnectedSourceAccount`
+- `ConnectedSyncRun`
+- provider secret storage
+- provider-specific connect and sync foundations
+- manual-static valuation history
 
-- user-scoped `ConnectedSource` management
-- `ConnectedSourceAccount` persistence
-- `ConnectedSyncRun` tracking
-- encrypted provider secret storage
-- manual static valuations
-- Plaid bank connection and balance sync foundation
-- SnapTrade brokerage connection and holdings sync foundation
-- Coinbase crypto self-connect and balance sync foundation
+These flows materialize canonical snapshots rather than bypassing them.
 
-Connected finance does not replace ledger `Account`. It feeds canonical `PortfolioSnapshot` records that the rest of the analysis pipeline already understands.
+### Portfolio Snapshot Module
+
+`PortfolioSnapshot` remains the canonical upstream object for portfolio analysis.
+
+This module is responsible for:
+
+- snapshot create/list/get/delete
+- snapshot ownership scoping
+- lifecycle protection when downstream artifacts exist
+
+### AI Report Module
+
+The AI report module persists snapshot-linked report artifacts and now includes:
+
+- ownership hardening through snapshot ownership
+- historical read paths
+- entitlement-aware create paths
+- first-class preset report workflows
+
+### Financial Health Score Module
+
+The score module persists deterministic score artifacts and includes:
+
+- ownership hardening through snapshot ownership
+- historical read paths
+- entitlement-aware generation paths
+
+### Entitlements Module
+
+The entitlement module provides:
+
+- current-user entitlement reads
+- reusable feature checks
+- separation between read visibility and premium create/reply actions
+
+This is intentionally lightweight and not a billing platform.
+
+### AI Conversations Module
+
+The conversation module provides:
+
+- saved conversation persistence
+- normalized conversation messages
+- ownership-safe list/get/update/delete
+- optional links to snapshots, reports, and scores
+
+### AI Workflow Module
+
+The `ai` module now exposes product workflows for:
+
+- Quick Chat
+- Monthly Financial Review
+- Daily Market Brief
+- Daily Market Brief delivery preferences
+
+Quick Chat can use provider-backed execution or local fallback without changing the outer API contract.
 
 ---
 
-### Import / Export Module
+## Shared Core Architecture
 
-Handles external data ingestion and export.
+`packages/core` provides the shared contracts and application logic for:
 
-Features:
+- portfolio and snapshot types
+- connected-finance domain contracts
+- AI task and prompt contracts
+- provider adapter interfaces
+- routing abstractions
+- prepared runs
+- local repositories for workbench validation
+- report and score artifact contracts
 
-- CSV import
-- CSV export
-- transaction parsing
-- validation
-- idempotent import protection
-
----
-
-### Backup Module
-
-Provides user data backup and recovery.
-
-Includes:
-
-- full JSON backup
-- restore CLI tools
-- development recovery utilities
+This keeps cross-app behavior aligned without splitting the system into services.
 
 ---
 
-## AI System Architecture
+## AI Product Layer Architecture
 
-Aurum uses a **two-layer AI architecture**.
+### Snapshot-First Analysis
 
-### 1. Quick AI (Ephemeral Chat)
+The most important invariant is preserved:
 
-Accessible via the "+" quick action menu.
+- `PortfolioSnapshot` is canonical upstream truth for portfolio analysis
+- reports and scores are downstream persisted artifacts
+- conversations may reference artifacts, but do not replace them
 
-Characteristics:
+### Product Workflows
 
-- temporary
-- not saved by default
-- designed for quick financial questions
+Current AI product workflows include:
 
-Examples:
-
-"How much did I spend on travel this month?"
-
-"What is my biggest spending category?"
-
-Users can optionally **save the conversation**, which moves it to AI Insights.
-
-Saved conversations are stored in:
-
-AI Insights -> Conversations
-
----
-
-### 2. Insight AI (Persistent AI)
-
-Located in the AI Insights module.
-
-These are structured AI sessions.
-
-Examples:
-
-- Monthly Financial Report
-- Budget Analysis
+- Monthly Financial Review
+- Daily Market Brief
 - Financial Health Score
-- Goal Tracking
+- Quick Chat
+- Save to Conversations
 
-These sessions act as **long-term AI financial advisors**.
+### Prompt and Provider Preparation
+
+Preset tasks are formally defined in `packages/core/src/ai/tasks`.
+
+The system currently supports:
+
+- structured prompt packs
+- provider-agnostic task routing
+- manual prepared-run validation
+- no-key development workflows
+
+### Fallback Behavior
+
+The system is designed to behave cleanly when a live provider is unavailable:
+
+- AI Workbench uses prepared runs plus manual result submission
+- Quick Chat falls back instead of throwing generic provider errors
+- connected-finance product flows show guidance when provider config is missing
 
 ---
 
 ## Data Model Overview
 
-Core entities:
+Important entities now include:
 
 - User
-- Accounts
+- Account
+- Transaction
+- Category
+- Subcategory
 - ConnectedSource
 - ConnectedSourceAccount
 - ConnectedSyncRun
 - PortfolioSnapshot
-- Transactions
-- Categories
-- Subcategories
-- AI Conversations
-- AI Reports
+- AIReportArtifact
+- FinancialHealthScoreArtifact
+- AIEntitlement
+- AIConversation
+- AIConversationMessage
+- DailyMarketBriefPreference
 
-Relationships:
+Relationship highlights:
 
-```text
-User
-|- Accounts
-|- Transactions
-|- Categories
-|- Subcategories
-\- AI Conversations
-```
-
-Transactions reference:
-
-- accountId
-- categoryId
-- subcategoryId
+- snapshots belong to users
+- reports and scores derive visibility from snapshot ownership
+- conversations belong directly to users
+- conversations may optionally link to snapshots, reports, and scores
+- entitlements belong to users and gate premium actions
 
 ---
 
 ## Financial Intelligence Pipeline
 
-Financial insights are generated using a hybrid system.
+```text
+Ledger + Connected Finance Inputs
+  |
+  v
+Canonical Snapshot + Analytics Context
+  |
+  v
+Preset Task / Prompt Preparation
+  |
+  v
+Provider Route / Manual Path / Fallback
+  |
+  v
+Persisted Report / Persisted Score / Ephemeral Quick Chat / Saved Conversation
+```
 
-### Step 1 - Upstream financial ingestion
-
-Upstream data can now come from:
-
-- ledger transactions
-- manual static portfolio sources
-- bank balance syncs
-- brokerage holdings syncs
-- crypto balance syncs
-
-### Step 2 - Canonical snapshot + analytics shaping
-
-Connected-finance inputs are normalized into lineage-aware `PortfolioSnapshot` records, while ledger data continues to power analytics APIs.
-
-### Step 3 - Downstream analysis
-
-AI and scoring pipelines transform structured snapshot and analytics inputs into:
-
-- natural language insights
-- financial recommendations
-- persisted reports
-- persisted financial health scores
+This is the core system-level view of the Milestone 13 AI Product Layer.
 
 ---
 
-## Future Architecture Expansion
+## Current Limitations
 
-Aurum is designed to evolve into a **connected financial ecosystem**.
+Some capabilities are intentionally not overbuilt yet:
 
-### Phase 1 - Manual Finance Tracking
+- full scheduling execution for Daily Market Brief
+- external delivery channel infrastructure
+- conversation reply execution and streaming
+- advanced memory/orchestration
+- richer planning workflow backends
 
-- manual transaction entry
-- CSV import
-- analytics
-- AI insights
-
----
-
-### Phase 2 - Connected Finance Foundation (Completed foundation)
-
-Integrations with:
-
-- banking APIs
-- brokerage APIs
-- crypto exchanges
-
-Potential providers:
-
-- Plaid
-- SnapTrade
-- Coinbase
-
-Current scope:
-
-- provider connection bootstrap
-- encrypted credential handling
-- account import
-- balance or holdings sync
-- snapshot materialization with lineage
-
----
-
-### Phase 3 - Financial Execution Layer
-
-Aurum becomes a **financial operating platform**.
-
-Users will be able to:
-
-- buy investment products
-- manage digital assets
-- perform transfers
-- execute financial decisions
-
----
-
-## Design Principles
-
-The architecture follows several core principles:
-
-### Modular Services
-
-Each financial capability is isolated in its own module.
-
----
-
-### User Data Isolation
-
-All data is scoped by userId.
-
----
-
-### Extensible AI Layer
-
-AI is designed as an independent layer so it can evolve from simple prompts to complex financial agents.
-
----
-
-### Future Financial Integrations
-
-The architecture allows external financial APIs to be added without redesigning core services.
+These limitations are compatible with the current architecture and do not require redesign.
 
 ---
 
 ## Summary
 
-Aurum combines:
+Aurum's current system architecture combines a stable financial data foundation with a productized AI layer.
 
-- finance tracking
-- asset management
-- AI-driven insights
-- long-term planning
+The key architectural decisions remain:
 
-into a unified **financial intelligence platform**.
+- modular monolith
+- snapshot-first portfolio analysis
+- persisted downstream artifacts
+- provider-agnostic AI foundations
+- no-key/manual validation viability
+- entitlement-aware premium actions
 
-The system is intentionally designed to evolve from a simple personal finance tracker into a **full financial operating system**.
+That makes the system ready for Milestone 14 experience refinement without revisiting Milestone 13 fundamentals.

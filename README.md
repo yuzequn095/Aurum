@@ -21,6 +21,7 @@ This document serves as both a product overview and developer reference for Auru
 - [Milestone Summary](#milestone-summary)
 - [What Milestone 11 Changed](#what-milestone-11-changed)
 - [What Milestone 12 Changed](#what-milestone-12-changed)
+- [What Milestone 13 Changed](#what-milestone-13-changed)
 - [Current Architecture](#current-architecture)
 - [Long-term Vision](#long-term-vision)
 - [Architecture Documents](#architecture-documents)
@@ -112,54 +113,72 @@ Transactions represent **cash flow tracking**.
 
 AI-powered financial intelligence center.
 
-- snapshot-driven portfolio report generation
-- financial health score generation
-- persisted report and score history
-- future planning, budgeting, and goal-oriented AI workflows
-- future conversation and advisor-style experiences
+- Reports:
+  Monthly Financial Review and Daily Market Brief
+- Analysis:
+  Financial Health Score, first-class portfolio analysis entry points, and snapshot-aware diagnostics
+- Planning:
+  reserved budget and goals slots for future guided workflows
+- Conversations:
+  ephemeral Quick Chat plus explicit Save into persistent Conversations
+- persisted report, score, and conversation history with entitlement-aware create actions
 
-AI Insights is the product surface where Aurum's analysis artifacts and future AI workflows come together.
+AI Insights is the product surface where Aurum's snapshot-driven artifacts, preset AI workflows, and saved conversations come together.
 
 ## AI System Design
 
-Aurum's AI architecture now has a clearer split between long-term product vision and currently shipped analysis infrastructure.
+Aurum's AI architecture is now split into four practical layers that work together without breaking the snapshot-first analysis model.
 
-### 1. Quick AI (Long-term Product Layer)
+### 1. Canonical Financial Inputs
 
-Quick AI is the future ephemeral interaction layer for:
+- `PortfolioSnapshot` remains the canonical upstream truth for portfolio analysis.
+- Ledger analytics remain the canonical upstream truth for monthly cashflow and category views.
+- Connected-finance sources and manual-static sources both normalize into the same snapshot contract.
 
-- fast financial questions
-- instant contextual analysis
-- command-menu driven actions
+### 2. Persisted AI Artifacts
 
-Example intents:
+- Reports persist as snapshot-linked `AIReportArtifact` records.
+- Financial health assessments persist as snapshot-linked `FinancialHealthScoreArtifact` records.
+- Saved conversations persist separately and can optionally link back to snapshots, reports, and scores.
+- Historical reads remain ownership-based and stay readable even after premium access expires.
 
-- "How much did I spend on dining this month?"
-- "What changed in my portfolio this week?"
+### 3. AI Product Workflows
 
-This remains part of the product direction, but it is not yet the primary implemented AI surface.
+Current Milestone 13 workflows include:
 
-### 2. AI Insights (Current Productized Analysis Layer)
+- Quick Chat:
+  protected, ephemeral by default, and explicitly savable into Conversations
+- Reports:
+  Monthly Financial Review and Daily Market Brief with persisted history
+- Analysis:
+  Financial Health Score plus first-class portfolio analysis entry points
+- Planning:
+  reserved product slots for future budget and goals workflows
 
-The current implemented AI foundation is centered on snapshot-driven analysis.
+These workflows are productized in `/ai-insights`, not in the developer workbench.
 
-- `PortfolioSnapshot` is the canonical upstream object for portfolio analysis.
-- Portfolio reports are persisted as `AIReportArtifact` records linked to a snapshot.
-- Financial health assessments are persisted as `FinancialHealthScoreArtifact` records linked to a snapshot.
-- Report creation and score creation are now server-backed flows.
-- `/ai-insights` operates on snapshot-scoped report and score history instead of only local transient state.
+### 4. Prompt / Provider / Manual Validation Layer
 
-This means the current AI system is no longer just prompt generation or model text. It is an artifact-oriented analysis pipeline with explicit upstream data, persistence, and history.
+- `packages/core` now contains task definitions, prompt packs, provider adapters, routing, and prepared-run foundations.
+- Preset task prompt packs exist for:
+  `monthly_financial_review_v1`,
+  `daily_market_brief_v1`,
+  `portfolio_analysis_v1`,
+  `health_score_explainer_v1`,
+  `budget_analysis_v1`,
+  plus the earlier `portfolio_report_v1`.
+- The default route remains provider-agnostic and currently supports a no-key `manual_chatgpt` path for workbench validation.
+- Quick Chat also supports graceful local fallback when a live provider is not configured or fails.
 
-### 3. Insight Engine Baseline
+### Insight Engine Baseline
 
-For broader AI text generation, Aurum already has a pluggable insight engine baseline:
+For broader insight generation Aurum still supports:
 
 - `rules`
 - `llm`
 - `hybrid`
 
-That engine remains available as a foundation for future AI product layers, while Milestone 11 established the snapshot-driven report and score architecture.
+That engine remains a reusable foundation, while Milestone 13 productized concrete report, analysis, and conversation flows on top.
 
 ## Mobile UX Concept
 
@@ -181,12 +200,18 @@ This allows fast interactions without navigating across multiple pages.
 
 ## Current Status
 
-Milestones 1-12 are now completed at the foundation level. Milestone 12 delivered the connected-finance and real-ingestion foundation on top of the Milestone 11 snapshot-driven analysis architecture. The next focus is Milestone 13: AI Product Layer.
+Milestones 1-13 are now complete at the foundation-plus-productization level. Milestone 13 delivered the AI Product Layer on top of the Milestone 11 snapshot-driven analysis architecture and the Milestone 12 connected-finance ingestion foundation. The next focus is Milestone 14: Experience Layer.
 
-- Foundation status: Aurum now has stable monorepo, API, web, auth, ledger, taxonomy, analytics, import/export, and dashboard foundations.
-- Connected-finance status: connected sources, source accounts, sync runs, encrypted provider secret storage, and lineage-aware `PortfolioSnapshot` materialization are implemented.
-- AI foundation status: snapshot-driven report and score generation remains implemented end-to-end with persistence, history, and server-backed creation flows over the same canonical snapshot object.
-- Current execution focus: build the Milestone 13 AI product layer on top of the now-shared ledger + connected-finance + snapshot-analysis foundation.
+- Platform status:
+  monorepo, API, web, auth, ledger, taxonomy, analytics, import/export, and dashboard foundations are stable.
+- Connected-finance status:
+  connected sources, source accounts, sync runs, encrypted provider secret storage, and lineage-aware `PortfolioSnapshot` materialization are implemented.
+- AI product status:
+  AI Insights is now organized into Reports, Analysis, Planning, and Conversations with entitlement-aware create paths and historical read preservation.
+- Manual/no-key status:
+  AI Workbench can prepare and inspect preset prompt packs without API keys, and Quick Chat can fall back cleanly when no live provider is available.
+- Current execution focus:
+  Milestone 14 desktop/mobile experience refinement, workflow polish, and richer UX consistency on top of the shipped AI product layer.
 
 ## Milestone Summary
 
@@ -200,8 +225,8 @@ Milestones 1-12 are now completed at the foundation level. Milestone 12 delivere
 | 10 | Web UX Foundation | Done | App shell, page structure, settings/logout, design tokens/primitives, and dashboard foundation. |
 | 11 | AI Foundation / Snapshot-Driven Analysis | Done | Shared AI contracts, prompt/task/provider/router/run foundations, workbench validation, canonical `PortfolioSnapshot`, snapshot-driven report/score flows, report persistence, score persistence, and snapshot-linked history with server-backed creation. |
 | 12 | Connected Finance & Real Ingestion | Done | Connected source foundation, source accounts, sync runs, snapshot lineage and ingestion hardening, manual static accounts with valuation history, Plaid bank foundation, SnapTrade brokerage holdings foundation, Coinbase crypto foundation, and provider-aware fallback guidance to Manual Create when backend provider config is missing. |
-| 13 | AI Product Layer | Current Focus | Prompt pack expansion, conversation model, AI Insights templates, planning/budgeting/goals, and richer AI workflows on top of the snapshot-driven data foundation. |
-| 14 | Experience Layer (Desktop + Mobile UX) | Planned | Desktop UX refinement, mobile implementation aligned with Aurum-Mobile-UX-Demo, cross-platform design consistency, command menu UX, and AI-first interaction polish. |
+| 13 | AI Product Layer | Done | Artifact ownership hardening, entitlement foundation, saved conversations, Quick Chat to Save to Conversations, AI Insights IA productization, Monthly Financial Review, Daily Market Brief, first-class analysis workflows, and preset prompt pack expansion. |
+| 14 | Experience Layer (Desktop + Mobile UX) | Current Focus | Desktop UX refinement, mobile implementation aligned with Aurum-Mobile-UX-Demo, cross-platform design consistency, command menu UX, and AI-first interaction polish. |
 | 15 | Connected Finance Expansion / Financial OS Direction | Future | Deeper portfolio and institution modeling, financial execution experiments, and broader Financial OS exploration. |
 
 **Milestone 11 delivered:**
@@ -222,6 +247,18 @@ Milestones 1-12 are now completed at the foundation level. Milestone 12 delivere
 - SnapTrade brokerage holdings foundation with provider-user bootstrap, source import, and holdings-first snapshot materialization
 - Coinbase read-only crypto self-connect foundation with encrypted credentials and balance-first snapshot materialization
 - connected-finance web/admin validation flows plus provider-aware UI guidance that falls back to Manual Create when backend provider config is not available
+
+**Milestone 13 delivered:**
+
+- JWT-guarded ownership hardening for AI reports and financial health scores using snapshot ownership as the visibility boundary
+- entitlement foundation with reusable feature checks, historical-read preservation, and `GET /v1/entitlements/me`
+- saved conversation persistence plus current-user save/list/get/rename/delete APIs
+- Quick Chat ephemeral execution with explicit Save into Conversations
+- AI Insights productization around Reports, Analysis, Planning, and Conversations
+- first-class Monthly Financial Review workflow
+- first-class Daily Market Brief workflow plus delivery-preferences foundation
+- first-class Financial Health Score workflow and guided portfolio analysis entry
+- preset task prompt packs and manual provider support for workbench-based no-key validation
 
 ## What Milestone 11 Changed
 
@@ -246,6 +283,20 @@ Milestone 12 changed Aurum from a mostly demo/manual snapshot ingestion path int
 - Snapshots now carry stronger lineage through source, sync run, ingestion mode, normalization version, and source fingerprint fields.
 - The same downstream AI report and financial health score flows continue to operate on those snapshots without changing their core contract.
 - Provider integrations are intentionally foundation-level: they establish connection, normalization, credential handling, and sync/materialization paths without claiming full production breadth yet.
+
+## What Milestone 13 Changed
+
+Milestone 13 changed Aurum from a snapshot-driven AI foundation into a usable AI product layer.
+
+- AI artifacts now enforce the same user-scoped ownership boundary standard as portfolio snapshots.
+- Entitlements now gate premium create, refresh, save, and reply actions without blocking historical reads.
+- Quick Chat is implemented as an ephemeral-by-default flow with explicit Save into persistent Conversations.
+- AI Insights is now organized into Reports, Analysis, Planning, and Conversations rather than behaving like a single AI demo surface.
+- Monthly Financial Review and Daily Market Brief are first-class server-backed report workflows with persisted history.
+- Financial Health Score is productized as a first-class analysis workflow, and portfolio analysis has a first-class entry point.
+- Preset prompt packs and manual prepared-run support now make no-key testing practical across key report, analysis, and planning tasks.
+
+In practical terms, Milestone 13 turned Aurum's AI layer into a coherent product surface while preserving the snapshot-first artifact architecture and provider-agnostic foundations.
 
 ## Current Architecture
 
@@ -336,6 +387,7 @@ All within one unified platform.
 - [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md) - backend modules, AI layer, data flow, extensibility.
 - [PRODUCT_ARCHITECTURE.md](./PRODUCT_ARCHITECTURE.md) - information architecture, UX structure, AI interaction model.
 - [AI_ARCHITECTURE.md](./AI_ARCHITECTURE.md) - insight engine modes, prompt architecture, AI pipeline.
+- [MILESTONE_13_CLOSEOUT.md](./MILESTONE_13_CLOSEOUT.md) - delivered AI Product Layer capabilities, limitations, and Milestone 14 handoff notes.
 - [FINANCIAL_DOMAIN_MODEL.md](./FINANCIAL_DOMAIN_MODEL.md) - financial entities, relationships, domain concepts.
 - [ROADMAP.md](./ROADMAP.md) - long-term product and platform evolution.
 
@@ -405,6 +457,12 @@ Full monorepo dev (all packages/tasks):
 ```bash
 pnpm dev
 ```
+
+No-key manual AI validation:
+
+- Keep `AURUM_LLM_ENABLED=false` to validate the preset-task prompt packs and manual provider path without model credentials.
+- Use `/dev/ai-workbench` to create prepared runs, inspect prompt packs, copy prompts, paste external results, and validate local report generation from completed manual runs.
+- Quick Chat in `/ai-insights` can also fall back gracefully when a live provider is unavailable.
 
 Quality checks:
 
@@ -539,6 +597,11 @@ Key API surfaces:
 | `/v1/portfolio-snapshots` | GET | Yes | List persisted portfolio snapshots (newest first). |
 | `/v1/portfolio-snapshots/:id` | GET | Yes | Get single portfolio snapshot by id. |
 | `/v1/portfolio-snapshots/:id` | DELETE | Yes | Delete snapshot if no linked persisted reports (409 when blocked). |
+| `/v1/entitlements/me` | GET | Yes | Get current user's effective AI entitlements and historical-read flags. |
+| `/v1/ai/quick-chat` | POST | Yes | Run ephemeral Quick Chat with optional snapshot/report/score context. |
+| `/v1/ai/monthly-financial-review` | POST | Yes | Create a Monthly Financial Review report artifact. |
+| `/v1/ai/daily-market-brief` | POST | Yes | Create a Daily Market Brief report artifact. |
+| `/v1/ai/daily-market-brief/preferences/me` | GET / PATCH | Yes | Read or update current-user Daily Market Brief delivery preferences. |
 | `/v1/ai-reports` | POST | Yes | Create persisted AI report artifact (verification path). |
 | `/v1/ai-reports` | GET | Yes | List persisted AI report artifacts. |
 | `/v1/ai-reports/by-snapshot/:sourceSnapshotId` | GET | Yes | List report artifacts linked to a snapshot. |
@@ -548,6 +611,8 @@ Key API surfaces:
 | `/v1/financial-health-scores/by-snapshot/:sourceSnapshotId` | GET | Yes | List score artifacts linked to a snapshot. |
 | `/v1/financial-health-scores/:id` | GET | Yes | Get score artifact by id. |
 | `/v1/portfolio-snapshots/:sourceSnapshotId/financial-health-scores` | POST | Yes | Server-side create score artifact from snapshot context. |
+| `/v1/ai-conversations` | GET / POST | Yes | List or save current-user AI conversations. |
+| `/v1/ai-conversations/:id` | GET / PATCH / DELETE | Yes | Get, rename, or delete a current-user saved conversation. |
 
 Transactions query params (`GET /v1/transactions`):
 

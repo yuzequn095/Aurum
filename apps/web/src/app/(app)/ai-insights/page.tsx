@@ -162,7 +162,7 @@ function formatConversationContextSummary(context?: AIConversationContext): stri
     labels.push(`Score ${context.sourceFinancialHealthScoreId}`);
   }
 
-  return labels.join(' · ');
+  return labels.join(' | ');
 }
 
 function getFirstUserMessage(
@@ -656,10 +656,10 @@ export default function AiInsightsPage() {
 
       await loadSnapshots();
       setSelectedSnapshotId(created.id ?? null);
-      setSnapshotsStatusMessage(`Demo snapshot created: ${created.id}`);
+      setSnapshotsStatusMessage(`Sample snapshot created: ${created.id}`);
     } catch (error) {
       setSnapshotsStatusMessage(
-        error instanceof Error ? error.message : 'Failed to create demo snapshot.',
+        error instanceof Error ? error.message : 'Failed to create sample snapshot.',
       );
     } finally {
       setIsCreatingSnapshot(false);
@@ -1030,7 +1030,7 @@ export default function AiInsightsPage() {
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="info">AI Product Layer</Badge>
-                <Badge variant="neutral">Milestone 13.5</Badge>
+                <Badge variant="neutral">Snapshot-first</Badge>
               </div>
               <div className="space-y-1">
                 <CardTitle>AI Insights</CardTitle>
@@ -1156,6 +1156,10 @@ export default function AiInsightsPage() {
                 Saving is currently unavailable, but historical saved conversations remain readable.
               </p>
             ) : null}
+            <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
+              Provider-backed replies are optional. If no live model is configured, Quick Chat
+              falls back to local context so the workflow remains usable.
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="max-h-[420px] space-y-3 overflow-auto rounded-[16px] border border-aurum-border bg-[var(--aurum-surface-alt)] p-4">
@@ -1264,8 +1268,8 @@ export default function AiInsightsPage() {
             <div className="rounded-[12px] border border-aurum-border bg-aurum-surface px-4 py-3">
               <p className="font-medium">2. Save only when it matters</p>
               <p className="mt-1 text-aurum-muted">
-                Saving is explicit and writes into the persistent conversation foundation from
-                Milestone 13.1C.
+                Saving is explicit and writes into your persistent conversation history only when
+                you choose to keep it.
               </p>
             </div>
             <div className="rounded-[12px] border border-aurum-border bg-aurum-surface px-4 py-3">
@@ -1336,7 +1340,7 @@ export default function AiInsightsPage() {
                   <p className="mt-1 text-aurum-muted">
                     {conversation.messageCount} messages
                     {conversation.lastMessageAt
-                      ? ` · last activity ${formatDateTime(conversation.lastMessageAt)}`
+                      ? ` | last activity ${formatDateTime(conversation.lastMessageAt)}`
                       : ''}
                   </p>
                   <p className="mt-1 text-aurum-muted">
@@ -1431,7 +1435,9 @@ export default function AiInsightsPage() {
             <div className="space-y-1">
               <CardTitle>Portfolio Snapshot Context</CardTitle>
               <CardDescription>
-                Canonical snapshot selection used to ground Reports, Analysis, and Quick Chat.
+                Canonical snapshot selection used to ground Reports, Analysis, and Quick Chat. If
+                you do not have one yet, you can create a sample snapshot here for local
+                validation.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -1440,7 +1446,7 @@ export default function AiInsightsPage() {
                 onClick={() => void onCreateDemoSnapshot()}
                 disabled={isCreatingSnapshot || isSnapshotsLoading}
               >
-                {isCreatingSnapshot ? 'Creating...' : 'Create Demo Snapshot'}
+                {isCreatingSnapshot ? 'Creating...' : 'Create Sample Snapshot'}
               </Button>
               <Button
                 variant="secondary"
@@ -1458,7 +1464,10 @@ export default function AiInsightsPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {snapshots.length === 0 ? (
-              <p className="text-sm text-aurum-muted">No snapshots available.</p>
+              <p className="text-sm text-aurum-muted">
+                No snapshots available yet. Create a sample snapshot here or import one from the
+                Portfolio workflow.
+              </p>
             ) : (
               snapshots.map((snapshot) => (
                 <button
@@ -1615,7 +1624,7 @@ export default function AiInsightsPage() {
               <CardTitle>Daily Market Brief Workflow</CardTitle>
               <CardDescription>
                 Generate a server-backed Daily Market Brief now using the internal market context
-                assembler, with room for richer prompts and external context later.
+                assembler, with a clean upgrade path to richer prompts and external context later.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1632,8 +1641,8 @@ export default function AiInsightsPage() {
                 {isGeneratingDailyMarketBrief ? 'Generating...' : 'Generate Daily Market Brief'}
               </Button>
               <span className="text-xs text-aurum-muted">
-                V1 uses a lightweight internal market template and persists the result as a report
-                artifact.
+                Uses a lightweight internal market template and persists the result as a report
+                artifact today.
               </span>
             </div>
             {dailyMarketBriefStatusMessage ? (
@@ -1705,8 +1714,9 @@ export default function AiInsightsPage() {
             <div className="space-y-1">
               <CardTitle>Daily Market Brief Delivery</CardTitle>
               <CardDescription>
-                Current-user delivery preferences foundation for future scheduled generation and
-                subscription-aware delivery.
+                Set user-owned delivery preferences now so scheduled generation and
+                subscription-aware delivery can layer in later without changing the preference
+                model.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1847,7 +1857,7 @@ export default function AiInsightsPage() {
                       className="w-full rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text outline-none transition focus:border-[var(--aurum-accent)]"
                     >
                       <option value="in_app">In-app</option>
-                      <option value="email_placeholder">Email placeholder</option>
+                      <option value="email_placeholder">Email (future channel)</option>
                     </select>
                   </label>
                   <label className="space-y-2 text-sm">

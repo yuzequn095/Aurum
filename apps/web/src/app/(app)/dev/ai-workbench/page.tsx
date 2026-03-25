@@ -256,7 +256,7 @@ export default function AIWorkbenchPage() {
                   <div className='font-medium text-aurum-text'>{scenario.title}</div>
                   <div className='mt-1 text-xs text-aurum-muted'>{scenario.description}</div>
                   <div className='mt-2 text-[11px] uppercase tracking-wide text-aurum-muted'>
-                    {scenario.taskType} • {scenario.reportCapable ? 'report-capable' : 'analysis-only'}
+                    {scenario.taskType} | {scenario.reportCapable ? 'report-capable' : 'analysis-only'}
                   </div>
                 </button>
               ))}

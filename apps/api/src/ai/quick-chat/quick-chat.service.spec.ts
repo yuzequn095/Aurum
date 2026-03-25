@@ -136,6 +136,48 @@ describe('QuickChatService', () => {
     expect(typeof response.reply.createdAt).toBe('string');
   });
 
+  it('falls back cleanly when provider-backed quick chat fails', async () => {
+    config.get.mockImplementation((key: string) => {
+      if (key === 'AURUM_LLM_ENABLED') {
+        return 'true';
+      }
+
+      return undefined;
+    });
+    entitlementsService.assertFeatureEnabled.mockResolvedValue(undefined);
+    portfolioSnapshotsService.getSnapshotById.mockResolvedValue({
+      id: 'snapshot_1',
+      metadata: {
+        portfolioName: 'Household Portfolio',
+        snapshotDate: '2026-03-24',
+      },
+      totalValue: 250000,
+      cashValue: 20000,
+      positions: [{ assetKey: 'AAPL', marketValue: 75000 }],
+    });
+    chatClient.completeChat.mockRejectedValue(
+      new Error('provider unavailable'),
+    );
+
+    const service = new QuickChatService(
+      config as never,
+      entitlementsService as never,
+      portfolioSnapshotsService as never,
+      aiReportsService as never,
+      financialHealthScoresService as never,
+      chatClient as never,
+    );
+
+    const response = await service.runQuickChat('user_1', {
+      messages: [{ role: 'user', content: 'Give me the quick version.' }],
+      sourceSnapshotId: 'snapshot_1',
+    });
+
+    expect(chatClient.completeChat).toHaveBeenCalledTimes(1);
+    expect(response.mode).toBe('fallback');
+    expect(response.reply.content).toContain('Household Portfolio');
+  });
+
   it('rejects transcripts that do not end with a user message', async () => {
     entitlementsService.assertFeatureEnabled.mockResolvedValue(undefined);
 

@@ -2,382 +2,243 @@
 
 ## Overview
 
-Aurum is an **AI-driven Personal Wealth Operating System** designed to help users manage their financial life through a unified platform.
+Aurum is an AI-driven Personal Wealth Operating System that combines:
 
-The product integrates:
+- cashflow tracking
+- portfolio monitoring
+- analytics
+- AI-driven interpretation
+- planning foundations
 
-- financial tracking
-- asset portfolio monitoring
-- financial analytics
-- AI-powered financial insights
-- long-term financial planning
-
-Aurum is not only a bookkeeping tool, but a **financial intelligence platform** that helps users understand and optimize their financial decisions.
+The current product architecture keeps AI productized, but not conversation-first. Portfolio and financial analysis still anchor to canonical data models rather than drifting into an unstructured chat product.
 
 ---
 
 ## Core Product Philosophy
 
-Aurum is built around three fundamental financial layers:
+Aurum is built around three financial layers:
 
-1. **Cash Flow Layer**
-2. **Asset Layer**
-3. **Intelligence Layer**
+1. Cash Flow Layer
+2. Asset Layer
+3. Intelligence Layer
 
 ```text
-Assets (Portfolio)
+Assets and Portfolio State
   |
   v
-Cash Flow (Transactions)
+Cash Flow and Ledger History
   |
   v
-Financial Intelligence (AI Insights)
+AI Insights and Planning
 ```
 
-The Dashboard sits on top of these layers to provide a unified overview.
+The Dashboard sits above these layers as the summary surface.
 
 ---
 
-## Information Architecture
-
-The Aurum product is organized into four primary modules.
+## Product Modules
 
 ### Dashboard
 
-High-level financial overview.
+The financial command center for:
 
-Purpose:
-Provide a quick understanding of the user's financial status.
-
-Main elements:
-
-- Net Worth
-- Assets vs Liabilities
-- Monthly Income
-- Monthly Expenses
-- Portfolio summary
-- Financial Health Score
-- AI Brief
-
-The dashboard acts as the **financial command center**.
-
----
+- net worth
+- assets vs liabilities
+- monthly income and expense
+- portfolio summary
+- Financial Health Score visibility
 
 ### Portfolio
 
-Tracks user assets across accounts and institutions.
+The asset layer, built around:
 
-Supported assets:
+- connected-finance sources
+- manual-static sources
+- source accounts and sync runs
+- canonical snapshots
 
-- bank accounts
-- brokerage accounts
-- crypto wallets
-- investment portfolios
-- manual static accounts
-
-Features:
-
-- account list
-- asset allocation
-- institution breakdown
-- portfolio value tracking
-- manual static valuation history
-- connected-finance source and sync foundations
-
-Current foundation:
-
-- manual static account creation and valuation materialization
-- connected source flows for bank, brokerage, and crypto ingestion foundations
-- snapshot-driven portfolio analysis across multiple upstream source types
-
-Future capabilities:
-
-- investment performance analytics
-- portfolio risk analysis
-- broader production hardening for provider flows
-
-Portfolio represents the **asset layer** of Aurum.
-
----
+Portfolio is not just a holdings table. It is the upstream context provider for downstream analysis.
 
 ### Transactions
 
-Represents the user's financial ledger.
+The ledger layer for:
 
-Tracks:
-
-- income
-- expenses
-- merchants
-- categories
-- subcategories
-- account associations
-
-Features:
-
-- transaction creation
-- filtering and search
-- category taxonomy
-- CSV import/export
-- transaction editing
-
-Transactions represent the **cash flow layer** of the system.
-
----
+- income and expense capture
+- taxonomy and categorization
+- filtering and import/export
+- analytics-ready cashflow history
 
 ### AI Insights
 
-The AI-driven financial intelligence center.
+The productized intelligence layer.
 
-This module transforms financial data into actionable insights.
+AI Insights is functionally organized into:
 
-It contains four functional sections:
+- Reports
+- Analysis
+- Planning
+- Conversations
 
-Reports
-- Monthly Financial Report
-- Quarterly Review
-- Yearly Summary
+This classification is now reflected directly in the shipped web surface.
 
-Analysis
-- Spending breakdown
-- Financial health score
-- Trend analysis
+---
 
-Planning
-- Budget tracking
-- Financial goals
-- long-term financial planning
+## AI Insights Information Architecture
 
-Conversations
-- saved AI chats
+### Reports
 
-AI Insights represents the **intelligence layer** of Aurum.
+Current first-class report entries:
+
+- Monthly Financial Review
+- Daily Market Brief
+
+Report rules:
+
+- reports are system-provided workflows, not free-form user-authored templates
+- reports persist as snapshot-linked artifacts
+- report history remains readable after entitlement loss
+
+### Analysis
+
+Current first-class analysis entries:
+
+- Financial Health Score
+- Portfolio Analysis entry
+
+Analysis rules:
+
+- analysis remains grounded in canonical snapshots
+- Financial Health Score remains a persisted downstream artifact
+- portfolio analysis can use conversational entry points without changing the snapshot-first model
+
+### Planning
+
+Current Planning is intentionally lightweight.
+
+The product surface already reserves stable slots for:
+
+- Budget
+- Goals
+
+This keeps future workflow additions straightforward without requiring another IA rewrite.
+
+### Conversations
+
+Conversation rules are explicit:
+
+- Quick Chat is ephemeral by default
+- Quick Chat is not auto-saved
+- Save is explicit
+- saved chats live under AI Insights -> Conversations
+- saved chats can be reopened, renamed, and deleted
+
+Conversations are a product surface, not the canonical analysis source of truth.
 
 ---
 
 ## AI Interaction Model
 
-Aurum supports two types of AI interaction.
+### Quick Chat
 
-### Quick AI (Ephemeral Chat)
+Quick Chat is the lightweight interaction layer for fast contextual questions.
 
-Accessible from the quick action menu.
+Current behavior:
 
-Purpose:
-Allow users to quickly ask financial questions.
+- protected by entitlement
+- grounded by optional snapshot/report/score context
+- ephemeral by default
+- usable even without a live provider because fallback exists
+- explicitly savable into Conversations
 
-Examples:
+### Saved Conversations
 
-- "How much did I spend on dining this month?"
-- "What was my largest expense last quarter?"
+Saved conversations are persistent transcripts for later reference.
 
-Characteristics:
+They are mainly entered through:
 
-- temporary session
-- not saved by default
-- optional user save
+Quick Chat -> Save -> Conversations
 
-If saved, the conversation is stored under:
-
-AI Insights -> Conversations
-
-Saved conversations can be renamed or deleted.
+This keeps product behavior simple and prevents the app from drifting into a generic chat-first system.
 
 ---
 
-### Persistent AI Conversations
+## Template and Preset Strategy
 
-Located inside the AI Insights module.
+Milestone 13 uses system-owned preset tasks rather than custom end-user prompt authoring.
 
-These conversations are structured and persistent.
+Current preset coverage includes:
 
-Examples:
-
-- Monthly Report
+- Monthly Financial Review
+- Daily Market Brief
+- Portfolio Analysis
+- Financial Health Score Explainer
 - Budget Analysis
-- Financial Health Score
-- Goal Tracking
 
-These act as **AI financial advisors** that help users monitor long-term financial patterns.
+This strategy keeps:
 
----
-
-## AI Insights Organization
-
-AI Insights uses **functional classification**.
-
-Structure:
-
-```text
-Reports
-  Monthly
-  Quarterly
-  Yearly
-
-Analysis
-  Spending Breakdown
-  Financial Health Score
-  Portfolio Analysis
-
-Planning
-  Budget
-  Financial Goals
-
-Conversations
-  Saved user chats
-```
-
-Saved chats are ordered by most recent activity.
-
-Default chat names use timestamps:
-
-YYYY-MM-DD
-
-Users may rename conversations later.
+- output structure stable
+- testing practical
+- future prompt improvement straightforward
 
 ---
 
-## Mobile Product Architecture
+## Subscription and Access Model
 
-Mobile navigation prioritizes quick financial interactions.
+The AI product layer now distinguishes between:
 
-Main tabs:
+- historical reads
+- premium creation and continuation actions
 
-- Home
-- Portfolio
-- Transactions
-- AI Insights
+Current rules:
 
-Center action button opens a command menu.
+- historical reports remain readable after subscription loss
+- historical scores remain readable after subscription loss
+- historical saved conversations remain readable after subscription loss
+- premium create, save, and future reply actions can be blocked by entitlement
 
-```text
-|- Add Transaction
-|- Ask AI
-|- Quick Chart
-\- Quick Analysis
-```
-
-Purpose:
-
-Allow users to perform common actions quickly without navigating across multiple screens.
+This provides product clarity without requiring billing integration yet.
 
 ---
 
-## Web Product Architecture
+## Web Product Direction
 
-Desktop layout uses a sidebar navigation.
+The current web product direction is pragmatic:
 
-Navigation items:
+- AI Insights is the main user-facing AI surface
+- AI Workbench stays developer-facing
+- Monthly Financial Review and Daily Market Brief are first-class report actions
+- Financial Health Score is a first-class analysis workflow
+- Portfolio Analysis has a clear entry point now, even if richer structured output evolves later
 
-- Dashboard
-- Portfolio
-- Transactions
-- AI Insights
-- Settings
-
-This layout prioritizes data visualization and financial analysis.
+This keeps the shipped product coherent while leaving room for Milestone 14 experience refinement.
 
 ---
 
-## Financial Health Score
+## What Remains Ahead
 
-Aurum introduces a **Financial Health Score** as a key product metric.
+The following are intentionally not overbuilt yet:
 
-The score evaluates financial stability using factors such as:
+- richer planning workflows
+- Daily Market Brief market-data expansion
+- full conversation reply execution and streaming
+- custom workflow/template authoring
+- deeper mobile-first productization
 
-- savings rate
-- spending balance
-- asset diversification
-- debt ratio
-- income stability
-
-The score provides users with a simple representation of financial wellbeing.
-
----
-
-## Future Product Capabilities
-
-Aurum is designed to evolve through multiple stages.
-
-### Phase 1 - Finance Tracking
-
-- manual transactions
-- portfolio tracking
-- AI insights
-
----
-
-### Phase 2 - Connected Finance Foundation
-
-Integrations with external financial services.
-
-Examples:
-
-- banking APIs
-- brokerage APIs
-- crypto exchanges
-
-Foundation scope now implemented:
-
-- provider connection flows
-- source/account modeling
-- sync runs
-- snapshot materialization
-
-Production breadth and deeper automation remain future work.
-
----
-
-### Phase 3 - Financial Operating System
-
-Aurum becomes a platform where users can execute financial decisions.
-
-Potential capabilities:
-
-- investment purchasing
-- digital wallet
-- transfers
-- financial product integrations
-
----
-
-## Product Design Principles
-
-Aurum follows several design principles.
-
-### Financial Clarity
-
-Financial data must be understandable at a glance.
-
----
-
-### AI-Augmented Decisions
-
-AI should assist decision making rather than replace user control.
-
----
-
-### Progressive Complexity
-
-Users can start with simple tracking and gradually access more advanced tools.
-
----
-
-### Unified Financial Platform
-
-Aurum aims to unify financial tracking, analysis, and planning within a single system.
+These are product refinements, not missing architectural foundations.
 
 ---
 
 ## Summary
 
-Aurum is designed as a **financial intelligence platform** that integrates:
+Aurum's current product architecture treats AI as a structured intelligence surface rather than a generic assistant shell.
 
-- personal finance tracking
-- portfolio monitoring
-- AI financial analysis
-- financial planning tools
+The key product decisions are:
 
-into a single cohesive product.
+- keep snapshots canonical
+- keep reports and scores persisted
+- keep Quick Chat ephemeral by default
+- keep Save explicit
+- keep AI Insights functionally organized
+- keep providers and models replaceable
 
-The architecture ensures Aurum can evolve from a simple financial tracker into a **complete financial operating system**.
+That gives Aurum a stable product foundation for richer Milestone 14 experience work.
