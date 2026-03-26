@@ -193,7 +193,7 @@ That engine remains a reusable foundation, while Milestone 13 productized concre
 
 - Add Transaction
 - Ask AI
-- Quick Chart
+- Quick Chat
 - Quick Analysis
 
 This allows fast interactions without navigating across multiple pages.
@@ -500,6 +500,8 @@ Local auth bootstrap:
 - To reset an existing local email/password identity:
   `pnpm --filter api run reset-password -- <email> <new-password>`
 - You can also create your own account from `/register`.
+- New locally registered users do not automatically receive AI entitlements.
+- If you want full AI product access in local development, use the seeded demo user or manually grant an entitlement record.
 
 Troubleshooting:
 
@@ -513,7 +515,8 @@ Troubleshooting:
 
 | Key | Example | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:3001` | API base URL used by web client. |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:3001` | Base URL used by the Next.js `/api` rewrite target and direct fallback requests. |
+| `NEXT_PUBLIC_DIRECT_API_BASE_URL` | `http://localhost:3001` | Optional direct browser override that bypasses the default same-origin `/api` proxy path. |
 
 ### API (`apps/api/.env`)
 
@@ -522,8 +525,8 @@ Troubleshooting:
 | `DATABASE_URL` | `postgresql://aurum:aurum@localhost:55432/aurum_dev?schema=public` | Prisma/Postgres connection string for the local Docker compose setup. |
 | `PORT` | `3001` | API port (if overridden by runtime/start script). |
 | `CORS_ORIGIN` | `http://localhost:3000` | Allowed web origin. |
-| `JWT_ACCESS_SECRET` | `change-me` | Access token signing secret. |
-| `JWT_REFRESH_SECRET` | `change-me-too` | Refresh token signing secret. |
+| `JWT_ACCESS_SECRET` | `dev_access_secret_change_me` | Access token signing secret. |
+| `JWT_REFRESH_SECRET` | `dev_refresh_secret_change_me` | Refresh token signing secret. |
 | `JWT_ACCESS_TTL` | `15m` | Access token TTL. |
 | `JWT_REFRESH_TTL` | `30d` | Refresh token TTL. |
 | `AURUM_INSIGHTS_MODE` | `rules` / `llm` / `hybrid` | Insight engine mode. |
@@ -559,13 +562,15 @@ Connected-finance provider setup is optional by environment. If a provider is no
 
 Base URL: `http://localhost:3001`
 
-Key API surfaces:
+Representative API surfaces:
 
 - ledger and analytics for the finance system of record
 - connected-finance source, account, valuation, connect, and sync flows
 - canonical portfolio snapshot create, list, get, and lifecycle-protected delete
 - snapshot-scoped report creation and snapshot-linked report history queries
 - snapshot-scoped financial health score creation and snapshot-linked score history queries
+
+This section is a curated reference for the main product routes, not an exhaustive dump of every controller action.
 
 | Endpoint | Method | Auth | Description |
 | --- | --- | --- | --- |
@@ -582,8 +587,12 @@ Key API surfaces:
 | `/v1/accounts/:id` | DELETE | Yes | Delete account (user-scoped). |
 | `/v1/categories` | GET | Yes | List categories (user-scoped). |
 | `/v1/categories` | POST | Yes | Create category (unique per user). |
+| `/v1/categories/:id` | GET | Yes | Get category by id (user-scoped). |
+| `/v1/categories/:id` | PATCH | Yes | Update category by id (user-scoped). |
+| `/v1/categories/:id` | DELETE | Yes | Delete category by id (user-scoped). |
 | `/v1/subcategories` | GET | Yes | List subcategories by `categoryId` (user-scoped). |
 | `/v1/subcategories` | POST | Yes | Create subcategory under a user-owned category. |
+| `/v1/subcategories/:id` | DELETE | Yes | Delete subcategory by id (user-scoped). |
 | `/v1/transactions` | GET | Yes | List transactions with filters/pagination (user-scoped). |
 | `/v1/transactions` | POST | Yes | Create transaction (income/expense require `categoryId` + `subcategoryId`). |
 | `/v1/transactions/:id` | GET | Yes | Get transaction by id (user-scoped). |
@@ -598,12 +607,19 @@ Key API surfaces:
 | `/v1/analytics/category-breakdown` | GET | Yes | Monthly expense breakdown by category. |
 | `/v1/ai/monthly-report` | GET | Yes | Monthly AI report payload with generated insights. |
 | `/v1/connected-finance/sources` | GET / POST | Yes | List or create connected-finance sources for the current user. |
+| `/v1/connected-finance/sources/:id` | GET / PATCH | Yes | Get or update a current-user connected source. |
 | `/v1/connected-finance/sources/:id/accounts` | GET / POST | Yes | List or create source accounts for a user-owned source. |
+| `/v1/connected-finance/accounts/:accountId` | PATCH | Yes | Update a connected source account for the current user. |
 | `/v1/connected-finance/accounts/:accountId/manual-valuations` | GET / POST | Yes | List or append manual static valuation history for a user-owned source account. |
 | `/v1/connected-finance/bank/plaid/link-token` | POST | Yes | Create a Plaid Link token when Plaid backend credentials are configured. |
+| `/v1/connected-finance/bank/plaid/exchange-public-token` | POST | Yes | Exchange a Plaid public token and create a bank connected source when configured. |
 | `/v1/connected-finance/brokerage/snaptrade/connection-portal-url` | POST | Yes | Create a SnapTrade connection portal URL when SnapTrade backend credentials are configured. |
+| `/v1/connected-finance/brokerage/snaptrade/import-accounts` | POST | Yes | Import SnapTrade brokerage accounts for the current user when configured. |
 | `/v1/connected-finance/crypto/coinbase/connect` | POST | Yes | Connect a read-only Coinbase crypto source for the current user when enabled. |
+| `/v1/connected-finance/sources/:id/sync-runs` | GET | Yes | List sync runs for a current-user connected source. |
 | `/v1/connected-finance/sources/:id/sync` | POST | Yes | Run a user-scoped connected source sync and materialize a canonical snapshot with lineage. |
+| `/v1/connected-finance/sources/:id/snapshots` | GET | Yes | List snapshots produced from a current-user connected source. |
+| `/v1/connected-finance/sources/:id/materialize-snapshot` | POST | Yes | Materialize a snapshot from a manual static connected source. |
 | `/v1/portfolio-snapshots` | POST | Yes | Create canonical portfolio snapshot with nested positions. |
 | `/v1/portfolio-snapshots` | GET | Yes | List persisted portfolio snapshots (newest first). |
 | `/v1/portfolio-snapshots/:id` | GET | Yes | Get single portfolio snapshot by id. |
@@ -652,6 +668,7 @@ pnpm --filter api restore -- --file ./backup.json --mode append --userId <target
   `demo@aurum.local` / `password123`.
 - For an existing local email identity, you can reset the password with:
   `pnpm --filter api run reset-password -- <email> <new-password>`.
+- Newly registered local users start without AI entitlements unless you seed or grant them separately.
 - Future production hardening target: `httpOnly` secure cookie-based session flow.
 
 ## Conventions
