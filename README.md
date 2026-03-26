@@ -475,6 +475,7 @@ Common ports:
 
 - Web: `http://localhost:3000`
 - API: `http://localhost:3001`
+- Postgres: `localhost:55432`
 - Prisma Studio: dynamic port (shown in terminal after `prisma studio`)
 
 API health check:
@@ -491,9 +492,19 @@ pnpm --filter api exec prisma db seed
 pnpm --filter api exec prisma studio
 ```
 
+Local auth bootstrap:
+
+- `pnpm --filter api exec prisma db seed` now creates or refreshes a password-backed demo user for local development.
+- Demo login:
+  `demo@aurum.local` / `password123`
+- To reset an existing local email/password identity:
+  `pnpm --filter api run reset-password -- <email> <new-password>`
+- You can also create your own account from `/register`.
+
 Troubleshooting:
 
 - If Prisma Studio or DB introspection fails, first ensure PostgreSQL is up via Docker Compose.
+- Local Docker Postgres is exposed on `55432` instead of `5432` to avoid Windows port reservation conflicts on `5432`.
 - If you repeatedly hit `Failed to fetch` / `Cannot POST ...` during local dev, run `pnpm dev:restart` to clear stale web/api listeners and relaunch both services.
 
 ## Environment Variables
@@ -508,7 +519,7 @@ Troubleshooting:
 
 | Key | Example | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/aurum` | Prisma/Postgres connection string (Prisma v7 config path). |
+| `DATABASE_URL` | `postgresql://aurum:aurum@localhost:55432/aurum_dev?schema=public` | Prisma/Postgres connection string for the local Docker compose setup. |
 | `PORT` | `3001` | API port (if overridden by runtime/start script). |
 | `CORS_ORIGIN` | `http://localhost:3000` | Allowed web origin. |
 | `JWT_ACCESS_SECRET` | `change-me` | Access token signing secret. |
@@ -637,6 +648,10 @@ pnpm --filter api restore -- --file ./backup.json --mode append --userId <target
 - Protected web routes use client-side `AuthGate`.
 - Current dev storage is `localStorage` for access/refresh tokens.
 - Refresh rotation and reuse detection are enforced server-side.
+- For local development, `pnpm --filter api exec prisma db seed` guarantees a reusable demo login:
+  `demo@aurum.local` / `password123`.
+- For an existing local email identity, you can reset the password with:
+  `pnpm --filter api run reset-password -- <email> <new-password>`.
 - Future production hardening target: `httpOnly` secure cookie-based session flow.
 
 ## Conventions

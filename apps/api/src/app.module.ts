@@ -20,7 +20,10 @@ import { AIConversationsModule } from './ai-conversations/ai-conversations.modul
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['apps/api/.env', '.env'],
+    }),
     PrismaModule,
     AuthModule,
     CategoriesModule,

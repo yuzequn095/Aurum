@@ -132,7 +132,13 @@ If local ports or stale processes cause repeated `Failed to fetch` issues:
 pnpm dev:restart
 ```
 
-`dev:restart` relaunches web + API and applies pending API Prisma migrations before startup.
+`dev:restart` relaunches web + API and applies pending API Prisma migrations before startup. The local API expects Docker Postgres on `localhost:55432`.
+
+For a clean local login after seeding the API database:
+
+- Demo login:
+  `demo@aurum.local` / `password123`
+- Or create your own account from `/register`.
 
 ## Environment
 

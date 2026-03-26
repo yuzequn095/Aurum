@@ -12,7 +12,7 @@ NestJS + Prisma API for Aurum.
 From repo root:
 
 ```bash
-pnpm --filter api dev
+pnpm dev:api
 # or
 pnpm -C apps/api start:dev
 ```
@@ -30,13 +30,20 @@ curl.exe "http://localhost:3001/v1/health"
 Create `apps/api/.env` with:
 
 ```bash
-DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/aurum
+DATABASE_URL=postgresql://aurum:aurum@localhost:55432/aurum_dev?schema=public
 CORS_ORIGIN=http://localhost:3000
+JWT_ACCESS_SECRET=dev_access_secret_change_me
+JWT_REFRESH_SECRET=dev_refresh_secret_change_me
+JWT_ACCESS_TTL=15m
+JWT_REFRESH_TTL=30d
+AURUM_INSIGHTS_MODE=rules
+AURUM_LLM_ENABLED=false
 ```
 
 Notes:
 - Prisma v7 config is in `apps/api/prisma.config.ts`.
 - Schema path: `apps/api/prisma/schema.prisma`.
+- Local Docker compose exposes Postgres on `55432` to avoid Windows conflicts on `5432`.
 
 ## Prisma
 
@@ -47,6 +54,15 @@ pnpm --filter api exec prisma validate
 pnpm --filter api exec prisma migrate dev
 pnpm --filter api exec prisma db seed
 ```
+
+Local demo auth:
+
+- Seeding is idempotent for the demo identity and refreshes a password-backed login each time.
+- Demo login:
+  `demo@aurum.local` / `password123`
+- To reset an existing local email/password identity:
+  `pnpm --filter api run reset-password -- <email> <new-password>`
+- If you prefer, you can also create your own user through `POST /v1/auth/register` or the web `/register` page.
 
 ## API Endpoints
 

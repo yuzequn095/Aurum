@@ -17,6 +17,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const allowedOrigins = buildAllowedOrigins();
   const isProduction = process.env.NODE_ENV === 'production';
+  const port = Number(process.env.PORT ?? 3001);
 
   if (isProduction) {
     app.enableCors({
@@ -48,7 +49,7 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(3001);
+  await app.listen(port);
 }
 
 void bootstrap();
