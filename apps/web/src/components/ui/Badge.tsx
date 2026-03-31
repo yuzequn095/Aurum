@@ -3,7 +3,7 @@ import { cn } from '@/lib/cn';
 
 type BadgeVariant = 'neutral' | 'info' | 'warn' | 'good' | 'error';
 
-type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
+export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
   variant?: BadgeVariant;
 };
 
