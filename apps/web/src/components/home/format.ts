@@ -96,7 +96,7 @@ export function stripMarkdownToPreview(value: string, maxLength = 240): string {
     return normalized;
   }
 
-  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+  return `${normalized.slice(0, maxLength - 3).trimEnd()}...`;
 }
 
 export function formatDeltaLabel(value: number | null | undefined): string {

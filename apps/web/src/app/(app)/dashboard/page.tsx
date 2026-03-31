@@ -208,7 +208,7 @@ export default function DashboardPage() {
                     AI artifact history
                   </p>
                   <p className='mt-2 text-lg font-semibold text-[var(--aurum-text)]'>
-                    {homeOverview.reports.length} reports · {homeOverview.scores.length} scores
+                    {homeOverview.reports.length} reports / {homeOverview.scores.length} scores
                   </p>
                   <p className='mt-2 text-sm leading-6 text-[var(--aurum-text-muted)]'>
                     {homeOverview.latestReport
