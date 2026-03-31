@@ -20,6 +20,8 @@
   --aurum-auth-text: #1a1a1a;
   --aurum-auth-muted: #8b867c;
   --aurum-auth-border: #e7e1d3;
+  --aurum-shell-header-height: 74px;
+  --aurum-mobile-bottom-nav-height: 98px;
 }
 
 @theme inline {
@@ -60,4 +62,18 @@ body {
   opacity: 0.03;
   background-image: radial-gradient(#000 0.5px, transparent 0.5px);
   background-size: 3px 3px;
+}
+
+.aurum-mobile-shell-main {
+  padding-bottom: calc(var(--aurum-mobile-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+}
+
+.aurum-mobile-bottom-nav {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+}
+
+@media (min-width: 1024px) {
+  .aurum-mobile-shell-main {
+    padding-bottom: 0;
+  }
 }

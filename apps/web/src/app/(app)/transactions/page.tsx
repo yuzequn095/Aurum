@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Modal } from '@/components/Modal';
 import { useToast } from '@/components/toast/ToastProvider';
@@ -137,6 +137,7 @@ type Filters = {
 
 export default function TransactionsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
   const [items, setItems] = useState<Tx[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -179,6 +180,7 @@ export default function TransactionsPage() {
   const [editOccurredAtDate, setEditOccurredAtDate] = useState(getTodayDateOnly());
   const [editErr, setEditErr] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const shellAction = searchParams.get('action');
 
   const buildTransactionsPath = (nextOffset: number, filters: Filters) => {
     const qs = new URLSearchParams();
@@ -443,6 +445,23 @@ export default function TransactionsPage() {
 
     void loadSubcategories();
   }, [categoryId]);
+
+  useEffect(() => {
+    if (shellAction !== 'create' || createOpen) {
+      return;
+    }
+
+    setCreateOpen(true);
+    setSubmitErr(null);
+
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.delete('action');
+    const nextQuery = nextSearchParams.toString();
+
+    router.replace(nextQuery ? `/transactions?${nextQuery}` : '/transactions', {
+      scroll: false,
+    });
+  }, [createOpen, router, searchParams, shellAction]);
 
   const filteredSubcategories = subcategories.filter((sub) =>
     sub.name.toLowerCase().includes(subcategorySearch.trim().toLowerCase()),
