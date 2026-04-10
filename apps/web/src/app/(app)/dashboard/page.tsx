@@ -1,8 +1,7 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useMemo, useState } from 'react';
-import { CategoryBreakdownDonut } from '@/components/dashboard/CategoryBreakdownDonut';
-import { IncomeExpenseTrendChart } from '@/components/dashboard/IncomeExpenseTrendChart';
 import { HomeAiBriefCard } from '@/components/home/HomeAiBriefCard';
 import { HomeHero } from '@/components/home/HomeHero';
 import { HomeMonthlyFocusCard } from '@/components/home/HomeMonthlyFocusCard';
@@ -27,6 +26,22 @@ import { useHomeOverview } from '@/hooks/useHomeOverview';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
+
+const CategoryBreakdownDonut = dynamic(
+  () =>
+    import('@/components/dashboard/CategoryBreakdownDonut').then(
+      (module) => module.CategoryBreakdownDonut,
+    ),
+  { ssr: false },
+);
+
+const IncomeExpenseTrendChart = dynamic(
+  () =>
+    import('@/components/dashboard/IncomeExpenseTrendChart').then(
+      (module) => module.IncomeExpenseTrendChart,
+    ),
+  { ssr: false },
+);
 
 export default function DashboardPage() {
   const now = new Date();
