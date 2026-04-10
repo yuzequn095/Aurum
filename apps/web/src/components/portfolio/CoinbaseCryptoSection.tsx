@@ -201,10 +201,10 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
     <section className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Coinbase Crypto Foundation</CardTitle>
+          <CardTitle>Crypto Connection</CardTitle>
           <CardDescription>
-            Internal validation flow for Milestone 12.5A. Self-connect a read-only Coinbase API key,
-            inspect imported balances, and materialize a connected portfolio snapshot.
+            Connect a read-only Coinbase source, inspect imported balances, and materialize a
+            connected portfolio snapshot when crypto should be part of your Aurum asset layer.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

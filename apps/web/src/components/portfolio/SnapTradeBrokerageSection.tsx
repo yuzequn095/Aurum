@@ -181,10 +181,10 @@ export function SnapTradeBrokerageSection({
     <section className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>SnapTrade Brokerage Ingestion</CardTitle>
+          <CardTitle>Brokerage Connection</CardTitle>
           <CardDescription>
-            Internal validation flow for Milestone 12.4A. Open the SnapTrade Connection Portal,
-            import brokerage accounts, and materialize a connected snapshot from holdings.
+            Open the brokerage connection portal, import accounts, and materialize a connected
+            snapshot from holdings when you want brokerage exposure reflected in Aurum.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

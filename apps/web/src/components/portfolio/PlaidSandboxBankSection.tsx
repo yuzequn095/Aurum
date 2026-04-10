@@ -242,10 +242,10 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
     <section className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Plaid Sandbox Bank Ingestion</CardTitle>
+          <CardTitle>Bank Connection</CardTitle>
           <CardDescription>
-            Internal validation flow for Milestone 12.3. Connect a Plaid Sandbox bank, inspect
-            linked accounts, and materialize a connected snapshot from current balances.
+            Connect a bank source, review linked accounts, and materialize a portfolio snapshot
+            from current balances when you want the banking layer reflected in Aurum.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

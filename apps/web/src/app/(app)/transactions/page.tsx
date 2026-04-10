@@ -711,6 +711,13 @@ export default function TransactionsPage() {
     }
   };
 
+  const activeFilterCount = [
+    filterAccountId,
+    filterCategoryId,
+    from,
+    to,
+  ].filter((value) => value.length > 0).length;
+
   return (
     <PageContainer className="space-y-6 py-2 text-aurum-text">
       <main className="space-y-6">
@@ -718,7 +725,8 @@ export default function TransactionsPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-aurum-text">Transactions</h1>
             <p className="mt-1 text-sm text-aurum-muted">
-              Track, filter, and manage your transaction ledger.
+              Record, review, and manage your cash flow ledger. Home stays summary-first while
+              Transactions remains the operational center for day-to-day money movement.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -736,7 +744,34 @@ export default function TransactionsPage() {
           </div>
         </section>
 
-        <Section title="Filters">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <Card>
+            <CardContent className="space-y-1 pt-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-aurum-muted">
+                Ledger Rows Loaded
+              </p>
+              <p className="text-2xl font-semibold text-aurum-text">{items.length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="space-y-1 pt-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-aurum-muted">
+                Active Filters
+              </p>
+              <p className="text-2xl font-semibold text-aurum-text">{activeFilterCount}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="space-y-1 pt-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-aurum-muted">
+                Accounts In Scope
+              </p>
+              <p className="text-2xl font-semibold text-aurum-text">{accounts.length}</p>
+            </CardContent>
+          </Card>
+        </section>
+
+        <Section title="Ledger Filters">
           <Card>
             <CardContent className="pt-4">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">

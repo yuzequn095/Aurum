@@ -1075,40 +1075,129 @@ export default function AiInsightsPage() {
       </Card>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {aiInsightsCatalogEntries.map((entry) => {
-          const enabled = getEntryEnabled(entry);
-          const actionDisabled = getEntryActionDisabled(entry);
+        {aiInsightsCatalogSections.map((section) => {
+          const entries = sectionEntries[section.key];
+          const primaryEntry = entries.find((entry) => entry.state !== 'coming-soon') ?? entries[0];
+          const primaryEntryEnabled = primaryEntry ? getEntryEnabled(primaryEntry) : true;
+          const primaryActionDisabled = primaryEntry
+            ? getEntryActionDisabled(primaryEntry)
+            : false;
 
           return (
-            <Card key={entry.id} id={entry.anchor}>
+            <Card key={section.key}>
               <CardHeader className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <CardTitle className="text-base">{entry.title}</CardTitle>
-                    <CardDescription>{entry.description}</CardDescription>
+                    <CardTitle className="text-base">{section.title}</CardTitle>
+                    <CardDescription>{section.description}</CardDescription>
                   </div>
-                  <Badge variant={getCatalogEntryStateVariant(entry, enabled)}>
-                    {getCatalogEntryStateLabel(entry, enabled)}
-                  </Badge>
+                  <Badge variant="neutral">{sectionCounts[section.key]}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm text-aurum-muted">{getEntryHint(entry)}</p>
-                <Button
-                  variant={
-                    entry.section === 'reports' || entry.id === 'quick-chat'
-                      ? 'primary'
-                      : 'secondary'
-                  }
-                  onClick={() => onCatalogEntryAction(entry)}
-                  disabled={actionDisabled}
-                >
-                  {getEntryActionLabel(entry)}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {entries.map((entry) => (
+                    <Badge
+                      key={entry.id}
+                      variant={getCatalogEntryStateVariant(entry, getEntryEnabled(entry))}
+                    >
+                      {entry.title}
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-sm text-aurum-muted">
+                  {section.key === 'reports'
+                    ? 'Use Reports when you want a persisted AI deliverable tied to canonical snapshot context.'
+                    : section.key === 'analysis'
+                      ? 'Use Analysis when you want diagnostic scoring and guided interpretation before acting.'
+                      : section.key === 'conversations'
+                        ? 'Use Conversations when you want fast iteration first, with explicit saving only when it matters.'
+                        : 'Planning stays visible as its own lane now so future workflows can land cleanly without another IA rewrite.'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {primaryEntry ? (
+                    <Button
+                      variant={
+                        section.key === 'reports' || section.key === 'conversations'
+                          ? 'primary'
+                          : 'secondary'
+                      }
+                      onClick={() => onCatalogEntryAction(primaryEntry)}
+                      disabled={!primaryEntryEnabled || primaryActionDisabled}
+                    >
+                      {getEntryActionLabel(primaryEntry)}
+                    </Button>
+                  ) : null}
+                  <Button variant="ghost" onClick={() => scrollToAnchor(section.anchor)}>
+                    Open {section.title}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           );
         })}
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Current Grounding Context</CardTitle>
+            <CardDescription>
+              Move between snapshots, reports, scores, and conversations without losing the current
+              context thread.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+            <div className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-aurum-muted">Snapshot</p>
+              <p className="mt-1 text-aurum-text">
+                {selectedSnapshot?.metadata.portfolioName ?? 'Select a portfolio snapshot'}
+              </p>
+            </div>
+            <div className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-aurum-muted">Report</p>
+              <p className="mt-1 text-aurum-text">
+                {selectedReport?.title ?? 'No report selected'}
+              </p>
+            </div>
+            <div className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-aurum-muted">Score</p>
+              <p className="mt-1 text-aurum-text">
+                {selectedScoreInsight?.headline ?? 'No score selected'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Workspace Boundaries</CardTitle>
+            <CardDescription>
+              AI Insights now separates creation, diagnosis, conversation, and future planning more
+              explicitly.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-aurum-text">
+            <div className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3">
+              <p className="font-medium">Reports</p>
+              <p className="mt-1 text-aurum-muted">
+                Persisted deliverables like monthly reviews and market briefs.
+              </p>
+            </div>
+            <div className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3">
+              <p className="font-medium">Analysis</p>
+              <p className="mt-1 text-aurum-muted">
+                Scores and guided interpretation for the selected snapshot.
+              </p>
+            </div>
+            <div className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3">
+              <p className="font-medium">Conversations</p>
+              <p className="mt-1 text-aurum-muted">
+                Ephemeral Quick Chat first, then explicit save into history only when needed.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       <section className="space-y-4">
