@@ -582,9 +582,11 @@ export default function PortfolioPage() {
           </p>
         </div>
 
-        <PlaidSandboxBankSection onSnapshotsChanged={loadAllSnapshots} />
-        <SnapTradeBrokerageSection onSnapshotsChanged={loadAllSnapshots} />
-        <CoinbaseCryptoSection onSnapshotsChanged={loadAllSnapshots} />
+        <div className="space-y-6 rounded-[24px] border border-[var(--aurum-border)] bg-[rgba(255,255,255,0.72)] p-4 sm:p-5">
+          <PlaidSandboxBankSection onSnapshotsChanged={loadAllSnapshots} />
+          <SnapTradeBrokerageSection onSnapshotsChanged={loadAllSnapshots} />
+          <CoinbaseCryptoSection onSnapshotsChanged={loadAllSnapshots} />
+        </div>
       </section>
 
       <section id="manual-workspace" className="space-y-4">
@@ -600,6 +602,15 @@ export default function PortfolioPage() {
             not synced from a provider connection.
           </p>
         </div>
+
+      <div className="space-y-6 rounded-[24px] border border-[var(--aurum-border)] bg-[rgba(255,255,255,0.72)] p-4 sm:p-5">
+      <div className="rounded-[18px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-4 text-sm text-[var(--aurum-text)]">
+        <p className="font-medium">Manual asset flow</p>
+        <p className="mt-1 text-[var(--aurum-text-muted)]">
+          Start by creating a source, then maintain holdings and valuations, and only materialize
+          snapshots when the manual layer is ready to feed the broader product.
+        </p>
+      </div>
 
       <Card>
         <CardHeader>
@@ -666,7 +677,7 @@ export default function PortfolioPage() {
             <CardDescription>
               {isLoadingSources
                 ? 'Loading sources...'
-                : `${sources.length} manual static source(s) available.`}
+                : `${sources.length} manual source(s) available.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -1072,6 +1083,7 @@ export default function PortfolioPage() {
           </Card>
         </div>
       </section>
+      </div>
       </section>
     </PageContainer>
   );

@@ -161,7 +161,7 @@ export default function DashboardPage() {
         <div className='space-y-1'>
           <div className='flex flex-wrap items-center gap-2'>
             <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--aurum-text-muted)]'>
-              Secondary Signals
+              Supporting Signals
             </p>
             {snapshotValueCents != null ? <Badge variant='info'>Portfolio on Home</Badge> : null}
             {liquidValueCents != null ? <Badge variant='neutral'>Liquidity visible</Badge> : null}
@@ -175,74 +175,76 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <section className='grid grid-cols-1 gap-6 xl:grid-cols-[0.86fr_1.14fr]'>
-          <HomeMonthlyFocusCard
-            monthLabel={selectedMonthLabel}
-            incomeCents={incomeCents}
-            expenseCents={expenseCents}
-            netCents={netCents}
-            delta={delta}
-            categoryBreakdown={categoryBreakdown}
-            loading={loading}
-          />
-          <IncomeExpenseTrendChart data={summarySeries?.series ?? []} loading={loading} />
-        </section>
-
-        <section className='grid grid-cols-1 gap-6 xl:grid-cols-[0.98fr_1.02fr]'>
-          <CategoryBreakdownDonut totals={categoryBreakdown?.totals ?? []} loading={loading} />
-          <Card className='bg-[rgba(255,255,255,0.9)]'>
-            <CardContent className='space-y-5 pt-5'>
-              <div className='space-y-2'>
-                <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--aurum-text-muted)]'>
-                  Home Readout
-                </p>
-                <h3 className='text-2xl font-semibold tracking-tight text-[var(--aurum-text)]'>
-                  Today&apos;s operating summary
-                </h3>
-              </div>
-
-              <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-                <div className='rounded-[22px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] p-4'>
-                  <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
-                    Portfolio coverage
+        <div className='space-y-6 rounded-[28px] border border-[var(--aurum-border)] bg-[rgba(255,255,255,0.66)] p-4 sm:p-5'>
+          <section className='grid grid-cols-1 gap-6 xl:grid-cols-[0.86fr_1.14fr]'>
+            <HomeMonthlyFocusCard
+              monthLabel={selectedMonthLabel}
+              incomeCents={incomeCents}
+              expenseCents={expenseCents}
+              netCents={netCents}
+              delta={delta}
+              categoryBreakdown={categoryBreakdown}
+              loading={loading}
+            />
+            <Card className='bg-[rgba(255,255,255,0.9)]'>
+              <CardContent className='space-y-5 pt-5'>
+                <div className='space-y-2'>
+                  <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--aurum-text-muted)]'>
+                    Home Readout
                   </p>
-                  <p className='mt-2 text-lg font-semibold text-[var(--aurum-text)]'>
-                    {latestSnapshot
-                      ? `${latestSnapshot.positions.length} positions across the latest snapshot`
-                      : 'No snapshot persisted yet'}
-                  </p>
-                  <p className='mt-2 text-sm leading-6 text-[var(--aurum-text-muted)]'>
-                    {latestSnapshot
-                      ? `Latest anchor: ${formatDateLabel(latestSnapshot.metadata.snapshotDate)}.`
-                      : 'Connect or materialize a source in Portfolio to bring Home beyond ledger-only context.'}
-                  </p>
+                  <h3 className='text-2xl font-semibold tracking-tight text-[var(--aurum-text)]'>
+                    Today&apos;s operating summary
+                  </h3>
                 </div>
 
-                <div className='rounded-[22px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] p-4'>
-                  <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
-                    AI artifact history
-                  </p>
-                  <p className='mt-2 text-lg font-semibold text-[var(--aurum-text)]'>
-                    {homeOverview.reports.length} reports / {homeOverview.scores.length} scores
-                  </p>
-                  <p className='mt-2 text-sm leading-6 text-[var(--aurum-text-muted)]'>
-                    {homeOverview.latestReport
-                      ? `Latest brief: ${homeOverview.latestReport.title}.`
-                      : 'No persisted brief yet. AI Insights remains available for on-demand analysis.'}
+                <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+                  <div className='rounded-[22px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] p-4'>
+                    <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
+                      Portfolio coverage
+                    </p>
+                    <p className='mt-2 text-lg font-semibold text-[var(--aurum-text)]'>
+                      {latestSnapshot
+                        ? `${latestSnapshot.positions.length} positions across the latest snapshot`
+                        : 'No snapshot persisted yet'}
+                    </p>
+                    <p className='mt-2 text-sm leading-6 text-[var(--aurum-text-muted)]'>
+                      {latestSnapshot
+                        ? `Latest anchor: ${formatDateLabel(latestSnapshot.metadata.snapshotDate)}.`
+                        : 'Connect or materialize a source in Portfolio to bring Home beyond ledger-only context.'}
+                    </p>
+                  </div>
+
+                  <div className='rounded-[22px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] p-4'>
+                    <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
+                      AI artifact history
+                    </p>
+                    <p className='mt-2 text-lg font-semibold text-[var(--aurum-text)]'>
+                      {homeOverview.reports.length} reports / {homeOverview.scores.length} scores
+                    </p>
+                    <p className='mt-2 text-sm leading-6 text-[var(--aurum-text-muted)]'>
+                      {homeOverview.latestReport
+                        ? `Latest brief: ${homeOverview.latestReport.title}.`
+                        : 'No persisted brief yet. AI Insights remains available for on-demand analysis.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className='rounded-[24px] border border-[var(--aurum-border)] bg-white p-5'>
+                  <p className='text-sm leading-7 text-[var(--aurum-text-muted)]'>
+                    Aurum Home now starts with wealth state first, keeps monthly operating context
+                    close, and makes AI and portfolio surfaces visible even when they are still in a
+                    graceful empty state.
                   </p>
                 </div>
-              </div>
+              </CardContent>
+            </Card>
+          </section>
 
-              <div className='rounded-[24px] border border-[var(--aurum-border)] bg-white p-5'>
-                <p className='text-sm leading-7 text-[var(--aurum-text-muted)]'>
-                  Aurum Home now starts with wealth state first, keeps monthly operating context
-                  close, and makes AI and portfolio surfaces visible even when they are still in a
-                  graceful empty state.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
+          <section className='grid grid-cols-1 gap-6 xl:grid-cols-[1.02fr_0.98fr]'>
+            <IncomeExpenseTrendChart data={summarySeries?.series ?? []} loading={loading} />
+            <CategoryBreakdownDonut totals={categoryBreakdown?.totals ?? []} loading={loading} />
+          </section>
+        </div>
       </section>
     </PageContainer>
   );

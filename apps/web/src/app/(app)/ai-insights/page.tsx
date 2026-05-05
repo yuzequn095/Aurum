@@ -1200,15 +1200,17 @@ export default function AiInsightsPage() {
         </Card>
       </section>
 
+      <div className="flex flex-col gap-6">
+        <div className="order-3 space-y-6">
       <section className="space-y-4">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-semibold text-aurum-text">Conversations</h2>
-            <Badge variant="info">Ephemeral + Saved</Badge>
+            <Badge variant="neutral">Interactive lane</Badge>
           </div>
           <p className="text-sm text-aurum-muted">
-            Quick Chat remains ephemeral by default, and persistent history mainly enters through
-            Quick Chat -&gt; Save -&gt; Conversations.
+            Quick Chat remains available for fast iteration, while persisted reports and analysis
+            now define the primary structure of the workspace.
           </p>
         </div>
       </section>
@@ -1506,11 +1508,13 @@ export default function AiInsightsPage() {
         </Card>
       </section>
 
+        </div>
+        <div className="order-1 space-y-6">
       <section id="reports" className="space-y-4">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-semibold text-aurum-text">Reports</h2>
-            <Badge variant="info">Monthly Financial Review</Badge>
+            <Badge variant="info">Persisted deliverables</Badge>
           </div>
           <p className="text-sm text-aurum-muted">
             Formal AI deliverables linked to canonical snapshots and persisted as report artifacts.
@@ -2153,6 +2157,8 @@ export default function AiInsightsPage() {
         </Card>
       </section>
 
+        </div>
+        <div className="order-2 space-y-6">
       <section id="analysis" className="space-y-4">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -2405,6 +2411,8 @@ export default function AiInsightsPage() {
         </section>
       </section>
 
+        </div>
+        <div className="order-4">
       <section id="planning" className="space-y-4">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -2445,6 +2453,8 @@ export default function AiInsightsPage() {
           })}
         </div>
       </section>
+        </div>
+      </div>
     </PageContainer>
   );
 }

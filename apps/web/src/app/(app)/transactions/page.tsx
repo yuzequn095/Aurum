@@ -722,14 +722,14 @@ export default function TransactionsPage() {
     <PageContainer className="space-y-6 py-2 text-aurum-text">
       <main className="space-y-6">
         <section className="flex flex-col gap-4 rounded-aurum border border-aurum-border bg-white p-5 shadow-aurumSm sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight text-aurum-text">Transactions</h1>
-            <p className="mt-1 text-sm text-aurum-muted">
+            <p className="text-sm text-aurum-muted">
               Record, review, and manage your cash flow ledger. Home stays summary-first while
               Transactions remains the operational center for day-to-day money movement.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
             <Button
               type="button"
               variant="secondary"
@@ -771,7 +771,24 @@ export default function TransactionsPage() {
           </Card>
         </section>
 
-        <Section title="Ledger Filters">
+        <Section className="space-y-4">
+          <div className="flex flex-col gap-3 rounded-aurum border border-aurum-border bg-[var(--aurum-surface-alt)] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold tracking-tight text-aurum-text">
+                Ledger Filters
+              </h2>
+              <p className="text-sm text-aurum-muted">
+                Narrow the ledger when you need a specific account, category, or date range without
+                losing the page&apos;s role as the cash flow center.
+              </p>
+            </div>
+            <div className="rounded-[14px] border border-aurum-border bg-white px-4 py-3 text-sm text-aurum-text">
+              <p className="text-xs uppercase tracking-[0.16em] text-aurum-muted">Filter State</p>
+              <p className="mt-1 font-medium">
+                {activeFilterCount} active{activeFilterCount === 1 ? ' filter' : ' filters'}
+              </p>
+            </div>
+          </div>
           <Card>
             <CardContent className="pt-4">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -852,70 +869,114 @@ export default function TransactionsPage() {
           </Card>
         </Section>
 
-        {loadErr && <p className="text-sm text-aurum-danger">Error: {loadErr}</p>}
-        {!loadErr && refreshing && items.length === 0 && <p>Loading...</p>}
-
-        <Section>
-          <div>
-            {items.map((tx) => (
-              <Card key={tx.id} className="mb-4 transition-shadow hover:shadow-aurum">
-                <CardContent className="pt-4">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>
-                        {tx.merchant ?? '(no merchant)'}{' '}
-                        <span style={{ opacity: 0.6, fontWeight: 400 }}>- {tx.type}</span>
-                      </div>
-                      <div style={{ opacity: 0.75, marginTop: 4 }}>{tx.occurredAt}</div>
-                      <div style={{ opacity: 0.75, marginTop: 4 }}>
-                        Account: {tx.account?.name ?? tx.accountId}
-                      </div>
-                      <div style={{ opacity: 0.75, marginTop: 4 }}>
-                        Category: {tx.category?.name ?? tx.categoryId ?? '-'}
-                      </div>
-                      <div style={{ opacity: 0.75, marginTop: 4 }}>
-                        Subcategory: {tx.subcategory?.name ?? tx.subcategoryId ?? '-'}
-                      </div>
-                      {tx.note && <div style={{ marginTop: 6 }}>{tx.note}</div>}
-                    </div>
-
-                    <div style={{ display: 'grid', justifyItems: 'end', gap: 8 }}>
-                      <div style={{ fontWeight: 600 }}>
-                        {formatMoneyForType(tx.type, tx.amountCents, tx.currency)}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => openEditModal(tx)}
-                          className="h-10 min-w-[84px] px-4"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          onClick={() => onDeleteTx(tx)}
-                          className="h-10 min-w-[84px] px-4"
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        <Section className="space-y-4">
+          <div className="flex flex-col gap-3 rounded-aurum border border-aurum-border bg-[var(--aurum-surface-alt)] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold tracking-tight text-aurum-text">
+                Ledger Activity
+              </h2>
+              <p className="text-sm text-aurum-muted">
+                Review recent cash flow, edit mistakes, and add new rows without leaving the
+                operational ledger surface.
+              </p>
+            </div>
+            <div className="rounded-[14px] border border-aurum-border bg-white px-4 py-3 text-sm text-aurum-text">
+              <p className="text-xs uppercase tracking-[0.16em] text-aurum-muted">Current View</p>
+              <p className="mt-1 font-medium">
+                {items.length} row{items.length === 1 ? '' : 's'}
+              </p>
+            </div>
           </div>
 
-          {items.length > 0 && hasMore && (
-            <Button
-              type="button"
-              onClick={loadMoreTransactions}
-              disabled={loadingMore || refreshing}
-            >
-              {loadingMore ? 'Loading more...' : 'Load more'}
-            </Button>
+          {loadErr && <p className="text-sm text-aurum-danger">Error: {loadErr}</p>}
+          {!loadErr && refreshing && items.length === 0 && (
+            <p className="text-sm text-aurum-muted">Loading ledger activity...</p>
+          )}
+
+          {!loadErr && !refreshing && items.length === 0 ? (
+            <Card>
+              <CardContent className="space-y-4 pt-5">
+                <div className="space-y-1">
+                  <p className="text-lg font-semibold text-aurum-text">No transactions yet</p>
+                  <p className="text-sm text-aurum-muted">
+                    Add your first ledger row here, or relax the current filters if this view is too
+                    narrow.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="primary" onClick={() => setCreateOpen(true)}>
+                    Add Transaction
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={onResetFilters}>
+                    Clear Filters
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div>
+                {items.map((tx) => (
+                  <Card key={tx.id} className="mb-4 transition-shadow hover:shadow-aurum">
+                    <CardContent className="pt-4">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>
+                            {tx.merchant ?? '(no merchant)'}{' '}
+                            <span style={{ opacity: 0.6, fontWeight: 400 }}>- {tx.type}</span>
+                          </div>
+                          <div style={{ opacity: 0.75, marginTop: 4 }}>{tx.occurredAt}</div>
+                          <div style={{ opacity: 0.75, marginTop: 4 }}>
+                            Account: {tx.account?.name ?? tx.accountId}
+                          </div>
+                          <div style={{ opacity: 0.75, marginTop: 4 }}>
+                            Category: {tx.category?.name ?? tx.categoryId ?? '-'}
+                          </div>
+                          <div style={{ opacity: 0.75, marginTop: 4 }}>
+                            Subcategory: {tx.subcategory?.name ?? tx.subcategoryId ?? '-'}
+                          </div>
+                          {tx.note && <div style={{ marginTop: 6 }}>{tx.note}</div>}
+                        </div>
+
+                        <div style={{ display: 'grid', justifyItems: 'end', gap: 8 }}>
+                          <div style={{ fontWeight: 600 }}>
+                            {formatMoneyForType(tx.type, tx.amountCents, tx.currency)}
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() => openEditModal(tx)}
+                              className="h-10 min-w-[84px] px-4"
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              onClick={() => onDeleteTx(tx)}
+                              className="h-10 min-w-[84px] px-4"
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {items.length > 0 && hasMore && (
+                <Button
+                  type="button"
+                  onClick={loadMoreTransactions}
+                  disabled={loadingMore || refreshing}
+                >
+                  {loadingMore ? 'Loading more...' : 'Load more'}
+                </Button>
+              )}
+            </>
           )}
         </Section>
 
