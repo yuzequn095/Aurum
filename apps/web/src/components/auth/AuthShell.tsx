@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { PropsWithChildren } from 'react';
 import { AuthCard } from '@/components/auth/AuthCard';
@@ -27,12 +26,11 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
 
       <div className='relative mx-auto flex w-full max-w-[980px] translate-y-2 flex-col items-center gap-6 md:translate-y-3 lg:translate-y-4'>
         <div className='flex flex-col items-center gap-3 pt-1'>
-          <Image
+          {/* Dev note: keep auth logo on a plain img because Next image handling was part of the unstable dev-only path here. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src='/aurum_logo_thin.svg'
             alt='Aurum'
-            width={180}
-            height={70}
-            priority
             className='h-[70px] w-[180px] object-contain'
           />
         </div>
