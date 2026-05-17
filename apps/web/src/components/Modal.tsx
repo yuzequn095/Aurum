@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
+import { cn } from '@/lib/cn';
 
 export function Modal(props: {
   open: boolean;
@@ -12,11 +13,16 @@ export function Modal(props: {
 
   useEffect(() => {
     if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -26,44 +32,27 @@ export function Modal(props: {
       role='dialog'
       aria-modal='true'
       onMouseDown={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        zIndex: 50,
-      }}
+      className='fixed inset-0 z-50 flex items-end bg-[rgba(17,24,39,0.42)] p-3 backdrop-blur-[2px] sm:items-center sm:justify-center sm:p-6'
     >
       <div
         onMouseDown={(e) => e.stopPropagation()}
-        style={{
-          width: 'min(720px, 100%)',
-          background: '#fff',
-          borderRadius: 14,
-          border: '1px solid #e5e7eb',
-          padding: 16,
-        }}
+        className={cn(
+          'max-h-[calc(100dvh-24px)] w-full max-w-[720px] overflow-y-auto rounded-[28px] border border-[var(--aurum-border)] bg-white p-4 shadow-[0_28px_70px_-28px_rgba(17,24,39,0.7)]',
+          'sm:max-h-[calc(100dvh-48px)] sm:p-5',
+        )}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ fontSize: 18, fontWeight: 600 }}>{title ?? 'Modal'}</div>
+        <div className='flex items-start justify-between gap-3'>
+          <div className='text-lg font-semibold text-[var(--aurum-text)]'>{title ?? 'Modal'}</div>
           <button
+            type='button'
             onClick={onClose}
-            style={{
-              border: '1px solid #e5e7eb',
-              borderRadius: 10,
-              padding: '6px 10px',
-              background: '#fff',
-              cursor: 'pointer',
-            }}
+            className='min-h-10 rounded-full border border-[var(--aurum-border)] bg-[var(--aurum-surface)] px-4 text-sm font-medium text-[var(--aurum-text)] transition hover:bg-[var(--aurum-surface-alt)]'
           >
             Close
           </button>
         </div>
 
-        <div style={{ marginTop: 12 }}>{children}</div>
+        <div className='mt-4'>{children}</div>
       </div>
     </div>
   );

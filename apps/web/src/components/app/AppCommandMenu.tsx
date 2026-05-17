@@ -40,11 +40,11 @@ export function AppCommandMenu({ open, onClose }: AppCommandMenuProps) {
       role='dialog'
       aria-modal='true'
       aria-label='Command menu'
-      className='fixed inset-0 z-50 flex items-end bg-[rgba(17,24,39,0.32)] p-3 backdrop-blur-[2px] sm:items-center sm:justify-center sm:p-6'
+      className='fixed inset-0 z-50 flex items-end bg-[rgba(17,24,39,0.32)] p-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] backdrop-blur-[2px] sm:items-center sm:justify-center sm:p-6'
       onMouseDown={onClose}
     >
       <div
-        className='w-full max-w-[560px] rounded-[30px] border border-[var(--aurum-border)] bg-[rgba(255,255,255,0.96)] p-4 shadow-[0_28px_60px_-28px_rgba(17,24,39,0.55)] sm:p-5'
+        className='max-h-[calc(100dvh-32px)] w-full max-w-[560px] overflow-y-auto rounded-[30px] border border-[var(--aurum-border)] bg-[rgba(255,255,255,0.96)] p-4 shadow-[0_28px_60px_-28px_rgba(17,24,39,0.55)] sm:p-5'
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className='mb-4 flex items-start justify-between gap-4'>

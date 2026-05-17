@@ -19,7 +19,7 @@ export function Topbar({ onOpenCommandMenu }: TopbarProps) {
         <div className='flex min-w-0 flex-1 items-center gap-3'>
           <Link
             href='/dashboard'
-            aria-label='Go to dashboard'
+            aria-label='Go to Home'
             className='flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--aurum-border)] bg-[var(--aurum-surface)] text-[11px] font-semibold tracking-[0.14em] text-[var(--aurum-text)] shadow-[var(--aurum-shadow)] lg:hidden'
           >
             AU

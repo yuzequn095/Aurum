@@ -1313,8 +1313,11 @@ export default function AiInsightsPage() {
         />
       </section>
 
-      <section id="conversations" className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card id="quick-chat-section">
+      <section
+        id="conversations"
+        className="grid scroll-mt-24 grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]"
+      >
+        <Card id="quick-chat-section" className="scroll-mt-24">
           <CardHeader className="space-y-3">
             <div className="space-y-1">
               <CardTitle>Quick Chat</CardTitle>
@@ -1452,7 +1455,7 @@ export default function AiInsightsPage() {
 
       <section
         id="saved-conversations-section"
-        className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]"
+        className="grid scroll-mt-24 grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]"
       >
         <Card>
           <CardHeader className="space-y-3">
@@ -1570,7 +1573,7 @@ export default function AiInsightsPage() {
 
         </div>
         <div className="order-1 space-y-6">
-      <section id="reports" className="space-y-4">
+      <section id="reports" className="scroll-mt-24 space-y-4">
         <SectionHeading
           eyebrow="Reports"
           title="Durable AI briefings"
@@ -1638,7 +1641,7 @@ export default function AiInsightsPage() {
           </CardContent>
         </Card>
 
-        <Card id="reports-monthly-review">
+        <Card id="reports-monthly-review" className="scroll-mt-24">
           <CardHeader className="space-y-3">
             <div className="space-y-1">
               <CardTitle>Monthly Financial Review</CardTitle>
@@ -1761,7 +1764,7 @@ export default function AiInsightsPage() {
       ) : null}
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <Card id="reports-daily-market-brief">
+        <Card id="reports-daily-market-brief" className="scroll-mt-24">
           <CardHeader className="space-y-3">
             <div className="space-y-1">
               <CardTitle>Daily Market Brief</CardTitle>
@@ -2170,7 +2173,7 @@ export default function AiInsightsPage() {
 
         </div>
         <div className="order-2 space-y-6">
-      <section id="analysis" className="space-y-4">
+      <section id="analysis" className="scroll-mt-24 space-y-4">
         <SectionHeading
           eyebrow="Analysis"
           title="Score the current posture, then decide what deserves attention"
@@ -2180,7 +2183,7 @@ export default function AiInsightsPage() {
       </section>
 
       <section className="space-y-6">
-        <Card id="analysis-portfolio-analysis">
+        <Card id="analysis-portfolio-analysis" className="scroll-mt-24">
           <CardHeader className="space-y-3">
             <div className="space-y-1">
               <CardTitle>Portfolio Analysis</CardTitle>
@@ -2424,7 +2427,7 @@ export default function AiInsightsPage() {
 
         </div>
         <div className="order-4">
-      <section id="planning" className="space-y-4">
+      <section id="planning" className="scroll-mt-24 space-y-4">
         <SectionHeading
           eyebrow="Planning"
           title="Reserved space for future guidance"

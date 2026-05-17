@@ -544,7 +544,7 @@ export default function PortfolioPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <Card id="snapshot-library">
+        <Card id="snapshot-library" className="scroll-mt-24">
           <CardHeader>
             <CardTitle>Snapshot Library</CardTitle>
             <CardDescription>
@@ -661,7 +661,7 @@ export default function PortfolioPage() {
         </div>
       </section>
 
-      <section id="connections-workspace" className="space-y-4">
+      <section id="connections-workspace" className="scroll-mt-24 space-y-4">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-semibold text-[var(--aurum-text)]">
@@ -682,7 +682,7 @@ export default function PortfolioPage() {
         </div>
       </section>
 
-      <section id="manual-workspace" className="space-y-4">
+      <section id="manual-workspace" className="scroll-mt-24 space-y-4">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-semibold text-[var(--aurum-text)]">
