@@ -379,7 +379,7 @@ export default function PortfolioPage() {
 
   return (
     <PageContainer className="space-y-6">
-      <Card className="relative overflow-hidden border-[var(--aurum-border)] bg-[rgba(255,255,255,0.88)]">
+      <Card className="aurum-elevated-surface relative overflow-hidden border-[var(--aurum-border)]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.16),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(17,24,39,0.05),transparent_32%)]" />
         <CardContent className="relative space-y-8 px-5 py-6 sm:px-6 sm:py-7 lg:px-8">
           <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)] xl:items-start">
@@ -419,7 +419,7 @@ export default function PortfolioPage() {
                 </Button>
                 <Link
                   href="/ai-insights#analysis-portfolio-analysis"
-                  className="inline-flex h-10 items-center justify-center rounded-[var(--aurum-radius-md)] border border-[var(--aurum-border)] bg-[var(--aurum-surface)] px-4 text-sm font-medium text-[var(--aurum-text)] shadow-[var(--aurum-shadow)] transition hover:bg-[var(--aurum-surface-alt)]"
+                  className="inline-flex min-h-11 items-center justify-center rounded-[var(--aurum-radius-md)] border border-[var(--aurum-border)] bg-[rgba(255,254,250,0.92)] px-4 text-sm font-medium text-[var(--aurum-text)] shadow-[var(--aurum-shadow)] transition hover:border-[var(--aurum-accent)]/35 hover:bg-white"
                 >
                   Run AI Analysis
                 </Link>

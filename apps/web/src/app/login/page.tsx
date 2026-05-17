@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { PrimaryButton } from '@/components/auth/PrimaryButton';
@@ -9,7 +9,6 @@ import { useToast } from '@/components/toast/ToastProvider';
 import { useAuthSession } from '@/lib/auth/session';
 import { apiPublicPost } from '@/lib/api';
 import { setAccessToken, setRefreshToken, setUserEmail } from '@/lib/auth/tokens';
-import { useEffect } from 'react';
 
 type AuthResponse = {
   user: { id: string; email: string };
@@ -17,7 +16,17 @@ type AuthResponse = {
   refreshToken: string;
 };
 
-export default function LoginPage() {
+function LoginFallback() {
+  return (
+    <AuthShell mode='login' heading='' subheading=''>
+      <div className='rounded-aurum border border-aurum-border bg-white/85 p-4 text-sm text-aurum-muted'>
+        Preparing secure session...
+      </div>
+    </AuthShell>
+  );
+}
+
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -139,5 +148,13 @@ export default function LoginPage() {
         </form>
       )}
     </AuthShell>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginFallback />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

@@ -38,7 +38,41 @@ body {
     var(--aurum-bg);
   color: var(--aurum-text);
   font-family: var(--aurum-font-sans);
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
   line-height: var(--aurum-line-height-normal);
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(197, 160, 89, 0.24);
+  color: var(--aurum-text);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: rgba(197, 160, 89, 0.12);
+}
+
+input,
+select,
+textarea {
+  color-scheme: light;
 }
 
 .aurum-app-bg {
@@ -72,8 +106,48 @@ body {
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
 }
 
+.aurum-scrollbar {
+  scrollbar-color: rgba(197, 160, 89, 0.34) transparent;
+  scrollbar-width: thin;
+}
+
+.aurum-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.aurum-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(197, 160, 89, 0.34);
+  border-radius: 999px;
+}
+
+.aurum-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aurum-elevated-surface {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 254, 251, 0.76)),
+    radial-gradient(circle at top left, rgba(197, 160, 89, 0.08), transparent 42%);
+}
+
 @media (min-width: 1024px) {
   .aurum-mobile-shell-main {
     padding-bottom: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

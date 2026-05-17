@@ -8,18 +8,19 @@ export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
 };
 
 const variantClasses: Record<BadgeVariant, string> = {
-  neutral: 'bg-[var(--aurum-surface-alt)] text-[var(--aurum-text-muted)]',
-  info: 'bg-[color:rgba(59,130,246,0.12)] text-[color:#1D4ED8]',
-  warn: 'bg-[color:rgba(185,133,25,0.14)] text-[var(--aurum-warning)]',
-  good: 'bg-[color:rgba(27,156,100,0.14)] text-[var(--aurum-success)]',
-  error: 'bg-[color:rgba(210,75,75,0.14)] text-[var(--aurum-danger)]',
+  neutral:
+    'border-[var(--aurum-border)] bg-[rgba(250,247,239,0.9)] text-[var(--aurum-text-muted)]',
+  info: 'border-[color:rgba(59,130,246,0.16)] bg-[color:rgba(59,130,246,0.1)] text-[color:#1D4ED8]',
+  warn: 'border-[color:rgba(185,133,25,0.18)] bg-[color:rgba(185,133,25,0.12)] text-[var(--aurum-warning)]',
+  good: 'border-[color:rgba(27,156,100,0.16)] bg-[color:rgba(27,156,100,0.12)] text-[var(--aurum-success)]',
+  error: 'border-[color:rgba(210,75,75,0.16)] bg-[color:rgba(210,75,75,0.12)] text-[var(--aurum-danger)]',
 };
 
 export function Badge({ className, variant = 'neutral', ...props }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none',
+        'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none tracking-[0.01em]',
         variantClasses[variant],
         className,
       )}

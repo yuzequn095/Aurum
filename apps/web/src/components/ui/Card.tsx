@@ -5,7 +5,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        'rounded-[var(--aurum-radius-xl)] border border-[var(--aurum-border)] bg-[var(--aurum-surface)] shadow-[var(--aurum-shadow)]',
+        'min-w-0 rounded-[var(--aurum-radius-xl)] border border-[var(--aurum-border)] bg-[rgba(255,254,250,0.88)] shadow-[var(--aurum-shadow)] backdrop-blur-[2px] transition-colors',
         className,
       )}
       {...props}
@@ -14,7 +14,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('px-5 pt-5', className)} {...props} />;
+  return <div className={cn('px-4 pt-4 sm:px-5 sm:pt-5', className)} {...props} />;
 }
 
 export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
@@ -42,9 +42,9 @@ export function CardDescription({ className, ...props }: HTMLAttributes<HTMLPara
 }
 
 export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('px-5 pb-5', className)} {...props} />;
+  return <div className={cn('px-4 pb-4 sm:px-5 sm:pb-5', className)} {...props} />;
 }
 
 export function CardFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('px-5 pb-5 pt-1', className)} {...props} />;
+  return <div className={cn('px-4 pb-4 pt-1 sm:px-5 sm:pb-5', className)} {...props} />;
 }

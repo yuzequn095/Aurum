@@ -11,9 +11,9 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'border border-transparent bg-[var(--aurum-accent)] text-white hover:brightness-95',
+    'border border-transparent bg-[linear-gradient(135deg,var(--aurum-accent),var(--aurum-gold-strong))] text-white hover:brightness-95',
   secondary:
-    'border border-[var(--aurum-border)] bg-[var(--aurum-surface)] text-[var(--aurum-text)] hover:bg-[var(--aurum-surface-alt)]',
+    'border border-[var(--aurum-border)] bg-[rgba(255,254,250,0.92)] text-[var(--aurum-text)] hover:border-[var(--aurum-accent)]/35 hover:bg-white',
   ghost:
     'border border-transparent bg-transparent text-[var(--aurum-text-muted)] hover:bg-[var(--aurum-surface)] hover:text-[var(--aurum-text)]',
   danger:
@@ -23,9 +23,9 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'h-8 rounded-[var(--aurum-radius-sm)] px-3 text-xs',
-  md: 'h-10 rounded-[var(--aurum-radius-md)] px-4 text-sm',
-  lg: 'h-12 rounded-[var(--aurum-radius-lg)] px-5 text-sm',
+  sm: 'min-h-9 rounded-[var(--aurum-radius-sm)] px-3 text-xs',
+  md: 'min-h-11 rounded-[var(--aurum-radius-md)] px-4 text-sm',
+  lg: 'min-h-12 rounded-[var(--aurum-radius-lg)] px-5 text-sm',
 };
 
 export function Button({
@@ -39,7 +39,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center font-medium shadow-[var(--aurum-shadow)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aurum-accent)]/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-55',
+        'inline-flex items-center justify-center whitespace-nowrap font-medium shadow-[var(--aurum-shadow)] transition active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aurum-accent)]/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-55',
         variantClasses[variant],
         sizeClasses[size],
         className,

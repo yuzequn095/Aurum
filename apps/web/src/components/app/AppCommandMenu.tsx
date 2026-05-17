@@ -44,7 +44,7 @@ export function AppCommandMenu({ open, onClose }: AppCommandMenuProps) {
       onMouseDown={onClose}
     >
       <div
-        className='max-h-[calc(100dvh-32px)] w-full max-w-[560px] overflow-y-auto rounded-[30px] border border-[var(--aurum-border)] bg-[rgba(255,255,255,0.96)] p-4 shadow-[0_28px_60px_-28px_rgba(17,24,39,0.55)] sm:p-5'
+        className='aurum-scrollbar max-h-[calc(100dvh-32px)] w-full max-w-[560px] overflow-y-auto rounded-[30px] border border-[var(--aurum-border)] bg-[rgba(255,254,250,0.96)] p-4 shadow-[0_28px_60px_-28px_rgba(17,24,39,0.55)] sm:p-5'
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className='mb-4 flex items-start justify-between gap-4'>

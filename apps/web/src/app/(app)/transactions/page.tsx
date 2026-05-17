@@ -728,7 +728,7 @@ export default function TransactionsPage() {
   return (
     <PageContainer className="space-y-6 py-2 text-aurum-text">
       <main className="space-y-6">
-        <section className="relative overflow-hidden rounded-[28px] border border-aurum-border bg-[rgba(255,255,255,0.9)] p-5 shadow-aurumSm sm:p-6">
+        <section className="aurum-elevated-surface relative overflow-hidden rounded-[28px] border border-aurum-border p-5 shadow-aurumSm sm:p-6">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.15),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(17,24,39,0.05),transparent_32%)]" />
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">

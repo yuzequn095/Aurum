@@ -87,7 +87,7 @@ export function HomeHero({
         : 'Cash flow is balanced this month.';
 
   return (
-    <Card className='relative overflow-hidden border-[var(--aurum-border)] bg-[rgba(255,255,255,0.86)]'>
+    <Card className='aurum-elevated-surface relative overflow-hidden border-[var(--aurum-border)]'>
       <div className='absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.18),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(17,24,39,0.06),transparent_32%)]' />
       <CardContent className='relative space-y-8 px-5 py-6 sm:px-6 sm:py-7 lg:px-8 lg:py-8'>
         <div className='grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] xl:items-start'>
@@ -108,16 +108,16 @@ export function HomeHero({
               </div>
             </div>
 
-            <div className='flex flex-wrap gap-3'>
+            <div className='grid grid-cols-2 gap-3 sm:flex sm:flex-wrap'>
               {quickActions.map((action) => (
                 <Link
                   key={action.label}
                   href={action.href}
                   className={cn(
-                    'inline-flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-medium transition',
+                    'inline-flex min-h-11 w-full items-center justify-center rounded-full px-4 text-center text-sm font-medium transition active:translate-y-px sm:w-auto',
                     action.tone === 'primary'
-                      ? 'border border-transparent bg-[var(--aurum-accent)] text-white shadow-[var(--aurum-shadow)] hover:brightness-95'
-                      : 'border border-[var(--aurum-border)] bg-white/88 text-[var(--aurum-text)] shadow-[var(--aurum-shadow)] hover:border-[var(--aurum-accent)]/35 hover:bg-[var(--aurum-surface-alt)]',
+                      ? 'border border-transparent bg-[linear-gradient(135deg,var(--aurum-accent),var(--aurum-gold-strong))] text-white shadow-[var(--aurum-shadow)] hover:brightness-95'
+                      : 'border border-[var(--aurum-border)] bg-white/86 text-[var(--aurum-text)] shadow-[var(--aurum-shadow)] hover:border-[var(--aurum-accent)]/35 hover:bg-white',
                   )}
                 >
                   {action.label}
@@ -127,7 +127,7 @@ export function HomeHero({
           </div>
 
           <div className='grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-1'>
-            <div className='rounded-[24px] border border-white/70 bg-white/82 p-4 shadow-[var(--aurum-shadow)]'>
+            <div className='rounded-[24px] border border-white/70 bg-white/78 p-4 shadow-[var(--aurum-shadow)] backdrop-blur-[2px]'>
               <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--aurum-text-muted)]'>
                 Focus Window
               </p>
@@ -137,7 +137,7 @@ export function HomeHero({
               <p className='mt-1 text-sm text-[var(--aurum-text-muted)]'>{netLabel}</p>
             </div>
 
-            <div className='rounded-[24px] border border-white/70 bg-white/82 p-4 shadow-[var(--aurum-shadow)]'>
+            <div className='rounded-[24px] border border-white/70 bg-white/78 p-4 shadow-[var(--aurum-shadow)] backdrop-blur-[2px]'>
               <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--aurum-text-muted)]'>
                 Latest Snapshot
               </p>
@@ -162,7 +162,7 @@ export function HomeHero({
               )}
             </div>
 
-            <div className='rounded-[24px] border border-white/70 bg-white/82 p-4 shadow-[var(--aurum-shadow)]'>
+            <div className='rounded-[24px] border border-white/70 bg-white/78 p-4 shadow-[var(--aurum-shadow)] backdrop-blur-[2px]'>
               <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--aurum-text-muted)]'>
                 AI Posture
               </p>
@@ -194,7 +194,7 @@ export function HomeHero({
           </div>
         </div>
 
-        <div className='flex flex-col gap-3 rounded-[24px] border border-white/70 bg-white/72 p-4 sm:flex-row sm:items-end sm:justify-between'>
+        <div className='flex flex-col gap-3 rounded-[24px] border border-white/70 bg-white/72 p-4 shadow-[0_18px_44px_-36px_rgba(17,24,39,0.45)] backdrop-blur-[2px] sm:flex-row sm:items-end sm:justify-between'>
           <div className='space-y-1'>
             <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--aurum-text-muted)]'>
               View Controls
@@ -212,7 +212,7 @@ export function HomeHero({
               <select
                 value={year}
                 onChange={(event) => onYearChange(Number(event.target.value))}
-                className='w-full rounded-[14px] border border-[var(--aurum-border)] bg-white px-3 py-2 text-[var(--aurum-text)] outline-none transition focus:border-[var(--aurum-accent)]'
+                className='min-h-11 w-full rounded-[14px] border border-[var(--aurum-border)] bg-white px-3 py-2 text-[var(--aurum-text)] outline-none transition focus:border-[var(--aurum-accent)] focus:ring-2 focus:ring-[var(--aurum-accent)]/15'
               >
                 {yearOptions.map((option) => (
                   <option key={option} value={option}>
@@ -229,7 +229,7 @@ export function HomeHero({
               <select
                 value={month}
                 onChange={(event) => onMonthChange(Number(event.target.value))}
-                className='w-full rounded-[14px] border border-[var(--aurum-border)] bg-white px-3 py-2 text-[var(--aurum-text)] outline-none transition focus:border-[var(--aurum-accent)]'
+                className='min-h-11 w-full rounded-[14px] border border-[var(--aurum-border)] bg-white px-3 py-2 text-[var(--aurum-text)] outline-none transition focus:border-[var(--aurum-accent)] focus:ring-2 focus:ring-[var(--aurum-accent)]/15'
               >
                 {monthOptions.map((label, index) => (
                   <option key={label} value={index + 1}>

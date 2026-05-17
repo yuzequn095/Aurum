@@ -342,7 +342,7 @@ function MarkdownReportContent({ content }: { content: string }) {
           return (
             <pre
               key={`${index}-${block.slice(0, 12)}`}
-              className="overflow-auto rounded-[16px] border border-aurum-border bg-aurum-surface-alt p-4 text-xs leading-6 text-aurum-text"
+              className="aurum-scrollbar overflow-auto rounded-[16px] border border-aurum-border bg-aurum-surface-alt p-4 text-xs leading-6 text-aurum-text"
             >
               {block.replace(/^```[a-zA-Z]*\n?|\n?```$/g, '')}
             </pre>
@@ -1186,7 +1186,7 @@ export default function AiInsightsPage() {
 
   return (
     <PageContainer className="space-y-7 pb-8 md:space-y-8 md:pb-10">
-      <Card className="relative overflow-hidden border-[var(--aurum-border)] bg-[rgba(255,255,255,0.88)]">
+      <Card className="aurum-elevated-surface relative overflow-hidden border-[var(--aurum-border)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.18),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(17,24,39,0.06),transparent_32%)]" />
         <CardContent className="relative space-y-8 px-5 py-6 sm:px-6 sm:py-7 lg:px-8">
           <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.18fr)_minmax(340px,0.82fr)] xl:items-start">
@@ -1350,7 +1350,7 @@ export default function AiInsightsPage() {
             </StatusNote>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="max-h-[420px] space-y-3 overflow-auto rounded-[16px] border border-aurum-border bg-[var(--aurum-surface-alt)] p-4">
+            <div className="aurum-scrollbar max-h-[420px] space-y-3 overflow-auto rounded-[16px] border border-aurum-border bg-[var(--aurum-surface-alt)] p-4">
               {quickChatMessages.length === 0 ? (
                 <div className="space-y-2 text-sm text-aurum-muted">
                   <p>Quick Chat starts as a local draft.</p>
@@ -1485,7 +1485,7 @@ export default function AiInsightsPage() {
               <StatusNote>{conversationStatusMessage}</StatusNote>
             ) : null}
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="aurum-scrollbar max-h-[520px] space-y-2 overflow-auto">
             {isConversationsLoading ? (
               <p className="text-sm text-aurum-muted">Loading saved conversations...</p>
             ) : conversations.length === 0 ? (
@@ -1555,7 +1555,7 @@ export default function AiInsightsPage() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="aurum-scrollbar max-h-[560px] space-y-3 overflow-auto pr-1">
                   {selectedConversation.messages.map((message) => (
                     <TranscriptBubble
                       key={message.id}
@@ -1612,7 +1612,7 @@ export default function AiInsightsPage() {
               <StatusNote>{snapshotsStatusMessage}</StatusNote>
             ) : null}
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="aurum-scrollbar max-h-[520px] space-y-2 overflow-auto">
             {snapshots.length === 0 ? (
               <p className="text-sm text-aurum-muted">
                 No snapshots available yet. Create a starter snapshot here or open Portfolio to

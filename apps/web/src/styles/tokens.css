@@ -1,12 +1,12 @@
 :root {
   /* color */
   --aurum-bg: #f5f4f1;
-  --aurum-surface: #ffffff;
-  --aurum-surface-alt: #faf8f2;
+  --aurum-surface: #fffefa;
+  --aurum-surface-alt: #faf7ef;
   --aurum-text: #1a1a1a;
   --aurum-text-muted: #7f7f7f;
   --aurum-border: #ece9df;
-  --aurum-shadow: 0 20px 45px -30px rgba(17, 24, 39, 0.35);
+  --aurum-shadow: 0 24px 58px -38px rgba(17, 24, 39, 0.48);
   --aurum-accent: #c5a059;
   --aurum-success: #1b9c64;
   --aurum-danger: #d24b4b;
@@ -26,7 +26,7 @@
   --aurum-space-xl: 32px;
 
   /* type */
-  --aurum-font-sans: 'Inter', 'Avenir Next', 'Segoe UI', sans-serif;
+  --aurum-font-sans: 'Avenir Next', Aptos, 'Segoe UI', sans-serif;
   --aurum-font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --aurum-font-size-h1: 40px;
   --aurum-font-size-h2: 28px;
