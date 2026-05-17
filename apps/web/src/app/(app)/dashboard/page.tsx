@@ -231,9 +231,9 @@ export default function DashboardPage() {
 
                 <div className='rounded-[24px] border border-[var(--aurum-border)] bg-white p-5'>
                   <p className='text-sm leading-7 text-[var(--aurum-text-muted)]'>
-                    Aurum Home now starts with wealth state first, keeps monthly operating context
-                    close, and makes AI and portfolio surfaces visible even when they are still in a
-                    graceful empty state.
+                    Home keeps the daily decision path short: check wealth posture, confirm the
+                    month&apos;s operating pressure, then continue into Portfolio, Transactions, or
+                    AI Insights when a deeper workflow is needed.
                   </p>
                 </div>
               </CardContent>

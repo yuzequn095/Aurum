@@ -17,16 +17,16 @@ export const SETTINGS_HREF = '/settings' as const;
 
 export const APP_NAV_ITEMS: AppNavItem[] = [
   {
-    label: 'Dashboard',
+    label: 'Home',
     mobileLabel: 'Home',
-    description: 'Overview, balances, and monthly performance.',
+    description: 'Daily wealth command center for cash flow, portfolio, and AI.',
     href: '/dashboard',
     icon: 'home',
   },
   {
     label: 'Portfolio',
     mobileLabel: 'Portfolio',
-    description: 'Connected accounts, holdings, and valuation history.',
+    description: 'Asset center for snapshots, accounts, and valuation history.',
     href: '/portfolio',
     icon: 'portfolio',
   },
@@ -49,13 +49,13 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
 export const APP_COMMAND_ACTIONS: AppCommandAction[] = [
   {
     label: 'Add Transaction',
-    description: 'Open the transaction composer from anywhere in the app shell.',
+    description: 'Record money movement from anywhere in the app shell.',
     href: '/transactions?action=create',
     icon: 'transactions',
   },
   {
     label: 'Ask AI',
-    description: 'Jump into the AI Insights workspace and continue from the latest context.',
+    description: 'Ask a grounded question in the AI Insights workspace.',
     href: '/ai-insights',
     icon: 'ask',
   },

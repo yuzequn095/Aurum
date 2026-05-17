@@ -47,8 +47,7 @@ export function HomeMonthlyFocusCard({
             </p>
             <CardTitle>Monthly focus</CardTitle>
             <CardDescription>
-              The finance system of record still matters, but now it supports a broader Home
-              experience.
+              Income, spending, and pressure points stay nearby as supporting operating context.
             </CardDescription>
           </div>
           <Badge variant='neutral'>{monthLabel}</Badge>

@@ -31,7 +31,7 @@ export function HomePortfolioPulseCard({
             </p>
             <CardTitle>Snapshot-aware wealth state</CardTitle>
             <CardDescription>
-              Home should understand your portfolio posture, not only this month&apos;s ledger.
+              Your latest valuation, liquidity, and asset mix without opening the full asset center.
             </CardDescription>
           </div>
           <Link
@@ -82,7 +82,7 @@ export function HomePortfolioPulseCard({
                   {formatMoneyFromDollars(snapshot.totalValue)}
                 </p>
                 <p className='mt-2 text-sm text-[var(--aurum-text-muted)]'>
-                  Whole-portfolio valuation from the latest persisted snapshot.
+                  Whole-portfolio valuation from your latest saved snapshot.
                 </p>
               </div>
 
@@ -96,7 +96,7 @@ export function HomePortfolioPulseCard({
                     : 'Not tracked'}
                 </p>
                 <p className='mt-2 text-sm text-[var(--aurum-text-muted)]'>
-                  Cash in the snapshot model, when the source exposes it cleanly.
+                  Cash or cash-like value when the source provides it.
                 </p>
               </div>
 
@@ -108,7 +108,7 @@ export function HomePortfolioPulseCard({
                   {snapshot.positions.length}
                 </p>
                 <p className='mt-2 text-sm text-[var(--aurum-text-muted)]'>
-                  Source {snapshot.metadata.sourceLabel ?? 'not labeled yet'}.
+                  Source {snapshot.metadata.sourceLabel ?? 'label pending'}.
                 </p>
               </div>
             </div>
@@ -133,8 +133,7 @@ export function HomePortfolioPulseCard({
         ) : (
           <div className='rounded-[24px] border border-dashed border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] p-6 text-sm leading-7 text-[var(--aurum-text-muted)]'>
             Aurum Home is ready for portfolio-aware summaries as soon as your first snapshot is
-            synced or materialized. Use Portfolio to connect sources or create a manual static
-            snapshot foundation.
+            synced or created. Use Portfolio to connect accounts or maintain manual assets.
           </div>
         )}
       </CardContent>

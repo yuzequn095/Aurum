@@ -58,6 +58,11 @@ const quickActions = [
     href: '/ai-insights#quick-chat-section',
     tone: 'secondary' as const,
   },
+  {
+    label: 'Latest Reports',
+    href: '/ai-insights#reports',
+    tone: 'secondary' as const,
+  },
 ];
 
 export function HomeHero({
@@ -97,8 +102,8 @@ export function HomeHero({
                 </h1>
                 <p className='max-w-2xl text-sm leading-7 text-[var(--aurum-text-muted)] sm:text-[15px]'>
                   Aurum brings your cash flow, portfolio state, and financial intelligence into one
-                  calm daily command surface. Start with today&apos;s posture, then move directly
-                  into action.
+                  calm daily command surface. Start with the current posture, then move directly
+                  into the workflow that needs attention.
                 </p>
               </div>
             </div>
@@ -152,7 +157,7 @@ export function HomeHero({
                 </>
               ) : (
                 <p className='mt-3 text-sm leading-6 text-[var(--aurum-text-muted)]'>
-                  Create or sync a portfolio snapshot to anchor Home in your latest wealth state.
+                  Create or sync a portfolio snapshot to bring your latest wealth state into Home.
                 </p>
               )}
             </div>
@@ -182,8 +187,7 @@ export function HomeHero({
                 </>
               ) : (
                 <p className='mt-3 text-sm leading-6 text-[var(--aurum-text-muted)]'>
-                  AI surfaces are ready when you want a health score, brief, or grounded quick
-                  chat.
+                  Health scores, reports, and Quick Chat appear here once AI Insights has context.
                 </p>
               )}
             </div>
@@ -196,8 +200,7 @@ export function HomeHero({
               View Controls
             </p>
             <p className='text-sm text-[var(--aurum-text-muted)]'>
-              Keep the monthly analytics layer close at hand without letting it dominate the Home
-              surface.
+              Choose the month for supporting cash flow analytics below.
             </p>
           </div>
 
