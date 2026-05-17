@@ -180,7 +180,7 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
         onSnapshotsChanged?.(),
       ]);
       setStatusMessage(
-        `Crypto snapshot materialized: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
+        `Crypto snapshot created: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
       );
     } catch (error) {
       const notice =
@@ -203,8 +203,8 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
         <CardHeader>
           <CardTitle>Crypto Connection</CardTitle>
           <CardDescription>
-            Connect a read-only Coinbase source, inspect imported balances, and materialize a
-            connected portfolio snapshot when crypto should be part of your Aurum asset layer.
+            Connect a read-only Coinbase source, inspect balances, and create a portfolio snapshot
+            when crypto should be part of your Aurum asset layer.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -260,7 +260,7 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
             />
             <div className="flex justify-end">
               <Button type="submit" disabled={isConnecting || Boolean(providerNotice)}>
-                {isConnecting ? 'Connecting...' : 'Connect Crypto (Coinbase)'}
+                {isConnecting ? 'Connecting...' : 'Connect Crypto'}
               </Button>
             </div>
           </form>
@@ -325,7 +325,7 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
             <CardHeader>
               <CardTitle>Imported Coinbase Accounts</CardTitle>
               <CardDescription>
-                Each Coinbase account or balance bucket maps into one connected source account.
+                Imported Coinbase balances provide crypto positions for portfolio snapshots.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -373,16 +373,15 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
 
           <Card>
             <CardHeader>
-              <CardTitle>Materialized Snapshots</CardTitle>
+              <CardTitle>Created Snapshots</CardTitle>
               <CardDescription>
-                Coinbase balance syncs write canonical portfolio snapshots with source and sync
-                lineage.
+                Coinbase balance syncs create portfolio snapshots for the selected crypto source.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {sourceSnapshots.length === 0 ? (
                 <p className="text-sm text-[var(--aurum-text-muted)]">
-                  No snapshots have been materialized for this crypto source yet.
+                  No snapshots have been created for this crypto source yet.
                 </p>
               ) : (
                 sourceSnapshots.map((snapshot) => (

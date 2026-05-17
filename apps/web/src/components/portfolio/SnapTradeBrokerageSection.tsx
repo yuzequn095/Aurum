@@ -166,7 +166,7 @@ export function SnapTradeBrokerageSection({
         onSnapshotsChanged?.(),
       ]);
       setStatusMessage(
-        `Brokerage snapshot materialized: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
+        `Brokerage snapshot created: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
       );
     } catch (error) {
       setStatusMessage(
@@ -183,14 +183,14 @@ export function SnapTradeBrokerageSection({
         <CardHeader>
           <CardTitle>Brokerage Connection</CardTitle>
           <CardDescription>
-            Open the brokerage connection portal, import accounts, and materialize a connected
-            snapshot from holdings when you want brokerage exposure reflected in Aurum.
+            Connect brokerage accounts, import holdings, and create a portfolio snapshot when
+            investments should be reflected in Aurum.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row">
             <Button onClick={() => void onCreateConnectionPortal()} disabled={isCreatingPortal}>
-              {isCreatingPortal ? 'Opening Portal...' : 'Connect Brokerage (SnapTrade)'}
+              {isCreatingPortal ? 'Opening Portal...' : 'Connect Brokerage'}
             </Button>
             <Button
               variant="secondary"
@@ -254,8 +254,7 @@ export function SnapTradeBrokerageSection({
             <CardHeader>
               <CardTitle>Brokerage Accounts</CardTitle>
               <CardDescription>
-                One SnapTrade connection maps to one brokerage source, and one brokerage account
-                maps to one connected source account.
+                Imported accounts provide investment positions for portfolio snapshots.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -315,15 +314,15 @@ export function SnapTradeBrokerageSection({
 
           <Card>
             <CardHeader>
-              <CardTitle>Materialized Snapshots</CardTitle>
+              <CardTitle>Created Snapshots</CardTitle>
               <CardDescription>
-                Holdings syncs write canonical portfolio snapshots with source and sync lineage.
+                Holdings syncs create portfolio snapshots for the selected brokerage source.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {sourceSnapshots.length === 0 ? (
                 <p className="text-sm text-[var(--aurum-text-muted)]">
-                  No snapshots have been materialized for this brokerage source yet.
+                  No snapshots have been created for this brokerage source yet.
                 </p>
               ) : (
                 sourceSnapshots.map((snapshot) => (

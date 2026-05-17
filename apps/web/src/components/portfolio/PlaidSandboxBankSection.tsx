@@ -220,9 +220,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
         loadSources(),
         onSnapshotsChanged?.(),
       ]);
-      setStatusMessage(
-        `Bank snapshot materialized: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
-      );
+      setStatusMessage(`Bank snapshot created: ${result.snapshot.id} via sync run ${result.syncRun.id}.`);
     } catch (error) {
       const notice =
         error instanceof ApiError
@@ -244,8 +242,8 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
         <CardHeader>
           <CardTitle>Bank Connection</CardTitle>
           <CardDescription>
-            Connect a bank source, review linked accounts, and materialize a portfolio snapshot
-            from current balances when you want the banking layer reflected in Aurum.
+            Connect bank accounts, review balances, and create a portfolio snapshot when cash
+            should be reflected in Aurum.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -258,7 +256,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
                 ? 'Preparing Link...'
                 : isExchanging
                   ? 'Connecting...'
-                  : 'Connect Bank (Plaid Sandbox)'}
+                  : 'Connect Bank'}
             </Button>
             <input
               className={inputClassName}
@@ -326,8 +324,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
             <CardHeader>
               <CardTitle>Linked Bank Accounts</CardTitle>
               <CardDescription>
-                Plaid-backed accounts are synced into connected source accounts and mapped
-                one-to-one into snapshot positions for v1.
+                Linked accounts feed cash and balance positions into portfolio snapshots.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -392,15 +389,15 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
 
           <Card>
             <CardHeader>
-              <CardTitle>Materialized Snapshots</CardTitle>
+              <CardTitle>Created Snapshots</CardTitle>
               <CardDescription>
-                Balance syncs write canonical portfolio snapshots with source + sync lineage.
+                Balance syncs create portfolio snapshots for the selected bank source.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {sourceSnapshots.length === 0 ? (
                 <p className="text-sm text-[var(--aurum-text-muted)]">
-                  No snapshots have been materialized for this bank source yet.
+                  No snapshots have been created for this bank source yet.
                 </p>
               ) : (
                 sourceSnapshots.map((snapshot) => (

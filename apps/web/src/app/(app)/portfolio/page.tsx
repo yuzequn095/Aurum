@@ -2,6 +2,7 @@
 
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import type {
   ConnectedSource,
   ConnectedSourceAccount,
@@ -70,6 +71,37 @@ function formatDateTime(value: string | undefined): string {
   });
 }
 
+function formatAssetCategory(category: PortfolioAssetCategory | undefined): string {
+  if (!category) {
+    return 'Other';
+  }
+
+  return category
+    .split('_')
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+}
+
+function getAssetAllocation(snapshot: PortfolioSnapshot | null) {
+  if (!snapshot) {
+    return [];
+  }
+
+  const totals = new Map<string, number>();
+  snapshot.positions.forEach((position) => {
+    const label = formatAssetCategory(position.category);
+    totals.set(label, (totals.get(label) ?? 0) + position.marketValue);
+  });
+
+  return [...totals.entries()]
+    .map(([label, value]) => ({
+      label,
+      value,
+      percent: snapshot.totalValue > 0 ? Math.round((value / snapshot.totalValue) * 1000) / 10 : 0,
+    }))
+    .sort((left, right) => right.value - left.value);
+}
+
 function compareSnapshots(left: PortfolioSnapshot, right: PortfolioSnapshot): number {
   const leftDate = left.metadata.snapshotDate ?? '';
   const rightDate = right.metadata.snapshotDate ?? '';
@@ -133,6 +165,7 @@ export default function PortfolioPage() {
   const selectedAccount = accounts.find((account) => account.id === selectedAccountId);
   const snapshotInventory = [...allSnapshots].sort(compareSnapshots);
   const latestSnapshot = snapshotInventory[0] ?? null;
+  const assetAllocation = getAssetAllocation(latestSnapshot);
 
   const loadSources = async () => {
     setIsLoadingSources(true);
@@ -146,7 +179,7 @@ export default function PortfolioPage() {
       });
     } catch (error) {
       setStatusMessage(
-        error instanceof Error ? error.message : 'Failed to load manual static sources.',
+        error instanceof Error ? error.message : 'Failed to load manual asset sources.',
       );
     } finally {
       setIsLoadingSources(false);
@@ -235,7 +268,7 @@ export default function PortfolioPage() {
         institutionName: '',
         baseCurrency: sourceForm.baseCurrency.trim() || 'USD',
       });
-      setStatusMessage(`Manual static source created: ${created.displayName}`);
+      setStatusMessage(`Manual asset source created: ${created.displayName}`);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Failed to create source.');
     } finally {
@@ -246,7 +279,7 @@ export default function PortfolioPage() {
   const onCreateAccount = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedSourceId) {
-      setStatusMessage('Select a manual static source before adding an account.');
+      setStatusMessage('Select a manual asset source before adding a holding.');
       return;
     }
 
@@ -272,7 +305,7 @@ export default function PortfolioPage() {
         assetSubType: '',
         institutionOrIssuer: '',
       });
-      setStatusMessage(`Manual static account created: ${created.displayName}`);
+      setStatusMessage(`Manual holding created: ${created.displayName}`);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Failed to create account.');
     } finally {
@@ -321,7 +354,7 @@ export default function PortfolioPage() {
 
   const onMaterializeSnapshot = async () => {
     if (!selectedSourceId) {
-      setStatusMessage('Select a manual static source before materializing a snapshot.');
+      setStatusMessage('Select a manual asset source before creating a snapshot.');
       return;
     }
 
@@ -335,10 +368,10 @@ export default function PortfolioPage() {
       );
       await Promise.all([loadAccountsForSource(selectedSourceId), loadAllSnapshots()]);
       setStatusMessage(
-        `Snapshot materialized: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
+        `Snapshot created: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
       );
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to materialize snapshot.');
+      setStatusMessage(error instanceof Error ? error.message : 'Failed to create snapshot.');
     } finally {
       setIsMaterializing(false);
     }
@@ -346,8 +379,9 @@ export default function PortfolioPage() {
 
   return (
     <PageContainer className="space-y-6">
-      <Card className="overflow-hidden border-[var(--aurum-border)] bg-[rgba(255,255,255,0.88)]">
-        <CardContent className="space-y-8 px-5 py-6 sm:px-6 sm:py-7 lg:px-8">
+      <Card className="relative overflow-hidden border-[var(--aurum-border)] bg-[rgba(255,255,255,0.88)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.16),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(17,24,39,0.05),transparent_32%)]" />
+        <CardContent className="relative space-y-8 px-5 py-6 sm:px-6 sm:py-7 lg:px-8">
           <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)] xl:items-start">
             <div className="space-y-5">
               <div className="space-y-3">
@@ -381,8 +415,14 @@ export default function PortfolioPage() {
                   variant="secondary"
                   onClick={() => scrollToSection('manual-workspace')}
                 >
-                  Open Manual Workspace
+                  Add Manual Asset
                 </Button>
+                <Link
+                  href="/ai-insights#analysis-portfolio-analysis"
+                  className="inline-flex h-10 items-center justify-center rounded-[var(--aurum-radius-md)] border border-[var(--aurum-border)] bg-[var(--aurum-surface)] px-4 text-sm font-medium text-[var(--aurum-text)] shadow-[var(--aurum-shadow)] transition hover:bg-[var(--aurum-surface-alt)]"
+                >
+                  Run AI Analysis
+                </Link>
               </div>
             </div>
 
@@ -398,7 +438,7 @@ export default function PortfolioPage() {
                       latestSnapshot.metadata.valuationCurrency ?? 'USD',
                     )}
                   </p>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
                     <div className="rounded-[16px] border border-[var(--aurum-border)] bg-white/80 px-4 py-3">
                       <p className="text-xs uppercase tracking-wide text-[var(--aurum-text-muted)]">
                         Snapshot
@@ -415,6 +455,19 @@ export default function PortfolioPage() {
                         {latestSnapshot.positions.length}
                       </p>
                     </div>
+                    <div className="rounded-[16px] border border-[var(--aurum-border)] bg-white/80 px-4 py-3">
+                      <p className="text-xs uppercase tracking-wide text-[var(--aurum-text-muted)]">
+                        Cash
+                      </p>
+                      <p className="mt-1 font-medium text-[var(--aurum-text)]">
+                        {latestSnapshot.cashValue == null
+                          ? 'Not tracked'
+                          : formatMoney(
+                              latestSnapshot.cashValue,
+                              latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                            )}
+                      </p>
+                    </div>
                   </div>
                   <p className="text-sm text-[var(--aurum-text-muted)]">
                     Latest snapshot date: {latestSnapshot.metadata.snapshotDate ?? 'Unavailable'}
@@ -423,7 +476,7 @@ export default function PortfolioPage() {
               ) : (
                 <p className="mt-4 text-sm leading-7 text-[var(--aurum-text-muted)]">
                   No portfolio snapshot yet. Connect a source or use the manual workspace to create
-                  the first canonical portfolio state for Aurum Home and AI workflows.
+                  the first portfolio state for Aurum Home and AI workflows.
                 </p>
               )}
             </div>
@@ -485,7 +538,7 @@ export default function PortfolioPage() {
               ? `Valuation entries on ${selectedAccount.displayName}`
               : selectedSource
                 ? `Accounts under ${selectedSource.displayName}`
-                : 'Pick a manual source or account when you need to maintain static holdings.'}
+                : 'Pick a manual source or holding when you need to maintain private assets.'}
           </CardContent>
         </Card>
       </section>
@@ -502,7 +555,7 @@ export default function PortfolioPage() {
           <CardContent className="space-y-3">
             {snapshotInventory.length === 0 ? (
               <p className="text-sm text-[var(--aurum-text-muted)]">
-                No portfolio snapshots found yet. Connect a source or materialize one from the
+                No portfolio snapshots found yet. Connect a source or create one from the
                 manual workspace below.
               </p>
             ) : (
@@ -534,38 +587,78 @@ export default function PortfolioPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Portfolio Workflows</CardTitle>
-            <CardDescription>
-              Portfolio now starts with wealth state first, while maintenance workflows stay close
-              without taking over the page.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-[var(--aurum-text)]">
-            <div className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-4">
-              <p className="font-medium">1. Start from snapshots</p>
-              <p className="mt-1 text-[var(--aurum-text-muted)]">
-                Review the latest persisted snapshot to understand total value, timing, and whether
-                the portfolio layer is ready for Home and AI surfaces.
-              </p>
-            </div>
-            <div className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-4">
-              <p className="font-medium">2. Maintain connection state when needed</p>
-              <p className="mt-1 text-[var(--aurum-text-muted)]">
-                Bank, brokerage, and crypto connection workflows live below as supporting
-                operations, not the main story of the page.
-              </p>
-            </div>
-            <div className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-4">
-              <p className="font-medium">3. Use manual assets selectively</p>
-              <p className="mt-1 text-[var(--aurum-text-muted)]">
-                Manual sources remain available for holdings that should be tracked in Aurum but do
-                not come from a live provider.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Asset Overview</CardTitle>
+              <CardDescription>
+                Allocation is calculated from the latest real snapshot. No chart is shown until
+                Aurum has actual position data to summarize.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-[var(--aurum-text)]">
+              {!latestSnapshot ? (
+                <p className="text-sm text-[var(--aurum-text-muted)]">
+                  Create or sync a snapshot to see asset mix, liquidity, and position coverage.
+                </p>
+              ) : assetAllocation.length === 0 ? (
+                <p className="text-sm text-[var(--aurum-text-muted)]">
+                  This snapshot has no categorized positions yet.
+                </p>
+              ) : (
+                assetAllocation.slice(0, 6).map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-medium text-[var(--aurum-text)]">{item.label}</p>
+                      <p className="text-sm text-[var(--aurum-text)]">
+                        {formatMoney(
+                          item.value,
+                          latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                        )}
+                      </p>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-[rgba(197,160,89,0.14)]">
+                      <div
+                        className="h-full rounded-full bg-[var(--aurum-accent)]"
+                        style={{ width: `${Math.min(100, Math.max(0, item.percent))}%` }}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs text-[var(--aurum-text-muted)]">
+                      {item.percent.toFixed(1)}% of latest snapshot value
+                    </p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Portfolio Workflows</CardTitle>
+              <CardDescription>
+                Start with snapshot truth, then maintain sources only when the asset layer needs
+                attention.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-[var(--aurum-text)]">
+              <div className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-4">
+                <p className="font-medium">Review snapshots</p>
+                <p className="mt-1 text-[var(--aurum-text-muted)]">
+                  Latest portfolio state feeds Home and AI Insights.
+                </p>
+              </div>
+              <div className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-4">
+                <p className="font-medium">Maintain accounts</p>
+                <p className="mt-1 text-[var(--aurum-text-muted)]">
+                  Bank, brokerage, crypto, and manual assets stay available below.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </section>
 
       <section id="connections-workspace" className="space-y-4">
@@ -607,8 +700,8 @@ export default function PortfolioPage() {
       <div className="rounded-[18px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-4 text-sm text-[var(--aurum-text)]">
         <p className="font-medium">Manual asset flow</p>
         <p className="mt-1 text-[var(--aurum-text-muted)]">
-          Start by creating a source, then maintain holdings and valuations, and only materialize
-          snapshots when the manual layer is ready to feed the broader product.
+          Start by creating a source, then maintain holdings and valuations, and create snapshots
+          when manual assets are ready to feed the broader product.
         </p>
       </div>
 
@@ -616,8 +709,8 @@ export default function PortfolioPage() {
         <CardHeader>
           <CardTitle>Create Manual Source</CardTitle>
           <CardDescription>
-            Add a manually maintained source for assets that need valuation history and snapshot
-            materialization outside a live connection.
+            Add a manually maintained source for assets that need valuation history outside a live
+            connection.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -713,8 +806,8 @@ export default function PortfolioPage() {
             <CardHeader>
               <CardTitle>Manual Holdings</CardTitle>
               <CardDescription>
-                Create manually maintained asset records that can later contribute to canonical
-                portfolio snapshots.
+                Create manually maintained asset records that can later contribute to portfolio
+                snapshots.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1001,10 +1094,10 @@ export default function PortfolioPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Materialize Snapshot</CardTitle>
+              <CardTitle>Create Snapshot</CardTitle>
               <CardDescription>
-                Write a canonical portfolio snapshot from the latest manual valuations when you
-                want the manual layer to feed the broader product.
+                Create a portfolio snapshot from the latest manual valuations when you want manual
+                assets reflected across Home and AI.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1017,7 +1110,7 @@ export default function PortfolioPage() {
                   placeholder="Optional snapshot date override"
                 />
                 <Button onClick={() => void onMaterializeSnapshot()} disabled={isMaterializing}>
-                  {isMaterializing ? 'Materializing...' : 'Materialize Snapshot'}
+                  {isMaterializing ? 'Creating...' : 'Create Snapshot'}
                 </Button>
               </div>
 
@@ -1028,7 +1121,7 @@ export default function PortfolioPage() {
                   </p>
                   {sourceSnapshots.length === 0 ? (
                     <p className="text-sm text-[var(--aurum-text-muted)]">
-                      No materialized snapshots for this source yet.
+                      No snapshots created for this source yet.
                     </p>
                   ) : (
                     [...sourceSnapshots].sort(compareSnapshots).map((snapshot) => (
