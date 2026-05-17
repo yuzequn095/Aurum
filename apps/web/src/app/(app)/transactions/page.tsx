@@ -67,6 +67,13 @@ type UpdateTxPayload = {
 const LIMIT = 20;
 const CREATE_NEW_OPTION = '__create_new__';
 const LAST_FORM_DEFAULTS_KEY = 'aurum.lastTransactionFormDefaults';
+const fieldClassName = 'block space-y-2 text-sm font-medium text-aurum-text';
+const controlClassName =
+  'h-11 w-full rounded-[14px] border border-aurum-border bg-white px-3 text-sm text-aurum-text outline-none transition focus:border-[var(--aurum-accent)] focus:ring-2 focus:ring-[var(--aurum-accent)]/15 disabled:cursor-not-allowed disabled:bg-[var(--aurum-surface-alt)] disabled:text-aurum-muted';
+const subtleControlClassName =
+  'h-11 w-full rounded-[14px] border border-aurum-border bg-[var(--aurum-surface-alt)] px-3 text-sm text-aurum-text outline-none transition focus:border-[var(--aurum-accent)] focus:ring-2 focus:ring-[var(--aurum-accent)]/15 disabled:cursor-not-allowed disabled:text-aurum-muted';
+const errorClassName =
+  'rounded-[14px] border border-[var(--aurum-danger)]/25 bg-[rgba(210,75,75,0.08)] px-3 py-2 text-sm text-[var(--aurum-danger)]';
 
 type LastFormDefaults = {
   lastAccountId: string | null;
@@ -721,12 +728,19 @@ export default function TransactionsPage() {
   return (
     <PageContainer className="space-y-6 py-2 text-aurum-text">
       <main className="space-y-6">
-        <section className="flex flex-col gap-4 rounded-aurum border border-aurum-border bg-white p-5 shadow-aurumSm sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight text-aurum-text">Transactions</h1>
-            <p className="text-sm text-aurum-muted">
-              Record, review, and manage your cash flow ledger. Home stays summary-first while
-              Transactions remains the operational center for day-to-day money movement.
+        <section className="relative overflow-hidden rounded-[28px] border border-aurum-border bg-[rgba(255,255,255,0.9)] p-5 shadow-aurumSm sm:p-6">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.15),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(17,24,39,0.05),transparent_32%)]" />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-aurum-muted">
+              Cashflow Center
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight text-aurum-text">
+              Transactions
+            </h1>
+            <p className="max-w-2xl text-sm leading-7 text-aurum-muted">
+              Browse, filter, and maintain the ledger that powers Home&apos;s monthly cash flow
+              picture.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -741,6 +755,7 @@ export default function TransactionsPage() {
             <Button type="button" variant="primary" onClick={() => setCreateOpen(true)}>
               Add Transaction
             </Button>
+          </div>
           </div>
         </section>
 
@@ -792,12 +807,12 @@ export default function TransactionsPage() {
           <Card>
             <CardContent className="pt-4">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <label>
-                  Account
+                <label className={fieldClassName}>
+                  <span>Account</span>
                   <select
                     value={filterAccountId}
                     onChange={(e) => setFilterAccountId(e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
+                    className={controlClassName}
                   >
                     <option value="">All accounts</option>
                     {accounts.map((a) => (
@@ -808,12 +823,12 @@ export default function TransactionsPage() {
                   </select>
                 </label>
 
-                <label>
-                  Category
+                <label className={fieldClassName}>
+                  <span>Category</span>
                   <select
                     value={filterCategoryId}
                     onChange={(e) => setFilterCategoryId(e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
+                    className={controlClassName}
                   >
                     <option value="">All categories</option>
                     {categories.map((c) => (
@@ -824,23 +839,23 @@ export default function TransactionsPage() {
                   </select>
                 </label>
 
-                <label>
-                  From
+                <label className={fieldClassName}>
+                  <span>From</span>
                   <input
                     type="date"
                     value={from}
                     onChange={(e) => setFrom(e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
+                    className={controlClassName}
                   />
                 </label>
 
-                <label>
-                  To
+                <label className={fieldClassName}>
+                  <span>To</span>
                   <input
                     type="date"
                     value={to}
                     onChange={(e) => setTo(e.target.value)}
-                    style={{ width: '100%', marginTop: 4 }}
+                    className={controlClassName}
                   />
                 </label>
 
@@ -919,30 +934,44 @@ export default function TransactionsPage() {
                 {items.map((tx) => (
                   <Card key={tx.id} className="mb-4 transition-shadow hover:shadow-aurum">
                     <CardContent className="pt-4">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                        <div>
-                          <div style={{ fontWeight: 600 }}>
-                            {tx.merchant ?? '(no merchant)'}{' '}
-                            <span style={{ opacity: 0.6, fontWeight: 400 }}>- {tx.type}</span>
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-lg font-semibold text-aurum-text">
+                              {tx.merchant ?? 'Unlabeled transaction'}
+                            </p>
+                            <span className="rounded-full border border-aurum-border bg-[var(--aurum-surface-alt)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-aurum-muted">
+                              {tx.type.toLowerCase()}
+                            </span>
                           </div>
-                          <div style={{ opacity: 0.75, marginTop: 4 }}>{tx.occurredAt}</div>
-                          <div style={{ opacity: 0.75, marginTop: 4 }}>
-                            Account: {tx.account?.name ?? tx.accountId}
+                          <div className="grid grid-cols-1 gap-2 text-sm text-aurum-muted sm:grid-cols-2 xl:grid-cols-4">
+                            <span>{tx.occurredAt}</span>
+                            <span>Account: {tx.account?.name ?? tx.accountId}</span>
+                            <span>Category: {tx.category?.name ?? tx.categoryId ?? '-'}</span>
+                            <span>
+                              Subcategory: {tx.subcategory?.name ?? tx.subcategoryId ?? '-'}
+                            </span>
                           </div>
-                          <div style={{ opacity: 0.75, marginTop: 4 }}>
-                            Category: {tx.category?.name ?? tx.categoryId ?? '-'}
-                          </div>
-                          <div style={{ opacity: 0.75, marginTop: 4 }}>
-                            Subcategory: {tx.subcategory?.name ?? tx.subcategoryId ?? '-'}
-                          </div>
-                          {tx.note && <div style={{ marginTop: 6 }}>{tx.note}</div>}
+                          {tx.note ? (
+                            <p className="rounded-[14px] border border-aurum-border bg-[var(--aurum-surface-alt)] px-3 py-2 text-sm text-aurum-text">
+                              {tx.note}
+                            </p>
+                          ) : null}
                         </div>
 
-                        <div style={{ display: 'grid', justifyItems: 'end', gap: 8 }}>
-                          <div style={{ fontWeight: 600 }}>
+                        <div className="flex flex-col gap-3 lg:items-end">
+                          <p
+                            className={`text-xl font-semibold ${
+                              tx.type === 'EXPENSE'
+                                ? 'text-[var(--aurum-danger)]'
+                                : tx.type === 'INCOME'
+                                  ? 'text-[var(--aurum-success)]'
+                                  : 'text-aurum-text'
+                            }`}
+                          >
                             {formatMoneyForType(tx.type, tx.amountCents, tx.currency)}
-                          </div>
-                          <div style={{ display: 'flex', gap: 8 }}>
+                          </p>
+                          <div className="flex flex-wrap gap-2 lg:justify-end">
                             <Button
                               type="button"
                               variant="secondary"
@@ -981,35 +1010,35 @@ export default function TransactionsPage() {
         </Section>
 
         <Modal open={editOpen} onClose={closeEditModal} title="Edit Transaction">
-          <form onSubmit={onSaveEdit} style={{ display: 'grid', gap: 10 }}>
-            <label>
-              Merchant
+          <form onSubmit={onSaveEdit} className="grid gap-4">
+            <label className={fieldClassName}>
+              <span>Merchant</span>
               <input
                 type="text"
                 value={editMerchant}
                 onChange={(e) => setEditMerchant(e.target.value)}
-                style={{ width: '100%', marginTop: 4 }}
+                className={controlClassName}
                 placeholder="merchant"
               />
             </label>
 
-            <label>
-              Note
+            <label className={fieldClassName}>
+              <span>Note</span>
               <input
                 type="text"
                 value={editNote}
                 onChange={(e) => setEditNote(e.target.value)}
-                style={{ width: '100%', marginTop: 4 }}
+                className={controlClassName}
                 placeholder="optional"
               />
             </label>
 
-            <label>
-              Category
+            <label className={fieldClassName}>
+              <span>Category</span>
               <select
                 value={editCategoryId ?? ''}
                 onChange={(e) => void onEditCategoryChange(e.target.value)}
-                style={{ width: '100%', marginTop: 4 }}
+                className={controlClassName}
                 required={selectedTx?.type === 'INCOME' || selectedTx?.type === 'EXPENSE'}
               >
                 <option value="">Select category</option>
@@ -1020,7 +1049,7 @@ export default function TransactionsPage() {
                 ))}
                 <option value={CREATE_NEW_OPTION}>+ Create new...</option>
               </select>
-              <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+              <div className="flex justify-end">
                 <Button
                   type="button"
                   variant="secondary"
@@ -1036,20 +1065,20 @@ export default function TransactionsPage() {
               </div>
             </label>
 
-            <label>
-              Subcategory
+            <label className={fieldClassName}>
+              <span>Subcategory</span>
               <input
                 type="text"
                 value={editSubcategorySearch}
                 onChange={(e) => setEditSubcategorySearch(e.target.value)}
-                style={{ width: '100%', marginTop: 4, marginBottom: 4 }}
+                className={subtleControlClassName}
                 placeholder="Search subcategories..."
                 disabled={!editCategoryId}
               />
               <select
                 value={editSubcategoryId ?? ''}
                 onChange={(e) => void onEditSubcategoryChange(e.target.value)}
-                style={{ width: '100%', marginTop: 0 }}
+                className={controlClassName}
                 required={selectedTx?.type === 'INCOME' || selectedTx?.type === 'EXPENSE'}
                 disabled={!editCategoryId}
               >
@@ -1063,7 +1092,7 @@ export default function TransactionsPage() {
                 ))}
                 {editCategoryId ? <option value={CREATE_NEW_OPTION}>+ Create new...</option> : null}
               </select>
-              <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+              <div className="flex justify-end">
                 <Button
                   type="button"
                   variant="secondary"
@@ -1079,33 +1108,33 @@ export default function TransactionsPage() {
               </div>
             </label>
 
-            <label>
-              Amount (USD)
+            <label className={fieldClassName}>
+              <span>Amount (USD)</span>
               <input
                 type="number"
                 min={0.01}
                 step={0.01}
                 value={editAmountDollars}
                 onChange={(e) => setEditAmountDollars(e.target.value)}
-                style={{ width: '100%', marginTop: 4 }}
+                className={controlClassName}
                 required
               />
             </label>
 
-            <label>
-              Occurred At
+            <label className={fieldClassName}>
+              <span>Occurred At</span>
               <input
                 type="date"
                 value={editOccurredAtDate}
                 onChange={(e) => setEditOccurredAtDate(e.target.value)}
-                style={{ width: '100%', marginTop: 4 }}
+                className={controlClassName}
                 required
               />
             </label>
 
-            {editErr && <p style={{ color: 'crimson', margin: 0 }}>Error: {editErr}</p>}
+            {editErr ? <p className={errorClassName}>Error: {editErr}</p> : null}
 
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <div className="flex flex-wrap justify-end gap-2">
               <Button
                 type="button"
                 variant="secondary"
@@ -1132,12 +1161,12 @@ export default function TransactionsPage() {
           title="Add Transaction"
         >
           <form onSubmit={onSubmit} className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <label>
-              Account
+            <label className={fieldClassName}>
+              <span>Account</span>
               <select
                 value={accountId}
                 onChange={(e) => void onAccountChange(e.target.value)}
-                style={{ width: '100%', marginTop: 4 }}
+                className={controlClassName}
                 required
               >
                 <option value="">
@@ -1152,14 +1181,14 @@ export default function TransactionsPage() {
               </select>
             </label>
 
-            <label>
-              Type
+            <label className={fieldClassName}>
+              <span>Type</span>
               <select
                 value={createType}
                 onChange={(e) =>
                   setCreateType(e.target.value as 'EXPENSE' | 'INCOME' | 'TRANSFER')
                 }
-                style={{ width: '100%', marginTop: 4 }}
+                className={controlClassName}
                 required
               >
                 <option value="EXPENSE">Expense</option>
@@ -1168,12 +1197,12 @@ export default function TransactionsPage() {
               </select>
             </label>
 
-            <label>
-              Category
+            <label className={fieldClassName}>
+              <span>Category</span>
               <select
                 value={categoryId ?? ''}
                 onChange={(e) => void onCategoryChange(e.target.value)}
-                style={{ width: '100%', marginTop: 4 }}
+                className={controlClassName}
                 required={createType === 'INCOME' || createType === 'EXPENSE'}
               >
                 <option value="">Select category</option>
@@ -1200,20 +1229,20 @@ export default function TransactionsPage() {
               </div>
             </label>
 
-            <label>
-              Subcategory
+            <label className={fieldClassName}>
+              <span>Subcategory</span>
               <input
                 type="text"
                 value={subcategorySearch}
                 onChange={(e) => setSubcategorySearch(e.target.value)}
-                style={{ width: '100%', marginTop: 4, marginBottom: 4 }}
+                className={subtleControlClassName}
                 placeholder="Search subcategories..."
                 disabled={!categoryId}
               />
               <select
                 value={subcategoryId ?? ''}
                 onChange={(e) => void onSubcategoryChange(e.target.value)}
-                style={{ width: '100%', marginTop: 0 }}
+                className={controlClassName}
                 required={createType === 'INCOME' || createType === 'EXPENSE'}
                 disabled={!categoryId}
               >
@@ -1243,53 +1272,53 @@ export default function TransactionsPage() {
               </div>
             </label>
 
-            <label>
-              Amount (USD)
+            <label className={fieldClassName}>
+              <span>Amount (USD)</span>
               <input
                 type="number"
                 min={0.01}
                 step={0.01}
                 value={amountDollars}
                 onChange={(e) => setAmountDollars(e.target.value)}
-                style={{ width: '100%', marginTop: 4 }}
+                className={controlClassName}
                 required
               />
             </label>
 
-            <label>
-              Occurred At
+            <label className={fieldClassName}>
+              <span>Occurred At</span>
               <input
                 type="date"
                 value={occurredAtDate}
                 onChange={(e) => setOccurredAtDate(e.target.value)}
-                style={{ width: '100%', marginTop: 4 }}
+                className={controlClassName}
                 required
               />
             </label>
 
-            <label>
-              Merchant
+            <label className={fieldClassName}>
+              <span>Merchant</span>
               <input
                 type="text"
                 value={merchant}
                 onChange={(e) => setMerchant(e.target.value)}
-                style={{ width: '100%', marginTop: 4 }}
+                className={controlClassName}
                 placeholder="Starbucks"
               />
             </label>
 
-            <label>
-              Note
+            <label className={fieldClassName}>
+              <span>Note</span>
               <input
                 type="text"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                style={{ width: '100%', marginTop: 4 }}
+                className={controlClassName}
                 placeholder="optional"
               />
             </label>
 
-            {submitErr && <p className="m-0 text-red-600 md:col-span-2">Error: {submitErr}</p>}
+            {submitErr ? <p className={`${errorClassName} md:col-span-2`}>Error: {submitErr}</p> : null}
 
             <div className="flex justify-end gap-3 pt-4 md:col-span-2">
               <Button
