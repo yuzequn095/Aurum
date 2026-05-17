@@ -75,7 +75,7 @@ export function CategoryBreakdownDonut({ totals, loading }: CategoryBreakdownDon
           </ResponsiveContainer>
         </div>
 
-        <div className='max-h-[230px] space-y-2 overflow-auto pr-1'>
+        <div className='aurum-scrollbar max-h-[230px] space-y-2 overflow-auto pr-1'>
           {totals.map((item, idx) => (
             <div
               key={item.categoryId ?? item.categoryName ?? idx}

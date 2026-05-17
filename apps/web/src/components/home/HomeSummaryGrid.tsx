@@ -48,7 +48,7 @@ export function HomeSummaryGrid({ items, loading }: HomeSummaryGridProps) {
                       {item.eyebrow}
                     </p>
                     <div className='space-y-1'>
-                      <p className='text-[30px] leading-none font-semibold tracking-tight text-[var(--aurum-text)]'>
+                      <p className='text-[30px] leading-none font-semibold tracking-tight text-[var(--aurum-text)] tabular-nums'>
                         {item.value}
                       </p>
                       <p className='text-sm font-medium text-[var(--aurum-text)]'>{item.title}</p>

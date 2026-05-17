@@ -36,7 +36,7 @@ export function HomePortfolioPulseCard({
           </div>
           <Link
             href='/portfolio'
-            className='inline-flex h-10 items-center justify-center rounded-full border border-[var(--aurum-border)] bg-[var(--aurum-surface)] px-4 text-sm font-medium text-[var(--aurum-text)] transition hover:border-[var(--aurum-accent)]/35 hover:bg-[var(--aurum-surface-alt)]'
+            className='inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--aurum-border)] bg-[rgba(255,254,250,0.92)] px-4 text-sm font-medium text-[var(--aurum-text)] shadow-[var(--aurum-shadow)] transition active:translate-y-px hover:border-[var(--aurum-accent)]/35 hover:bg-white'
           >
             Open Portfolio
           </Link>
@@ -78,7 +78,7 @@ export function HomePortfolioPulseCard({
                 <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
                   Total Value
                 </p>
-                <p className='mt-3 text-2xl font-semibold text-[var(--aurum-text)]'>
+                <p className='mt-3 text-2xl font-semibold text-[var(--aurum-text)] tabular-nums'>
                   {formatMoneyFromDollars(snapshot.totalValue)}
                 </p>
                 <p className='mt-2 text-sm text-[var(--aurum-text-muted)]'>
@@ -90,7 +90,7 @@ export function HomePortfolioPulseCard({
                 <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
                   Liquid Reserve
                 </p>
-                <p className='mt-3 text-2xl font-semibold text-[var(--aurum-text)]'>
+                <p className='mt-3 text-2xl font-semibold text-[var(--aurum-text)] tabular-nums'>
                   {snapshot.cashValue != null
                     ? formatMoneyFromDollars(snapshot.cashValue)
                     : 'Not tracked'}
@@ -104,7 +104,7 @@ export function HomePortfolioPulseCard({
                 <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
                   Positions
                 </p>
-                <p className='mt-3 text-2xl font-semibold text-[var(--aurum-text)]'>
+                <p className='mt-3 text-2xl font-semibold text-[var(--aurum-text)] tabular-nums'>
                   {snapshot.positions.length}
                 </p>
                 <p className='mt-2 text-sm text-[var(--aurum-text-muted)]'>

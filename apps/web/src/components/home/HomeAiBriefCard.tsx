@@ -144,13 +144,13 @@ export function HomeAiBriefCard({
             <div className='flex flex-wrap gap-3'>
               <Link
                 href='/ai-insights'
-                className='inline-flex h-10 items-center justify-center rounded-full border border-transparent bg-[var(--aurum-accent)] px-4 text-sm font-medium text-white transition hover:brightness-95'
+                className='inline-flex min-h-11 items-center justify-center rounded-full border border-transparent bg-[linear-gradient(135deg,var(--aurum-accent),var(--aurum-gold-strong))] px-4 text-sm font-medium text-white shadow-[var(--aurum-shadow)] transition active:translate-y-px hover:brightness-95'
               >
                 Open AI Insights
               </Link>
               <Link
                 href='/ai-insights#quick-chat-section'
-                className='inline-flex h-10 items-center justify-center rounded-full border border-[var(--aurum-border)] bg-[var(--aurum-surface)] px-4 text-sm font-medium text-[var(--aurum-text)] transition hover:border-[var(--aurum-accent)]/35 hover:bg-[var(--aurum-surface-alt)]'
+                className='inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--aurum-border)] bg-[rgba(255,254,250,0.92)] px-4 text-sm font-medium text-[var(--aurum-text)] shadow-[var(--aurum-shadow)] transition active:translate-y-px hover:border-[var(--aurum-accent)]/35 hover:bg-white'
               >
                 Quick Chat
               </Link>
