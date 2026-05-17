@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import {
   CsvPortfolioSnapshotAdapter,
@@ -248,6 +249,226 @@ function scrollToAnchor(anchor: string) {
     behavior: 'smooth',
     block: 'start',
   });
+}
+
+function StatusNote({
+  children,
+  tone = 'neutral',
+}: {
+  children: ReactNode;
+  tone?: 'neutral' | 'warn' | 'error' | 'good';
+}) {
+  const toneClassName =
+    tone === 'error'
+      ? 'border-[var(--aurum-danger)]/30 bg-[var(--aurum-danger)]/10 text-[var(--aurum-danger)]'
+      : tone === 'warn'
+        ? 'border-[var(--aurum-warning)]/25 bg-[rgba(185,133,25,0.1)] text-aurum-text'
+        : tone === 'good'
+          ? 'border-[var(--aurum-success)]/25 bg-[rgba(27,156,100,0.1)] text-aurum-text'
+          : 'border-aurum-border bg-aurum-surface text-aurum-text';
+
+  return (
+    <p className={`rounded-[14px] border px-3 py-2 text-xs leading-5 ${toneClassName}`}>
+      {children}
+    </p>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+  badge,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  badge?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-aurum-muted">
+            {eyebrow}
+          </p>
+          {badge}
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-2xl font-semibold tracking-tight text-aurum-text">{title}</h2>
+          <p className="max-w-3xl text-sm leading-7 text-aurum-muted">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MetadataTile({
+  label,
+  value,
+  breakAll,
+}: {
+  label: string;
+  value: ReactNode;
+  breakAll?: boolean;
+}) {
+  return (
+    <div className="rounded-[16px] border border-aurum-border bg-aurum-surface px-4 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-aurum-muted">
+        {label}
+      </p>
+      <p className={`mt-2 text-sm font-medium text-aurum-text ${breakAll ? 'break-all' : ''}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function MarkdownReportContent({ content }: { content: string }) {
+  const blocks = content
+    .trim()
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  if (blocks.length === 0) {
+    return <p className="text-sm text-aurum-muted">This report has no readable content yet.</p>;
+  }
+
+  return (
+    <div className="space-y-4 text-sm leading-7 text-aurum-text">
+      {blocks.map((block, index) => {
+        if (block.startsWith('```')) {
+          return (
+            <pre
+              key={`${index}-${block.slice(0, 12)}`}
+              className="overflow-auto rounded-[16px] border border-aurum-border bg-aurum-surface-alt p-4 text-xs leading-6 text-aurum-text"
+            >
+              {block.replace(/^```[a-zA-Z]*\n?|\n?```$/g, '')}
+            </pre>
+          );
+        }
+
+        const headingMatch = block.match(/^(#{1,4})\s+(.+)$/);
+        if (headingMatch) {
+          const [, hashes, text] = headingMatch;
+          const headingClassName =
+            hashes.length <= 2
+              ? 'text-xl font-semibold tracking-tight text-aurum-text'
+              : 'text-base font-semibold text-aurum-text';
+          return (
+            <h3 key={`${index}-${text}`} className={headingClassName}>
+              {text}
+            </h3>
+          );
+        }
+
+        const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
+        const bulletLines = lines.filter((line) => /^[-*]\s+/.test(line));
+        const orderedLines = lines.filter((line) => /^\d+\.\s+/.test(line));
+
+        if (bulletLines.length === lines.length) {
+          return (
+            <ul key={`${index}-${block.slice(0, 12)}`} className="space-y-2">
+              {bulletLines.map((line) => (
+                <li
+                  key={line}
+                  className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3"
+                >
+                  {line.replace(/^[-*]\s+/, '')}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
+        if (orderedLines.length === lines.length) {
+          return (
+            <ol key={`${index}-${block.slice(0, 12)}`} className="space-y-2">
+              {orderedLines.map((line) => (
+                <li
+                  key={line}
+                  className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3"
+                >
+                  {line.replace(/^\d+\.\s+/, '')}
+                </li>
+              ))}
+            </ol>
+          );
+        }
+
+        return (
+          <p
+            key={`${index}-${block.slice(0, 12)}`}
+            className="whitespace-pre-wrap rounded-[16px] border border-transparent bg-transparent"
+          >
+            {block.replace(/\*\*/g, '')}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+function ScoreGauge({
+  score,
+  maxScore,
+}: {
+  score: number;
+  maxScore: number;
+}) {
+  const percent = maxScore > 0 ? Math.max(0, Math.min(100, (score / maxScore) * 100)) : 0;
+
+  return (
+    <div className="space-y-2">
+      <div className="h-2.5 overflow-hidden rounded-full bg-[rgba(197,160,89,0.14)]">
+        <div
+          className="h-full rounded-full bg-[var(--aurum-accent)]"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <p className="text-xs text-aurum-muted">{Math.round(percent)}% of available score</p>
+    </div>
+  );
+}
+
+function TranscriptBubble({
+  role,
+  content,
+  createdAt,
+  mode,
+}: {
+  role: string;
+  content: string;
+  createdAt: string;
+  mode?: 'llm' | 'fallback';
+}) {
+  const assistant = role === 'assistant';
+
+  return (
+    <div
+      className={`rounded-[18px] border px-4 py-3 text-sm ${
+        assistant
+          ? 'border-[var(--aurum-accent)]/25 bg-[rgba(197,160,89,0.12)]'
+          : role === 'system'
+            ? 'border-dashed border-aurum-border bg-aurum-surface-alt'
+            : 'border-aurum-border bg-aurum-surface'
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-aurum-muted">
+          {assistant ? 'Aurum' : role === 'user' ? 'You' : role}
+        </p>
+        <p className="text-[11px] text-aurum-muted">{formatDateTime(createdAt)}</p>
+      </div>
+      <p className="mt-2 whitespace-pre-wrap leading-7 text-aurum-text">{content}</p>
+      {mode ? (
+        <Badge variant={mode === 'llm' ? 'good' : 'neutral'} className="mt-3">
+          {mode === 'llm' ? 'Provider reply' : 'Fallback reply'}
+        </Badge>
+      ) : null}
+    </div>
+  );
 }
 
 export default function AiInsightsPage() {
@@ -907,51 +1128,6 @@ export default function AiInsightsPage() {
   const getEntryEnabled = (entry: AIInsightsCatalogEntry): boolean =>
     entry.featureKey ? hasEnabledFeature(entitlements, entry.featureKey) : true;
 
-  const getEntryActionDisabled = (entry: AIInsightsCatalogEntry): boolean => {
-    const enabled = getEntryEnabled(entry);
-    if (!enabled || entry.state === 'coming-soon') {
-      return true;
-    }
-
-    switch (entry.id) {
-      case 'monthly-financial-review':
-        return (
-          isGeneratingMonthlyReview ||
-          snapshots.length === 0 ||
-          (useSelectedSnapshotOverride && !selectedSnapshot?.id)
-        );
-      case 'daily-market-brief':
-        return (
-          isGeneratingDailyMarketBrief ||
-          snapshots.length === 0 ||
-          (useSelectedSnapshotForDailyMarketBrief && !selectedSnapshot?.id)
-        );
-      case 'financial-health-score':
-        return !selectedSnapshot?.id || isGeneratingScore;
-      case 'quick-chat':
-        return !quickChatEnabled;
-      case 'portfolio-analysis':
-        return !selectedSnapshot?.id;
-      case 'saved-conversations':
-        return false;
-      default:
-        return true;
-    }
-  };
-
-  const getEntryActionLabel = (entry: AIInsightsCatalogEntry): string => {
-    switch (entry.id) {
-      case 'monthly-financial-review':
-        return isGeneratingMonthlyReview ? 'Generating...' : entry.actionLabel;
-      case 'daily-market-brief':
-        return isGeneratingDailyMarketBrief ? 'Generating...' : entry.actionLabel;
-      case 'financial-health-score':
-        return isGeneratingScore ? 'Generating...' : entry.actionLabel;
-      default:
-        return entry.actionLabel;
-    }
-  };
-
   const getEntryHint = (entry: AIInsightsCatalogEntry): string => {
     const enabled = getEntryEnabled(entry);
     if (!enabled) {
@@ -961,29 +1137,29 @@ export default function AiInsightsPage() {
     switch (entry.id) {
       case 'monthly-financial-review':
         if (snapshots.length === 0) {
-          return 'Create or import a portfolio snapshot first so Reports can stay grounded in the current artifact ownership model.';
+          return 'Create or import a portfolio snapshot first so reports can use current wealth context.';
         }
         return useSelectedSnapshotOverride
           ? selectedSnapshot?.id
-            ? `Creates a server-backed ${effectiveReviewMonthLabel} review using the selected snapshot override.`
+            ? `Creates a ${effectiveReviewMonthLabel} review using the selected snapshot.`
             : 'Select a portfolio snapshot before using the snapshot override.'
-          : `Creates a server-backed ${effectiveReviewMonthLabel} review using deterministic snapshot anchoring.`;
+          : `Creates a ${effectiveReviewMonthLabel} review using the latest relevant snapshot.`;
       case 'daily-market-brief':
         if (snapshots.length === 0) {
-          return 'Create or import a portfolio snapshot first so the Daily Market Brief can be persisted through the existing report artifact model.';
+          return 'Create or import a portfolio snapshot first so the Daily Market Brief can use portfolio-aware context.';
         }
         return useSelectedSnapshotForDailyMarketBrief
           ? selectedSnapshot?.id
-            ? 'Creates a server-backed Daily Market Brief using the selected snapshot override and the current market context template.'
+            ? 'Creates a Daily Market Brief using the selected snapshot.'
             : 'Select a portfolio snapshot before using the Daily Market Brief snapshot override.'
-          : 'Creates a server-backed Daily Market Brief using the latest available snapshot and current market context template.';
+          : 'Creates a Daily Market Brief using the latest available snapshot.';
       case 'financial-health-score':
         return selectedSnapshot?.id
           ? 'Generates and stores a snapshot-linked analysis artifact.'
           : 'Select a portfolio snapshot to activate score generation.';
       case 'portfolio-analysis':
         return selectedSnapshot?.id
-          ? 'Prepares an entitlement-aware Quick Chat draft grounded in the selected snapshot, report, and score context.'
+          ? 'Prepares a Quick Chat draft grounded in the selected snapshot, report, and score context.'
           : 'Select a portfolio snapshot to prepare a portfolio analysis draft.';
       case 'budget-planning':
       case 'goals-planning':
@@ -991,211 +1167,137 @@ export default function AiInsightsPage() {
       case 'quick-chat':
         return 'Ephemeral by default. Save only when the transcript deserves a place in history.';
       case 'saved-conversations':
-        return 'Historical saved conversation reads remain available after subscription changes.';
+        return 'Saved conversations remain readable, even when creation or saving is unavailable.';
       default:
         return '';
     }
   };
 
-  const onCatalogEntryAction = (entry: AIInsightsCatalogEntry) => {
-    switch (entry.id) {
-      case 'monthly-financial-review':
-        void onGenerateMonthlyFinancialReview();
-        return;
-      case 'daily-market-brief':
-        void onGenerateDailyMarketBrief();
-        return;
-      case 'financial-health-score':
-        void onGenerateDemoScore();
-        return;
-      case 'portfolio-analysis':
-        onStartPortfolioAnalysis();
-        return;
-      case 'quick-chat':
-        scrollToAnchor('quick-chat-section');
-        return;
-      case 'saved-conversations':
-        scrollToAnchor('saved-conversations-section');
-        return;
-      default:
-        return;
-    }
-  };
+  const latestReport = reports[0];
+  const latestConversation = conversations[0];
+  const accessLabel =
+    entitlements?.status === 'active'
+      ? 'Creation enabled'
+      : entitlements
+        ? 'Read history available'
+        : 'Checking access';
+  const selectedSnapshotValue =
+    selectedSnapshot?.totalValue != null ? formatMoney(selectedSnapshot.totalValue) : 'No value yet';
 
   return (
-    <PageContainer className="space-y-6">
-      <Card>
-        <CardHeader className="space-y-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="info">AI Product Layer</Badge>
-                <Badge variant="neutral">Snapshot-first</Badge>
+    <PageContainer className="space-y-7 pb-8 md:space-y-8 md:pb-10">
+      <Card className="relative overflow-hidden border-[var(--aurum-border)] bg-[rgba(255,255,255,0.88)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.18),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(17,24,39,0.06),transparent_32%)]" />
+        <CardContent className="relative space-y-8 px-5 py-6 sm:px-6 sm:py-7 lg:px-8">
+          <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.18fr)_minmax(340px,0.82fr)] xl:items-start">
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="info">AI Insights</Badge>
+                  <Badge variant="neutral">Snapshot-grounded</Badge>
+                  <Badge variant={entitlements?.status === 'active' ? 'good' : 'neutral'}>
+                    {accessLabel}
+                  </Badge>
+                </div>
+                <div className="space-y-3">
+                  <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-aurum-text sm:text-4xl lg:text-[44px]">
+                    A calm workspace for reports, analysis, conversations, and planning.
+                  </h1>
+                  <p className="max-w-3xl text-sm leading-7 text-aurum-muted sm:text-[15px]">
+                    Generate durable financial artifacts, inspect the latest score, or ask a quick
+                    grounded question. Quick Chat stays temporary until you explicitly save it into
+                    Conversations.
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <CardTitle>AI Insights</CardTitle>
-                <CardDescription>
-                  Aurum&apos;s AI financial intelligence center, organized into Reports, Analysis,
-                  Planning, and Conversations while keeping PortfolioSnapshot as the canonical
-                  upstream truth.
-                </CardDescription>
+
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="primary"
+                  onClick={() => scrollToAnchor('reports-monthly-review')}
+                >
+                  Generate Review
+                </Button>
+                <Button variant="secondary" onClick={() => scrollToAnchor('quick-chat-section')}>
+                  Open Quick Chat
+                </Button>
+                <Button variant="ghost" onClick={() => scrollToAnchor('analysis')}>
+                  Review Score
+                </Button>
               </div>
             </div>
-            <div className="rounded-[16px] border border-aurum-border bg-[var(--aurum-surface-alt)] px-4 py-3 text-sm text-aurum-text">
-              <p className="font-medium">Access status</p>
-              <p className="mt-1 text-aurum-muted">
-                {entitlements?.status === 'active'
-                  ? 'Premium creation actions are available where enabled.'
-                  : 'Historical artifacts and saved conversations remain readable.'}
-              </p>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-1">
+              <MetadataTile
+                label="Selected Snapshot"
+                value={selectedSnapshot?.metadata.portfolioName ?? 'Choose a snapshot below'}
+              />
+              <MetadataTile label="Portfolio Value" value={selectedSnapshotValue} />
+              <MetadataTile
+                label="Latest Artifact"
+                value={latestReport?.title ?? latestConversation?.title ?? 'No AI history yet'}
+              />
             </div>
           </div>
+
           {entitlementsStatusMessage ? (
-            <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-              {entitlementsStatusMessage}
-            </p>
+            <StatusNote tone="warn">{entitlementsStatusMessage}</StatusNote>
           ) : null}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             {aiInsightsCatalogSections.map((section) => (
               <button
                 key={section.key}
                 type="button"
                 onClick={() => scrollToAnchor(section.anchor)}
-                className="rounded-[18px] border border-aurum-border bg-[var(--aurum-surface-alt)] px-4 py-4 text-left transition hover:border-[var(--aurum-accent)]/35 hover:bg-[var(--aurum-accent)]/5"
+                className="group rounded-[22px] border border-white/70 bg-white/78 p-4 text-left shadow-[var(--aurum-shadow)] transition hover:border-[var(--aurum-accent)]/35 hover:bg-white"
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-aurum-text">{section.title}</p>
-                  <Badge variant="neutral">{sectionCounts[section.key]}</Badge>
+                  <Badge variant={section.key === 'planning' ? 'warn' : 'neutral'}>
+                    {sectionCounts[section.key]}
+                  </Badge>
                 </div>
-                <p className="mt-2 text-sm text-aurum-muted">{section.description}</p>
+                <p className="mt-2 text-sm leading-6 text-aurum-muted">{section.description}</p>
               </button>
             ))}
           </div>
-        </CardHeader>
+        </CardContent>
       </Card>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {aiInsightsCatalogSections.map((section) => {
-          const entries = sectionEntries[section.key];
-          const primaryEntry = entries.find((entry) => entry.state !== 'coming-soon') ?? entries[0];
-          const primaryEntryEnabled = primaryEntry ? getEntryEnabled(primaryEntry) : true;
-          const primaryActionDisabled = primaryEntry
-            ? getEntryActionDisabled(primaryEntry)
-            : false;
-
-          return (
-            <Card key={section.key}>
-              <CardHeader className="space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <CardTitle className="text-base">{section.title}</CardTitle>
-                    <CardDescription>{section.description}</CardDescription>
-                  </div>
-                  <Badge variant="neutral">{sectionCounts[section.key]}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {entries.map((entry) => (
-                    <Badge
-                      key={entry.id}
-                      variant={getCatalogEntryStateVariant(entry, getEntryEnabled(entry))}
-                    >
-                      {entry.title}
-                    </Badge>
-                  ))}
-                </div>
-                <p className="text-sm text-aurum-muted">
-                  {section.key === 'reports'
-                    ? 'Use Reports when you want a persisted AI deliverable tied to canonical snapshot context.'
-                    : section.key === 'analysis'
-                      ? 'Use Analysis when you want diagnostic scoring and guided interpretation before acting.'
-                      : section.key === 'conversations'
-                        ? 'Use Conversations when you want fast iteration first, with explicit saving only when it matters.'
-                        : 'Planning stays visible as its own lane now so future workflows can land cleanly without another IA rewrite.'}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {primaryEntry ? (
-                    <Button
-                      variant={
-                        section.key === 'reports' || section.key === 'conversations'
-                          ? 'primary'
-                          : 'secondary'
-                      }
-                      onClick={() => onCatalogEntryAction(primaryEntry)}
-                      disabled={!primaryEntryEnabled || primaryActionDisabled}
-                    >
-                      {getEntryActionLabel(primaryEntry)}
-                    </Button>
-                  ) : null}
-                  <Button variant="ghost" onClick={() => scrollToAnchor(section.anchor)}>
-                    Open {section.title}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </section>
-
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <Card>
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+        <Card className="bg-[rgba(255,255,255,0.9)]">
           <CardHeader>
-            <CardTitle>Current Grounding Context</CardTitle>
+            <CardTitle>Current Context</CardTitle>
             <CardDescription>
-              Move between snapshots, reports, scores, and conversations without losing the current
-              context thread.
+              The selected snapshot, report, and score shape grounded AI workflows across the page.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
-            <div className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-aurum-muted">Snapshot</p>
-              <p className="mt-1 text-aurum-text">
-                {selectedSnapshot?.metadata.portfolioName ?? 'Select a portfolio snapshot'}
-              </p>
-            </div>
-            <div className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-aurum-muted">Report</p>
-              <p className="mt-1 text-aurum-text">
-                {selectedReport?.title ?? 'No report selected'}
-              </p>
-            </div>
-            <div className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-aurum-muted">Score</p>
-              <p className="mt-1 text-aurum-text">
-                {selectedScoreInsight?.headline ?? 'No score selected'}
-              </p>
-            </div>
+            <MetadataTile
+              label="Snapshot"
+              value={selectedSnapshot?.metadata.portfolioName ?? 'Select a portfolio snapshot'}
+            />
+            <MetadataTile label="Report" value={selectedReport?.title ?? 'No report selected'} />
+            <MetadataTile
+              label="Score"
+              value={selectedScoreInsight?.headline ?? 'No score selected'}
+            />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-[rgba(255,255,255,0.9)]">
           <CardHeader>
-            <CardTitle>Workspace Boundaries</CardTitle>
+            <CardTitle>What Gets Saved</CardTitle>
             <CardDescription>
-              AI Insights now separates creation, diagnosis, conversation, and future planning more
-              explicitly.
+              Persistence is explicit, so quick exploration does not become permanent history by
+              accident.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm text-aurum-text">
-            <div className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3">
-              <p className="font-medium">Reports</p>
-              <p className="mt-1 text-aurum-muted">
-                Persisted deliverables like monthly reviews and market briefs.
-              </p>
-            </div>
-            <div className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3">
-              <p className="font-medium">Analysis</p>
-              <p className="mt-1 text-aurum-muted">
-                Scores and guided interpretation for the selected snapshot.
-              </p>
-            </div>
-            <div className="rounded-[14px] border border-aurum-border bg-aurum-surface px-4 py-3">
-              <p className="font-medium">Conversations</p>
-              <p className="mt-1 text-aurum-muted">
-                Ephemeral Quick Chat first, then explicit save into history only when needed.
-              </p>
-            </div>
+          <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3 xl:grid-cols-1">
+            <MetadataTile label="Reports" value="Monthly reviews and market briefs are persisted." />
+            <MetadataTile label="Analysis" value="Scores are stored against the selected snapshot." />
+            <MetadataTile label="Conversations" value="Quick Chat saves only when you choose Save." />
           </CardContent>
         </Card>
       </section>
@@ -1203,16 +1305,12 @@ export default function AiInsightsPage() {
       <div className="flex flex-col gap-6">
         <div className="order-3 space-y-6">
       <section className="space-y-4">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-semibold text-aurum-text">Conversations</h2>
-            <Badge variant="neutral">Interactive lane</Badge>
-          </div>
-          <p className="text-sm text-aurum-muted">
-            Quick Chat remains available for fast iteration, while persisted reports and analysis
-            now define the primary structure of the workspace.
-          </p>
-        </div>
+        <SectionHeading
+          eyebrow="Conversations"
+          title="Ask quickly, save deliberately"
+          description="Quick Chat is the fast lane for grounded questions. It remains temporary until you decide the transcript belongs in saved history."
+          badge={<Badge variant="neutral">Ephemeral first</Badge>}
+        />
       </section>
 
       <section id="conversations" className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -1233,24 +1331,20 @@ export default function AiInsightsPage() {
               </p>
             </div>
             {entitlementsStatusMessage ? (
-              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-                {entitlementsStatusMessage}
-              </p>
+              <StatusNote tone="warn">{entitlementsStatusMessage}</StatusNote>
             ) : null}
             {!quickChatEnabled ? (
-              <p className="rounded-[10px] border border-[var(--aurum-danger)]/30 bg-[var(--aurum-danger)]/10 px-3 py-2 text-xs text-aurum-text">
-                Quick Chat is currently unavailable for this account.
-              </p>
+              <StatusNote tone="error">Quick Chat is currently unavailable for this account.</StatusNote>
             ) : null}
             {!conversationSaveEnabled ? (
-              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
+              <StatusNote tone="warn">
                 Saving is currently unavailable, but historical saved conversations remain readable.
-              </p>
+              </StatusNote>
             ) : null}
-            <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-              Provider-backed replies are optional. If no live model is configured, Quick Chat
-              falls back to local context so the workflow remains usable.
-            </p>
+            <StatusNote>
+              Replies use the available AI provider when configured. If a live provider is not
+              available, Aurum uses a local fallback so the workflow remains usable.
+            </StatusNote>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="max-h-[420px] space-y-3 overflow-auto rounded-[16px] border border-aurum-border bg-[var(--aurum-surface-alt)] p-4">
@@ -1261,29 +1355,13 @@ export default function AiInsightsPage() {
                 </div>
               ) : (
                 quickChatMessages.map((message, index) => (
-                  <div
+                  <TranscriptBubble
                     key={`${message.createdAt}-${index}`}
-                    className={`rounded-[14px] border px-3 py-3 text-sm ${
-                      message.role === 'assistant'
-                        ? 'border-[var(--aurum-accent)]/25 bg-[var(--aurum-accent)]/10'
-                        : 'border-aurum-border bg-aurum-surface'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-medium uppercase tracking-wide text-aurum-muted">
-                        {message.role === 'assistant' ? 'Aurum' : 'You'}
-                      </p>
-                      <p className="text-[11px] text-aurum-muted">
-                        {formatDateTime(message.createdAt)}
-                      </p>
-                    </div>
-                    <p className="mt-2 whitespace-pre-wrap text-aurum-text">{message.content}</p>
-                    {message.mode ? (
-                      <p className="mt-2 text-[11px] text-aurum-muted">
-                        Reply mode: {message.mode === 'llm' ? 'provider-backed' : 'fallback'}
-                      </p>
-                    ) : null}
-                  </div>
+                    role={message.role}
+                    content={message.content}
+                    createdAt={message.createdAt}
+                    mode={message.mode}
+                  />
                 ))
               )}
             </div>
@@ -1333,9 +1411,7 @@ export default function AiInsightsPage() {
             </div>
 
             {quickChatStatusMessage ? (
-              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-                {quickChatStatusMessage}
-              </p>
+              <StatusNote>{quickChatStatusMessage}</StatusNote>
             ) : null}
           </CardContent>
         </Card>
@@ -1345,7 +1421,7 @@ export default function AiInsightsPage() {
             <CardTitle>Conversation Flow</CardTitle>
             <CardDescription>
               Quick Chat stays local until you save it. Saved chats then appear in Conversations and
-              remain readable later without changing the snapshot-first architecture.
+              remain readable later without turning conversations into the source of truth.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-aurum-text">
@@ -1381,10 +1457,10 @@ export default function AiInsightsPage() {
         <Card>
           <CardHeader className="space-y-3">
             <div className="space-y-1">
-              <CardTitle>Conversations</CardTitle>
-              <CardDescription>
-                Saved Quick Chat transcripts that belong to the current user.
-              </CardDescription>
+            <CardTitle>Conversations</CardTitle>
+            <CardDescription>
+                Saved Quick Chat transcripts you explicitly kept.
+            </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -1403,9 +1479,7 @@ export default function AiInsightsPage() {
               </Button>
             </div>
             {conversationStatusMessage ? (
-              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-                {conversationStatusMessage}
-              </p>
+              <StatusNote>{conversationStatusMessage}</StatusNote>
             ) : null}
           </CardHeader>
           <CardContent className="space-y-2">
@@ -1447,7 +1521,7 @@ export default function AiInsightsPage() {
           <CardHeader>
             <CardTitle>Saved Conversation Detail</CardTitle>
             <CardDescription>
-              Persistent transcript detail loaded from the conversation API.
+              Readable transcript history with context kept visible but secondary.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1480,26 +1554,12 @@ export default function AiInsightsPage() {
 
                 <div className="space-y-3">
                   {selectedConversation.messages.map((message) => (
-                    <div
+                    <TranscriptBubble
                       key={message.id}
-                      className={`rounded-[14px] border px-3 py-3 text-sm ${
-                        message.role === 'assistant'
-                          ? 'border-[var(--aurum-accent)]/25 bg-[var(--aurum-accent)]/10'
-                          : message.role === 'system'
-                            ? 'border-dashed border-aurum-border bg-aurum-surface'
-                            : 'border-aurum-border bg-aurum-surface'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs font-medium uppercase tracking-wide text-aurum-muted">
-                          {message.role}
-                        </p>
-                        <p className="text-[11px] text-aurum-muted">
-                          {formatDateTime(message.createdAt)}
-                        </p>
-                      </div>
-                      <p className="mt-2 whitespace-pre-wrap text-aurum-text">{message.content}</p>
-                    </div>
+                      role={message.role}
+                      content={message.content}
+                      createdAt={message.createdAt}
+                    />
                   ))}
                 </div>
               </>
@@ -1511,15 +1571,12 @@ export default function AiInsightsPage() {
         </div>
         <div className="order-1 space-y-6">
       <section id="reports" className="space-y-4">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-semibold text-aurum-text">Reports</h2>
-            <Badge variant="info">Persisted deliverables</Badge>
-          </div>
-          <p className="text-sm text-aurum-muted">
-            Formal AI deliverables linked to canonical snapshots and persisted as report artifacts.
-          </p>
-        </div>
+        <SectionHeading
+          eyebrow="Reports"
+          title="Durable AI briefings"
+          description="Monthly reviews and market briefs are first-class artifacts: generated from selected context, saved to history, and readable later."
+          badge={<Badge variant="info">Persisted deliverables</Badge>}
+        />
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_1fr]">
@@ -1528,9 +1585,8 @@ export default function AiInsightsPage() {
             <div className="space-y-1">
               <CardTitle>Portfolio Snapshot Context</CardTitle>
               <CardDescription>
-                Canonical snapshot selection used to ground Reports, Analysis, and Quick Chat. If
-                you do not have one yet, you can create a sample snapshot here for local
-                validation.
+                Choose the portfolio snapshot that grounds reports, scores, and Quick Chat. You can
+                also return to Portfolio to create or sync a richer asset view.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -1539,7 +1595,7 @@ export default function AiInsightsPage() {
                 onClick={() => void onCreateDemoSnapshot()}
                 disabled={isCreatingSnapshot || isSnapshotsLoading}
               >
-                {isCreatingSnapshot ? 'Creating...' : 'Create Sample Snapshot'}
+                {isCreatingSnapshot ? 'Creating...' : 'Create Starter Snapshot'}
               </Button>
               <Button
                 variant="secondary"
@@ -1550,16 +1606,14 @@ export default function AiInsightsPage() {
               </Button>
             </div>
             {snapshotsStatusMessage ? (
-              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-                {snapshotsStatusMessage}
-              </p>
+              <StatusNote>{snapshotsStatusMessage}</StatusNote>
             ) : null}
           </CardHeader>
           <CardContent className="space-y-2">
             {snapshots.length === 0 ? (
               <p className="text-sm text-aurum-muted">
-                No snapshots available yet. Create a sample snapshot here or import one from the
-                Portfolio workflow.
+                No snapshots available yet. Create a starter snapshot here or open Portfolio to
+                connect accounts and manual assets.
               </p>
             ) : (
               snapshots.map((snapshot) => (
@@ -1584,13 +1638,13 @@ export default function AiInsightsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="reports-monthly-review">
           <CardHeader className="space-y-3">
             <div className="space-y-1">
-              <CardTitle>Monthly Financial Review Workflow</CardTitle>
+              <CardTitle>Monthly Financial Review</CardTitle>
               <CardDescription>
-                Choose a review window, then let the server anchor the report to a deterministic
-                snapshot strategy or your explicit snapshot override.
+                Create a persisted review for a finished month, grounded in the selected portfolio
+                context when you choose to override the default anchor.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1606,9 +1660,7 @@ export default function AiInsightsPage() {
               >
                 {isGeneratingMonthlyReview ? 'Generating...' : 'Generate Monthly Financial Review'}
               </Button>
-              <span className="text-xs text-aurum-muted">
-                Historical report reads remain available after subscription changes.
-              </span>
+              <Badge variant="neutral">History remains readable</Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1705,19 +1757,17 @@ export default function AiInsightsPage() {
       </section>
 
       {monthlyReviewStatusMessage ? (
-        <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-          {monthlyReviewStatusMessage}
-        </p>
+        <StatusNote>{monthlyReviewStatusMessage}</StatusNote>
       ) : null}
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Card id="reports-daily-market-brief">
           <CardHeader className="space-y-3">
             <div className="space-y-1">
-              <CardTitle>Daily Market Brief Workflow</CardTitle>
+              <CardTitle>Daily Market Brief</CardTitle>
               <CardDescription>
-                Generate a server-backed Daily Market Brief now using the internal market context
-                assembler, with a clean upgrade path to richer prompts and external context later.
+                Generate a concise market brief, optionally grounded in the selected portfolio
+                snapshot for a more relevant readout.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1733,15 +1783,10 @@ export default function AiInsightsPage() {
               >
                 {isGeneratingDailyMarketBrief ? 'Generating...' : 'Generate Daily Market Brief'}
               </Button>
-              <span className="text-xs text-aurum-muted">
-                Uses a lightweight internal market template and persists the result as a report
-                artifact today.
-              </span>
+              <Badge variant="neutral">Saved to report history</Badge>
             </div>
             {dailyMarketBriefStatusMessage ? (
-              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-                {dailyMarketBriefStatusMessage}
-              </p>
+              <StatusNote>{dailyMarketBriefStatusMessage}</StatusNote>
             ) : null}
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1807,9 +1852,8 @@ export default function AiInsightsPage() {
             <div className="space-y-1">
               <CardTitle>Daily Market Brief Delivery</CardTitle>
               <CardDescription>
-                Set user-owned delivery preferences now so scheduled generation and
-                subscription-aware delivery can layer in later without changing the preference
-                model.
+                Store preferred cadence, time, and scope. Scheduled generation remains a reserved
+                capability, so these preferences are supportive rather than automatic delivery.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1820,15 +1864,10 @@ export default function AiInsightsPage() {
               >
                 {isDailyMarketBriefPreferencesSaving ? 'Saving...' : 'Save Delivery Preferences'}
               </Button>
-              <span className="text-xs text-aurum-muted">
-                Scheduling preferences are stored now; full scheduled execution and notifications
-                can layer in later.
-              </span>
+              <Badge variant="warn">Reserved delivery foundation</Badge>
             </div>
             {dailyMarketBriefPreferencesStatusMessage ? (
-              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-                {dailyMarketBriefPreferencesStatusMessage}
-              </p>
+              <StatusNote>{dailyMarketBriefPreferencesStatusMessage}</StatusNote>
             ) : null}
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1859,8 +1898,7 @@ export default function AiInsightsPage() {
                       Enable scheduled delivery foundation
                     </span>
                     <span className="block text-xs text-aurum-muted">
-                      Future scheduled generation can respect these preferences and entitlement
-                      checks.
+                      Save preferences now; automatic delivery is not presented as live yet.
                     </span>
                   </span>
                 </label>
@@ -2015,9 +2053,7 @@ export default function AiInsightsPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {reportsStatusMessage ? (
-              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-                {reportsStatusMessage}
-              </p>
+              <StatusNote>{reportsStatusMessage}</StatusNote>
             ) : null}
             {isReportsLoading ? (
               <p className="text-sm text-aurum-muted">Loading report history...</p>
@@ -2058,7 +2094,8 @@ export default function AiInsightsPage() {
           <CardHeader>
             <CardTitle>Report Detail</CardTitle>
             <CardDescription>
-              Selected persisted report artifact from the Reports workflow.
+              Selected report content is rendered for reading first, with technical metadata tucked
+              away for traceability.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -2066,91 +2103,65 @@ export default function AiInsightsPage() {
               <p className="text-sm text-aurum-muted">Select a report from the list.</p>
             ) : (
               <>
-                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-aurum-muted">Title</p>
-                    <p className="text-aurum-text">{selectedReport.title}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-aurum-muted">Report Type</p>
-                    <p className="text-aurum-text">{selectedReport.reportType}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-aurum-muted">
-                      Prompt Version
-                    </p>
-                    <p className="text-aurum-text">{selectedReport.promptVersion}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-aurum-muted">
-                      Source Run ID
-                    </p>
-                    <p className="break-all text-aurum-text">{selectedReport.sourceRunId}</p>
-                  </div>
-                  {selectedPortfolioName ? (
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-aurum-muted">
-                        Portfolio Name
+                <div className="rounded-[22px] border border-aurum-border bg-aurum-surface-alt p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="space-y-2">
+                      <Badge variant="info">{formatReportTypeLabel(selectedReport.reportType)}</Badge>
+                      <h3 className="text-2xl font-semibold tracking-tight text-aurum-text">
+                        {selectedReport.title}
+                      </h3>
+                      <p className="text-sm text-aurum-muted">
+                        Created {formatDateTime(selectedReport.createdAt)}
                       </p>
-                      <p className="text-aurum-text">{selectedPortfolioName}</p>
                     </div>
+                    {selectedReport.sourceSnapshotId ? (
+                      <Badge variant="neutral">Snapshot-linked</Badge>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                  {selectedPortfolioName ? (
+                    <MetadataTile label="Portfolio" value={selectedPortfolioName} />
                   ) : null}
                   {selectedSnapshotDate ? (
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-aurum-muted">
-                        Snapshot Date
-                      </p>
-                      <p className="text-aurum-text">{selectedSnapshotDate}</p>
-                    </div>
+                    <MetadataTile label="Snapshot Date" value={selectedSnapshotDate} />
                   ) : null}
                   {selectedReviewMonthLabel ? (
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-aurum-muted">
-                        Review Window
-                      </p>
-                      <p className="text-aurum-text">{selectedReviewMonthLabel}</p>
-                    </div>
+                    <MetadataTile label="Review Window" value={selectedReviewMonthLabel} />
                   ) : null}
                   {selectedBriefDate ? (
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-aurum-muted">Brief Date</p>
-                      <p className="text-aurum-text">{selectedBriefDate}</p>
-                    </div>
+                    <MetadataTile label="Brief Date" value={selectedBriefDate} />
                   ) : null}
                   {selectedMarketSessionLabel ? (
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-aurum-muted">
-                        Market Session
-                      </p>
-                      <p className="text-aurum-text">{selectedMarketSessionLabel}</p>
-                    </div>
+                    <MetadataTile label="Market Session" value={selectedMarketSessionLabel} />
                   ) : null}
                   {selectedReportScope ? (
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-aurum-muted">
-                        Report Scope
-                      </p>
-                      <p className="text-aurum-text">{selectedReportScope}</p>
-                    </div>
-                  ) : null}
-                  {selectedSnapshotSelectionStrategy ? (
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-aurum-muted">
-                        Snapshot Selection
-                      </p>
-                      <p className="break-all text-aurum-text">
-                        {selectedSnapshotSelectionStrategy}
-                      </p>
-                    </div>
+                    <MetadataTile label="Report Scope" value={selectedReportScope} />
                   ) : null}
                 </div>
 
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-aurum-text">Content (Markdown)</p>
-                  <pre className="max-h-[560px] overflow-auto rounded-[12px] border border-aurum-border bg-aurum-surface p-3 text-xs whitespace-pre-wrap text-aurum-text">
-                    {selectedReport.contentMarkdown}
-                  </pre>
+                <div className="rounded-[24px] border border-aurum-border bg-white p-5">
+                  <MarkdownReportContent content={selectedReport.contentMarkdown} />
                 </div>
+
+                <details className="rounded-[16px] border border-aurum-border bg-aurum-surface-alt px-4 py-3 text-sm text-aurum-text">
+                  <summary className="cursor-pointer font-medium">Source metadata</summary>
+                  <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <MetadataTile label="Prompt Version" value={selectedReport.promptVersion} />
+                    <MetadataTile label="Report Type" value={selectedReport.reportType} />
+                    {selectedReport.sourceRunId ? (
+                      <MetadataTile label="Source Run" value={selectedReport.sourceRunId} breakAll />
+                    ) : null}
+                    {selectedSnapshotSelectionStrategy ? (
+                      <MetadataTile
+                        label="Snapshot Selection"
+                        value={selectedSnapshotSelectionStrategy}
+                        breakAll
+                      />
+                    ) : null}
+                  </div>
+                </details>
               </>
             )}
           </CardContent>
@@ -2160,25 +2171,22 @@ export default function AiInsightsPage() {
         </div>
         <div className="order-2 space-y-6">
       <section id="analysis" className="space-y-4">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-semibold text-aurum-text">Analysis</h2>
-            <Badge variant="info">Diagnostics</Badge>
-          </div>
-          <p className="text-sm text-aurum-muted">
-            Scores and diagnostic views that help explain portfolio and financial health.
-          </p>
-        </div>
+        <SectionHeading
+          eyebrow="Analysis"
+          title="Score the current posture, then decide what deserves attention"
+          description="Financial Health Score stays persisted and snapshot-linked. Portfolio Analysis is a guided Quick Chat entry point, not a hidden demo flow."
+          badge={<Badge variant="info">Diagnostics</Badge>}
+        />
       </section>
 
       <section className="space-y-6">
         <Card id="analysis-portfolio-analysis">
           <CardHeader className="space-y-3">
             <div className="space-y-1">
-              <CardTitle>Portfolio Analysis Preview</CardTitle>
+              <CardTitle>Portfolio Analysis</CardTitle>
               <CardDescription>
-                Prepare a guided Quick Chat prompt from the selected snapshot, report, and score
-                context while richer structured portfolio analysis continues to evolve.
+                Start a guided analysis prompt from the selected snapshot and optional report or
+                score context. The conversation remains temporary until saved.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -2189,32 +2197,23 @@ export default function AiInsightsPage() {
               >
                 Open Guided Quick Chat
               </Button>
-              <span className="text-xs text-aurum-muted">
-                Uses the current snapshot selection and keeps Quick Chat ephemeral unless you save
-                it.
-              </span>
+              <Badge variant="neutral">Opens Quick Chat draft</Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div className="rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3">
-                <p className="text-xs uppercase tracking-wide text-aurum-muted">Snapshot</p>
-                <p className="mt-1 text-aurum-text">
-                  {selectedSnapshot?.metadata.portfolioName ?? 'Select a portfolio snapshot'}
-                </p>
-              </div>
-              <div className="rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3">
-                <p className="text-xs uppercase tracking-wide text-aurum-muted">Report Context</p>
-                <p className="mt-1 text-aurum-text">
-                  {selectedReport?.title ?? 'Optional monthly review context'}
-                </p>
-              </div>
-              <div className="rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3">
-                <p className="text-xs uppercase tracking-wide text-aurum-muted">Score Context</p>
-                <p className="mt-1 text-aurum-text">
-                  {selectedScoreInsight?.headline ?? 'Optional Financial Health Score context'}
-                </p>
-              </div>
+              <MetadataTile
+                label="Snapshot"
+                value={selectedSnapshot?.metadata.portfolioName ?? 'Select a portfolio snapshot'}
+              />
+              <MetadataTile
+                label="Report Context"
+                value={selectedReport?.title ?? 'Optional report context'}
+              />
+              <MetadataTile
+                label="Score Context"
+                value={selectedScoreInsight?.headline ?? 'Optional score context'}
+              />
             </div>
           </CardContent>
         </Card>
@@ -2222,9 +2221,9 @@ export default function AiInsightsPage() {
         <Card>
           <CardHeader className="space-y-3">
             <div className="space-y-1">
-              <CardTitle>Financial Health Score v1</CardTitle>
+              <CardTitle>Financial Health Score</CardTitle>
               <CardDescription>
-                Server-backed score artifact history scoped by selected snapshot.
+                Generate and browse score artifacts for the selected snapshot.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -2235,14 +2234,10 @@ export default function AiInsightsPage() {
               >
                 {isGeneratingScore ? 'Generating...' : 'Generate Score from Selected Snapshot'}
               </Button>
-              <span className="text-xs text-aurum-muted">
-                Score creation and history are loaded from API, scoped by selected snapshot.
-              </span>
+              <Badge variant="neutral">Snapshot-linked history</Badge>
             </div>
             {scoreStatusMessage ? (
-              <p className="rounded-[10px] border border-aurum-border bg-aurum-surface px-3 py-2 text-xs text-aurum-text">
-                {scoreStatusMessage}
-              </p>
+              <StatusNote>{scoreStatusMessage}</StatusNote>
             ) : null}
           </CardHeader>
           <CardContent className="space-y-4">
@@ -2284,26 +2279,39 @@ export default function AiInsightsPage() {
                 Select a score artifact from history to view details.
               </p>
             ) : (
-              <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Total Score</p>
-                  <p className="text-lg font-semibold text-aurum-text">
-                    {selectedScoreResult.totalScore}/{selectedScoreResult.maxScore}
+              <div className="grid grid-cols-1 gap-4 text-sm xl:grid-cols-[260px_1fr]">
+                <div className="rounded-[24px] border border-aurum-border bg-aurum-surface-alt p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-aurum-muted">
+                    Total Score
                   </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Grade</p>
-                  <p className="text-lg font-semibold capitalize text-aurum-text">
+                  <div className="mt-3 flex flex-wrap items-end gap-2">
+                    <p className="text-4xl font-semibold leading-none text-aurum-text">
+                      {selectedScoreResult.totalScore}
+                    </p>
+                    <p className="pb-1 text-sm text-aurum-muted">
+                      / {selectedScoreResult.maxScore}
+                    </p>
+                  </div>
+                  <Badge variant="info" className="mt-4 capitalize">
                     {selectedScoreResult.grade.replace('_', ' ')}
+                  </Badge>
+                  <div className="mt-4">
+                    <ScoreGauge
+                      score={selectedScoreResult.totalScore}
+                      maxScore={selectedScoreResult.maxScore}
+                    />
+                  </div>
+                </div>
+                <div className="rounded-[24px] border border-aurum-border bg-white p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-aurum-muted">
+                    Interpretation
                   </p>
-                </div>
-                <div className="md:col-span-2">
-                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Headline</p>
-                  <p className="text-aurum-text">{selectedScoreInsight.headline}</p>
-                </div>
-                <div className="md:col-span-2 xl:col-span-4">
-                  <p className="text-xs uppercase tracking-wide text-aurum-muted">Summary</p>
-                  <p className="text-aurum-text">{selectedScoreInsight.summary}</p>
+                  <h3 className="mt-2 text-xl font-semibold text-aurum-text">
+                    {selectedScoreInsight.headline}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-aurum-muted">
+                    {selectedScoreInsight.summary}
+                  </p>
                 </div>
               </div>
             )}
@@ -2314,7 +2322,7 @@ export default function AiInsightsPage() {
           <CardHeader>
             <CardTitle>Dimension Breakdown</CardTitle>
             <CardDescription>
-              Per-dimension deterministic scores, labels, and reasoning from the score engine.
+              Per-dimension scores and explanations, presented as readable diagnostic signals.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -2335,6 +2343,9 @@ export default function AiInsightsPage() {
                     </p>
                   </div>
                   <p className="mt-1 text-xs font-medium text-aurum-text">{item.label}</p>
+                  <div className="mt-3">
+                    <ScoreGauge score={item.score} maxScore={item.maxScore} />
+                  </div>
                   <p className="mt-1 text-xs text-aurum-muted">{item.reason}</p>
                 </div>
               ))
@@ -2414,16 +2425,12 @@ export default function AiInsightsPage() {
         </div>
         <div className="order-4">
       <section id="planning" className="space-y-4">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-semibold text-aurum-text">Planning</h2>
-            <Badge variant="warn">Reserved Slots</Badge>
-          </div>
-          <p className="text-sm text-aurum-muted">
-            System-owned planning entries are visible now so budget and goals workflows can land in
-            a clear place without another IA rewrite.
-          </p>
-        </div>
+        <SectionHeading
+          eyebrow="Planning"
+          title="Reserved space for future guidance"
+          description="Budget and goal workflows stay visible as intentional placeholders, without pretending unbuilt planning automation is live."
+          badge={<Badge variant="warn">Reserved</Badge>}
+        />
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {sectionEntries.planning.map((entry) => {

@@ -38,7 +38,7 @@ export const aiInsightsCatalogSections: AIInsightsCatalogSection[] = [
   {
     key: 'planning',
     title: 'Planning',
-    description: 'Forward-looking workflows for budgets, goals, and future guided plans.',
+    description: 'Reserved space for budget and goal guidance when those workflows are ready.',
     anchor: 'planning',
   },
   {
@@ -56,7 +56,7 @@ export const aiInsightsCatalogEntries: AIInsightsCatalogEntry[] = [
     section: 'reports',
     title: 'Monthly Financial Review',
     description:
-      'First-class monthly review workflow grounded in ledger analytics and snapshot-linked report history.',
+      'Monthly review workflow grounded in ledger analytics and snapshot-linked report history.',
     state: 'available',
     featureKey: 'ai.report.monthly_financial_review',
     actionLabel: 'Generate review',
@@ -98,7 +98,7 @@ export const aiInsightsCatalogEntries: AIInsightsCatalogEntry[] = [
     id: 'budget-planning',
     section: 'planning',
     title: 'Budget Planning',
-    description: 'System-owned planning entry reserved for upcoming budget guidance workflows.',
+    description: 'Reserved for upcoming budget guidance workflows.',
     state: 'coming-soon',
     featureKey: 'ai.planning.budget',
     actionLabel: 'Coming next',
@@ -108,8 +108,7 @@ export const aiInsightsCatalogEntries: AIInsightsCatalogEntry[] = [
     id: 'goals-planning',
     section: 'planning',
     title: 'Goals Planning',
-    description:
-      'System-owned planning entry reserved for future goal and milestone planning support.',
+    description: 'Reserved for future goal and milestone planning support.',
     state: 'coming-soon',
     featureKey: 'ai.planning.goals',
     actionLabel: 'Coming next',
