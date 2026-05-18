@@ -131,13 +131,9 @@ function distributeY(count: number, top: number, bottom: number) {
   return Array.from({ length: count }, (_, index) => top + step * index);
 }
 
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
 function getFlowWidth(amountCents: number, totalCents: number) {
   if (totalCents <= 0) return 8;
-  return clamp((amountCents / totalCents) * 154, 7, 116);
+  return (amountCents / totalCents) * 154;
 }
 
 function makeDistributedAnchors(nodes: FlowNode[], totalCents: number, top: number, bottom: number) {
@@ -152,7 +148,7 @@ function makeDistributedAnchors(nodes: FlowNode[], totalCents: number, top: numb
 
 function makeStackedAnchors(nodes: FlowNode[], totalCents: number, centerY: number) {
   const widths = nodes.map((node) => getFlowWidth(node.amountCents, totalCents));
-  const gap = 4;
+  const gap = 0;
   const height = widths.reduce((total, width) => total + width, 0) + gap * Math.max(0, widths.length - 1);
   let cursor = centerY - height / 2;
 
@@ -181,7 +177,7 @@ function makeDistributedXAnchors(nodes: FlowNode[], totalCents: number, left: nu
 
 function makeStackedXAnchors(nodes: FlowNode[], totalCents: number, centerX: number) {
   const widths = nodes.map((node) => getFlowWidth(node.amountCents, totalCents));
-  const gap = 4;
+  const gap = 0;
   const width = widths.reduce((total, item) => total + item, 0) + gap * Math.max(0, widths.length - 1);
   let cursor = centerX - width / 2;
 
