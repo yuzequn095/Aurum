@@ -320,6 +320,13 @@ function MobileFlowLabel({
   );
 }
 
+function compactMobileDestinations(nodes: FlowNode[]) {
+  const retained = nodes.filter((node) => node.tone === 'saved');
+  const outflows = nodes.filter((node) => node.tone !== 'saved');
+  const maxOutflows = retained.length > 0 ? 3 : 4;
+  return [...compactNodes(outflows, maxOutflows, 'Other spending'), ...retained];
+}
+
 function MobileSankeyChart({
   sources,
   destinations,
@@ -330,12 +337,12 @@ function MobileSankeyChart({
   sourceTotal: number;
 }) {
   const mobileSources = compactNodes(sources, 3, 'Other income');
-  const mobileDestinations = compactNodes(destinations, 4, 'Other flow');
+  const mobileDestinations = compactMobileDestinations(destinations);
   const topAnchors = makeDistributedXAnchors(mobileSources, sourceTotal, 58, 302);
   const bottomAnchors = makeDistributedXAnchors(mobileDestinations, sourceTotal, 48, 312);
   const centerX = mobileChart.width / 2;
   const lineWidth = 2.2;
-  const centerLabelX = centerX + 74;
+  const centerLabelX = centerX + 46;
 
   function getMobileNodeColor(anchor: VerticalFlowAnchor, index: number) {
     if (anchor.tone === 'saved') return '#2F9E68';
@@ -426,20 +433,21 @@ function MobileSankeyChart({
           </g>
         ))}
 
-        {bottomAnchors.map((anchor, index) => (
+        {bottomAnchors.map((anchor) => (
           <g key={`mobile-destination-node-${anchor.label}`}>
             <MobileFlowLabel anchor={anchor} y={mobileChart.bottomNodeY + 34} secondaryY={mobileChart.bottomNodeY + 49} />
-            <text x={anchor.x} y={mobileChart.bottomNodeY + 76} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[8px] font-semibold uppercase tracking-[0.14em]'>
-              {index === 0 ? 'Spending' : anchor.tone === 'saved' ? 'Retained' : ''}
-            </text>
           </g>
         ))}
 
-        <text x={centerLabelX} y={mobileChart.centerY - 10} textAnchor='start' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
+        <text x='180' y={mobileChart.bottomNodeY + 78} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
+          Spending / Retained
+        </text>
+
+        <text x={centerLabelX} y={mobileChart.centerY - 8} textAnchor='start' className='fill-[var(--aurum-text-muted)] text-[8px] font-semibold uppercase tracking-[0.16em]'>
           Monthly Flow
         </text>
-        <text x={centerLabelX} y={mobileChart.centerY + 16} textAnchor='start' className='fill-[var(--aurum-text)] text-[22px] font-semibold'>
-          {formatMoney(sourceTotal)}
+        <text x={centerLabelX} y={mobileChart.centerY + 12} textAnchor='start' className='fill-[var(--aurum-text)] text-[16px] font-semibold'>
+          {formatCompactMoney(sourceTotal)}
         </text>
       </svg>
     </div>
