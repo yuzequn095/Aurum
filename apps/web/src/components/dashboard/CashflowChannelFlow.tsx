@@ -489,7 +489,7 @@ function MobileSankeyChart({
               y={mobileChart.topNodeY}
               width={anchor.width}
               height={mobileChart.nodeHeight}
-              rx='3'
+              rx='0'
               fill={getToneColor(anchor.tone, index)}
             />
             <MobileFlowLabel anchor={anchor} y={mobileChart.topNodeY - 24} secondaryY={mobileChart.topNodeY - 9} />
@@ -503,7 +503,7 @@ function MobileSankeyChart({
               y={mobileChart.bottomNodeY}
               width={anchor.width}
               height={mobileChart.nodeHeight}
-              rx='3'
+              rx='0'
               fill={getToneColor(anchor.tone, index)}
             />
             <MobileFlowLabel anchor={anchor} y={mobileChart.bottomNodeY + 34} secondaryY={mobileChart.bottomNodeY + 49} />
@@ -515,16 +515,11 @@ function MobileSankeyChart({
           y={mobileChart.centerY - mobileChart.centerNodeHeight / 2}
           width={centerWidth}
           height={mobileChart.centerNodeHeight}
-          rx='4'
-          fill='#FFFDF8'
-          stroke='#D4AF37'
-          strokeOpacity='0.42'
+          rx='0'
+          fill='#D4AF37'
         />
         <text x='180' y='270' textAnchor='middle' className='fill-[var(--aurum-text)] text-[22px] font-semibold'>
           {formatMoney(sourceTotal)}
-        </text>
-        <text x='180' y='292' textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[11px]'>
-          {mobileSources.length} in / {mobileDestinations.length} out
         </text>
       </svg>
     </div>
@@ -741,7 +736,7 @@ export function CashflowChannelFlow({
                         y={anchor.y - nodeHeight / 2}
                         width={chart.nodeWidth}
                         height={nodeHeight}
-                        rx='4'
+                        rx='0'
                         fill={color}
                       />
                       <FlowLabel anchor={anchor} align='right' x={chart.leftNodeX - 22} />
@@ -759,7 +754,7 @@ export function CashflowChannelFlow({
                         y={anchor.y - nodeHeight / 2}
                         width={chart.nodeWidth}
                         height={nodeHeight}
-                        rx='4'
+                        rx='0'
                         fill={color}
                       />
                       <FlowLabel anchor={anchor} align='left' x={chart.rightLabelX} />
@@ -772,20 +767,15 @@ export function CashflowChannelFlow({
                   y={centerNodeY}
                   width={chart.nodeWidth}
                   height={centerNodeHeight}
-                  rx='4'
-                  fill='#FFFDF8'
-                  stroke='#D4AF37'
-                  strokeOpacity='0.42'
+                  rx='0'
+                  fill='#D4AF37'
                 />
 
-                <text x='451' y={centerNodeY - 42} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
+                <text x='451' y={centerNodeY - 46} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
                   Monthly Flow
                 </text>
-                <text x='451' y={centerNodeY - 17} textAnchor='middle' className='fill-[var(--aurum-text)] text-[20px] font-semibold'>
+                <text x='451' y={centerNodeY - 20} textAnchor='middle' className='fill-[var(--aurum-text)] text-[20px] font-semibold'>
                   {formatMoney(sourceTotal)}
-                </text>
-                <text x='451' y={centerNodeY + 4} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[11px]'>
-                  {sources.length} in / {destinations.length} out
                 </text>
               </svg>
             </div>
