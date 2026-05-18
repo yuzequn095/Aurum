@@ -439,14 +439,14 @@ function MobileSankeyChart({
           </g>
         ))}
 
-        <text x='180' y={mobileChart.bottomNodeY + 78} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
+        <text x='180' y={mobileChart.bottomNodeY + 112} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
           Spending / Retained
         </text>
 
-        <text x={centerLabelX} y={mobileChart.centerY - 8} textAnchor='start' className='fill-[var(--aurum-text-muted)] text-[8px] font-semibold uppercase tracking-[0.16em]'>
+        <text x={centerLabelX} y={mobileChart.centerY - 8} textAnchor='start' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.16em]'>
           Monthly Flow
         </text>
-        <text x={centerLabelX} y={mobileChart.centerY + 12} textAnchor='start' className='fill-[var(--aurum-text)] text-[16px] font-semibold'>
+        <text x={centerLabelX} y={mobileChart.centerY + 10} textAnchor='start' className='fill-[var(--aurum-text)] text-[10px] font-semibold'>
           {formatCompactMoney(sourceTotal)}
         </text>
       </svg>
