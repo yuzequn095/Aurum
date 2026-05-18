@@ -20,12 +20,12 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
     mode === 'login' ? 'Please sign in to access your portfolio.' : 'Set up your private suite.';
 
   return (
-    <main className='relative flex min-h-screen w-full items-center justify-center overflow-x-hidden overflow-y-auto bg-white px-7 py-10 lg:overflow-hidden lg:bg-[color:var(--aurum-auth-bg-0)] lg:px-10 lg:py-8'>
-      <div className='absolute inset-0 hidden aurum-auth-bg lg:block' />
-      <div className='pointer-events-none absolute inset-0 hidden bg-[radial-gradient(ellipse_at_top,rgba(212,175,55,0.04),transparent_55%)] lg:block' />
+    <main className='relative flex min-h-screen w-full items-center justify-center overflow-x-hidden overflow-y-auto bg-[color:var(--aurum-auth-bg-0)] px-7 py-10 lg:overflow-hidden lg:px-10 lg:py-8'>
+      <div className='absolute inset-0 aurum-auth-bg' />
+      <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(212,175,55,0.06),transparent_52%)] lg:bg-[radial-gradient(ellipse_at_top,rgba(212,175,55,0.04),transparent_55%)]' />
       <div
         aria-hidden='true'
-        className='pointer-events-none absolute left-1/2 top-1/2 hidden h-[72vh] w-[72vh] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color:var(--aurum-auth-text)]/[0.03] lg:block'
+        className='pointer-events-none absolute left-1/2 top-[45%] h-[60vh] w-[60vh] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color:var(--aurum-auth-text)]/[0.025] lg:top-1/2 lg:h-[72vh] lg:w-[72vh] lg:border-[color:var(--aurum-auth-text)]/[0.03]'
       />
 
       <div className='relative mx-auto flex w-full max-w-[312px] -translate-y-5 flex-col items-center gap-10 lg:max-w-[980px] lg:translate-y-4 lg:gap-6'>
