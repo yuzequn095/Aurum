@@ -10,7 +10,7 @@ Aurum is an AI-driven Personal Wealth Operating System that combines:
 - AI-driven interpretation
 - planning foundations
 
-The current product architecture keeps AI productized, but not conversation-first. Portfolio and financial analysis still anchor to canonical data models rather than drifting into an unstructured chat product.
+The current product architecture keeps AI productized, but not conversation-first. Portfolio and financial analysis still anchor to canonical data models rather than drifting into an unstructured chat product. Milestone 14 added the experience layer that makes these modules feel coherent across desktop and mobile.
 
 ---
 
@@ -32,21 +32,22 @@ Cash Flow and Ledger History
 AI Insights and Planning
 ```
 
-The Dashboard sits above these layers as the summary surface.
+Home / Dashboard sits above these layers as the daily command surface.
 
 ---
 
 ## Product Modules
 
-### Dashboard
+### Home / Dashboard
 
-The financial command center for:
+The daily wealth command center for:
 
-- net worth
-- assets vs liabilities
+- cashflow state
+- latest portfolio posture
 - monthly income and expense
-- portfolio summary
+- retained cash / channel flow visualization
 - Financial Health Score visibility
+- quick actions into Transactions, Portfolio, and AI Insights
 
 ### Portfolio
 
@@ -56,6 +57,7 @@ The asset layer, built around:
 - manual-static sources
 - source accounts and sync runs
 - canonical snapshots
+- snapshot library and source/account maintenance
 
 Portfolio is not just a holdings table. It is the upstream context provider for downstream analysis.
 
@@ -67,6 +69,7 @@ The ledger layer for:
 - taxonomy and categorization
 - filtering and import/export
 - analytics-ready cashflow history
+- add/edit/delete transaction workflows
 
 ### AI Insights
 
@@ -80,6 +83,16 @@ AI Insights is functionally organized into:
 - Conversations
 
 This classification is now reflected directly in the shipped web surface.
+
+### Settings
+
+The account support surface for:
+
+- signed-in identity
+- session/logout controls
+- preference entry points backed by existing behavior
+
+Settings remains intentionally simple and does not present unsupported billing or subscription controls as real features.
 
 ---
 
@@ -126,7 +139,7 @@ This keeps future workflow additions straightforward without requiring another I
 
 Conversation rules are explicit:
 
-- Quick Chat is ephemeral by default
+- Quick Chat is temporary by default
 - Quick Chat is not auto-saved
 - Save is explicit
 - saved chats live under AI Insights -> Conversations
@@ -144,9 +157,9 @@ Quick Chat is the lightweight interaction layer for fast contextual questions.
 
 Current behavior:
 
-- protected by entitlement
+- protected by access checks
 - grounded by optional snapshot/report/score context
-- ephemeral by default
+- temporary by default
 - usable even without a live provider because fallback exists
 - explicitly savable into Conversations
 
@@ -202,15 +215,19 @@ This provides product clarity without requiring billing integration yet.
 
 ## Web Product Direction
 
-The current web product direction is pragmatic:
+The current web product direction after Milestone 14 is pragmatic and product-grade:
 
+- Home is the daily command center, not a legacy analytics page
+- Portfolio is asset-center-first, not an integration/admin console
+- Transactions is a cashflow ledger workspace, not raw CRUD
 - AI Insights is the main user-facing AI surface
 - AI Workbench stays developer-facing
 - Monthly Financial Review and Daily Market Brief are first-class report actions
 - Financial Health Score is a first-class analysis workflow
 - Portfolio Analysis has a clear entry point now, even if richer structured output evolves later
+- mobile uses the same route tree with page-level mobile hierarchy, bottom navigation, and a central command menu
 
-This keeps the shipped product coherent while leaving room for Milestone 14 experience refinement.
+This keeps the shipped product coherent while leaving room for deeper data, automation, and connected-finance expansion.
 
 ---
 
@@ -222,7 +239,8 @@ The following are intentionally not overbuilt yet:
 - Daily Market Brief market-data expansion
 - full conversation reply execution and streaming
 - custom workflow/template authoring
-- deeper mobile-first productization
+- richer investment performance analytics and reconciliation
+- replacing secondary native prompt/confirm flows in Transactions with custom product modals
 
 These are product refinements, not missing architectural foundations.
 
@@ -236,9 +254,9 @@ The key product decisions are:
 
 - keep snapshots canonical
 - keep reports and scores persisted
-- keep Quick Chat ephemeral by default
+- keep Quick Chat temporary by default
 - keep Save explicit
 - keep AI Insights functionally organized
 - keep providers and models replaceable
 
-That gives Aurum a stable product foundation for richer Milestone 14 experience work.
+That gives Aurum a stable product foundation for richer connected-finance, portfolio, and AI automation work.

@@ -4,12 +4,13 @@ Next.js web app for Aurum, the AI-driven Personal Wealth Operating System.
 
 This app is the main product surface for:
 
-- dashboard and cashflow analytics
-- portfolio and snapshot-driven analysis flows
-- transaction management
-- AI Insights reports, analysis workflows, planning slots, and conversations
+- Home / Dashboard daily wealth command center
+- Portfolio asset center and snapshot-driven analysis flows
+- Transactions ledger and cashflow management
+- AI Insights reports, analysis workflows, planning slots, Quick Chat, and conversations
+- Settings, session controls, and responsive shell navigation
 
-Milestone 13 is now complete in the web layer. The current focus is Milestone 14: experience refinement on top of the shipped AI product layer.
+Milestone 14 is now complete in the web layer. The web app has product-grade desktop surfaces, page-level mobile productization, a responsive app shell, mobile bottom navigation, and a central command menu.
 
 ## Stack
 
@@ -30,18 +31,18 @@ Milestone 13 is now complete in the web layer. The current focus is Milestone 14
 ### App routes
 
 - `/dashboard`
-  monthly KPI, trend, and category breakdown views backed by analytics APIs
+  Home surface combining cashflow state, portfolio posture, AI cues, quick actions, cashflow channel visualization, and supporting analytics
 - `/transactions`
-  transaction list, filtering, refresh, and CRUD-oriented ledger workflow
+  ledger/cashflow workspace with filtering, refresh, add/edit/delete transaction workflows, and category/subcategory management
 - `/portfolio`
-  portfolio product surface plus snapshot and connected-finance workflows
+  asset-center-first portfolio surface with latest snapshot posture, snapshot library, source/account overview, connected provider flows, and manual asset maintenance
 - `/ai-insights`
-  AI Product Layer surface organized into Reports, Analysis, Planning, and Conversations with:
+  AI workspace organized into Reports, Analysis, Conversations, and Planning with:
   snapshot-driven Monthly Financial Review and Daily Market Brief workflows,
   Financial Health Score generation/history,
   guided portfolio analysis entry,
   Quick Chat with explicit Save to Conversations,
-  entitlement-aware actions and historical-read-friendly states
+  access-aware actions and saved-history-friendly states
 - `/settings`
   app-level settings and session/logout surface
 
@@ -56,10 +57,12 @@ The web app is no longer only a thin dashboard client. It now participates in Au
 
 - `packages/core` provides canonical portfolio, AI, report, and score contracts plus shared mappers/adapters.
 - The web app consumes API helpers under `src/lib/api/*` for snapshot, report, score, auth, ledger, and analytics access.
-- `/ai-insights` uses persisted `PortfolioSnapshot` records as the upstream analysis object.
-- Final report artifacts and score artifacts are created server-side and then reloaded into user-scoped history views.
-- Quick Chat remains ephemeral by default and only becomes persistent through explicit save into Conversations.
+- `/ai-insights` uses saved `PortfolioSnapshot` records as the upstream analysis object.
+- Final reports and scores are created server-side and then reloaded into user-scoped history views.
+- Quick Chat remains temporary by default and only becomes persistent through explicit save into Conversations.
 - `/dev/ai-workbench` remains useful for no-key validation, but `/ai-insights` is the product-facing AI surface.
+- The app shell owns desktop sidebar navigation, topbar actions, mobile bottom navigation, and the central command menu.
+- Page layouts are responsive within the same route tree; mobile is not split into separate routes.
 
 ## Key API Dependencies
 
@@ -157,13 +160,15 @@ Shared design and layout primitives live in:
 - `src/components/ui/*`
 - `src/components/layout/*`
 - `src/components/dashboard/*`
+- `src/components/home/*`
+- `src/components/app/*`
 - `src/lib/cn.ts`
 
 Global styling and tokens live in:
 
 - `src/app/globals.css`
 
-The current web layer now includes the Milestone 13 AI Product Layer. Future desktop/mobile refinement belongs to Milestone 14 rather than additional foundation work in this package.
+The current web layer includes the Milestone 14 Experience Layer: desktop polish, mobile productization, white/gold visual-system refinement, cashflow channel flow charts, mobile-native login/register direction, and final cross-surface acceptance cleanup.
 
 ## Checks
 
@@ -172,6 +177,7 @@ From repo root:
 ```bash
 pnpm lint
 pnpm typecheck
+pnpm --filter web build
 ```
 
 If you want full product behavior rather than isolated frontend rendering, run both `web` and `api`.

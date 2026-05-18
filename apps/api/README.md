@@ -66,6 +66,8 @@ Local demo auth:
 
 ## API Endpoints
 
+This is a curated map of the main product surfaces. The root README has the fuller endpoint table.
+
 ### Health
 - `GET /v1/health`
 
@@ -84,10 +86,51 @@ Local demo auth:
 
 ### Analytics
 - `GET /v1/analytics/monthly-summary?year=YYYY&month=M`
+- `GET /v1/analytics/summary-series?months=N&endYear=YYYY&endMonth=M`
 - `GET /v1/analytics/category-breakdown?year=YYYY&month=M`
 
-### AI
+### Connected Finance
+- `GET /v1/connected-finance/sources`
+- `POST /v1/connected-finance/sources`
+- `GET /v1/connected-finance/sources/:id`
+- `PATCH /v1/connected-finance/sources/:id`
+- `GET /v1/connected-finance/sources/:id/accounts`
+- `POST /v1/connected-finance/sources/:id/accounts`
+- `PATCH /v1/connected-finance/accounts/:accountId`
+- `GET /v1/connected-finance/accounts/:accountId/manual-valuations`
+- `POST /v1/connected-finance/accounts/:accountId/manual-valuations`
+- `POST /v1/connected-finance/sources/:id/materialize-snapshot`
+- `POST /v1/connected-finance/sources/:id/sync`
+- `GET /v1/connected-finance/sources/:id/snapshots`
+- `POST /v1/connected-finance/bank/plaid/link-token`
+- `POST /v1/connected-finance/bank/plaid/exchange-public-token`
+- `POST /v1/connected-finance/brokerage/snaptrade/connection-portal-url`
+- `POST /v1/connected-finance/brokerage/snaptrade/import-accounts`
+- `POST /v1/connected-finance/crypto/coinbase/connect`
+
+### Portfolio Snapshots
+- `GET /v1/portfolio-snapshots`
+- `POST /v1/portfolio-snapshots`
+- `GET /v1/portfolio-snapshots/:id`
+- `DELETE /v1/portfolio-snapshots/:id`
+
+### AI Product Layer
 - `GET /v1/ai/monthly-report?year=YYYY&month=M`
+- `GET /v1/entitlements/me`
+- `POST /v1/ai/quick-chat`
+- `POST /v1/ai/monthly-financial-review`
+- `POST /v1/ai/daily-market-brief`
+- `GET /v1/ai/daily-market-brief/preferences/me`
+- `PATCH /v1/ai/daily-market-brief/preferences/me`
+- `GET /v1/ai-reports`
+- `POST /v1/portfolio-snapshots/:sourceSnapshotId/reports`
+- `GET /v1/financial-health-scores/by-snapshot/:sourceSnapshotId`
+- `POST /v1/portfolio-snapshots/:sourceSnapshotId/financial-health-scores`
+- `GET /v1/ai-conversations`
+- `POST /v1/ai-conversations`
+- `GET /v1/ai-conversations/:id`
+- `PATCH /v1/ai-conversations/:id`
+- `DELETE /v1/ai-conversations/:id`
 
 ## Quick curl
 

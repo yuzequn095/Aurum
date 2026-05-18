@@ -55,6 +55,12 @@ Dashboard
 - net worth
 - asset distribution
 - monthly summary
+- daily command center for cashflow, portfolio posture, and AI cues
+
+Current implementation status:
+
+- Core ledger, analytics, portfolio snapshot, AI product workflows, auth, and responsive web surfaces are implemented.
+- Milestone 14 completed desktop and mobile productization for Home, Portfolio, Transactions, AI Insights, Settings, Login/Register, shell navigation, and command menu.
 
 This phase focuses on building the **financial data foundation**.
 
@@ -71,11 +77,23 @@ Integrations may include:
 - Brokerage APIs
 - Crypto exchanges
 
-Capabilities:
+Current foundation:
+
+- ConnectedSource / ConnectedSourceAccount / ConnectedSyncRun model
+- manual static asset sources and valuation history
+- Plaid bank foundation
+- SnapTrade brokerage foundation
+- Coinbase crypto foundation
+- canonical PortfolioSnapshot materialization across manual and connected sources
+
+Next capabilities:
 
 - Automatic account syncing
 - Transaction imports
 - Portfolio updates
+- richer holdings and institution modeling
+- sync hardening and reconciliation
+- deeper portfolio analytics
 
 Example integrations:
 
@@ -100,6 +118,9 @@ Capabilities:
 - AI budgeting assistance
 - Financial goal planning
 - Automated insights
+- scheduled report delivery
+- richer conversational continuation
+- proactive portfolio and cashflow alerts
 
 Examples:
 
@@ -185,11 +206,11 @@ Aurum will expand across multiple platforms.
 
 Web
 
-Primary analytics interface.
+Primary product interface for Home, Portfolio, Transactions, AI Insights, and Settings.
 
 Mobile
 
-Daily financial interaction.
+Daily financial interaction through the responsive web shell, bottom navigation, and command menu. Native apps remain a future platform option.
 
 Future platforms:
 

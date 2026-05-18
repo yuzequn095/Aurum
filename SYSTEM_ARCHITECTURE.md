@@ -12,7 +12,7 @@ The current system architecture combines:
 - AI product workflows
 - web and API product surfaces
 
-Milestone 13 completed the AI Product Layer on top of the earlier snapshot-driven and connected-finance foundations.
+Milestone 13 completed the AI Product Layer on top of the earlier snapshot-driven and connected-finance foundations. Milestone 14 completed the web Experience Layer that organizes those capabilities into coherent desktop and mobile product surfaces.
 
 ---
 
@@ -42,11 +42,13 @@ The web app is responsible for:
 - navigation and product flow
 - authenticated API consumption
 - AI Insights productization
+- Home / Dashboard, Portfolio, Transactions, Settings, and auth UX productization
+- desktop sidebar, topbar actions, mobile bottom navigation, and central command menu behavior
 - developer validation via AI Workbench
 
 Primary user-facing surfaces:
 
-- Dashboard
+- Home / Dashboard
 - Portfolio
 - Transactions
 - AI Insights
@@ -163,6 +165,8 @@ Quick Chat can use provider-backed execution or local fallback without changing 
 
 This keeps cross-app behavior aligned without splitting the system into services.
 
+Milestone 14 did not add a new backend layer. Its major architectural impact is frontend-facing: the same route tree now supports polished desktop and mobile hierarchies through shared shell, layout, and UI primitives.
+
 ---
 
 ## AI Product Layer Architecture
@@ -256,6 +260,8 @@ Persisted Report / Persisted Score / Ephemeral Quick Chat / Saved Conversation
 
 This is the core system-level view of the Milestone 13 AI Product Layer.
 
+Milestone 14 sits above this pipeline as the experience layer: Home summarizes cashflow, portfolio, and AI posture; Portfolio manages assets and snapshots; AI Insights owns saved AI outputs and temporary Quick Chat; Transactions remains the ledger source for cashflow analytics.
+
 ---
 
 ## Current Limitations
@@ -267,6 +273,7 @@ Some capabilities are intentionally not overbuilt yet:
 - conversation reply execution and streaming
 - advanced memory/orchestration
 - richer planning workflow backends
+- replacing secondary browser-native prompt/confirm flows in Transactions with custom product modals
 
 These limitations are compatible with the current architecture and do not require redesign.
 
@@ -284,5 +291,6 @@ The key architectural decisions remain:
 - provider-agnostic AI foundations
 - no-key/manual validation viability
 - entitlement-aware premium actions
+- responsive product shell and page-level mobile experience
 
-That makes the system ready for Milestone 14 experience refinement without revisiting Milestone 13 fundamentals.
+That makes the system ready for deeper connected-finance, portfolio analytics, and AI automation work without revisiting Milestone 13 or 14 foundations.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Aurum's AI layer is now a shipped product layer built on top of the earlier snapshot-driven analysis foundation.
+Aurum's AI layer is now a shipped product layer built on top of the earlier snapshot-driven analysis foundation. Milestone 14 did not change the core AI contracts; it productized how users encounter AI across Home, AI Insights, Portfolio, and mobile.
 
 The current architecture is intentionally:
 
@@ -10,6 +10,7 @@ The current architecture is intentionally:
 - artifact-oriented for persisted outputs
 - provider-agnostic and model-agnostic
 - usable with and without live model credentials
+- presented through user-facing saved-history and temporary-chat language rather than developer/demo terminology
 
 The AI system currently operates across four cooperating layers:
 
@@ -50,7 +51,7 @@ This invariant is preserved across:
 - guided portfolio analysis entry points
 - saved conversation context links
 
-Reports and scores do not replace snapshots. They are downstream artifacts linked back to snapshots.
+Reports and scores do not replace snapshots. They are downstream outputs linked back to snapshots.
 
 ### Ledger Analytics
 
@@ -149,7 +150,7 @@ This preserves usability in local/dev scenarios and avoids generic internal erro
 
 ### Reports
 
-Reports persist as `AIReportArtifact` records linked to snapshots.
+Reports persist as `AIReportArtifact` records linked to snapshots. Product UI generally describes these as saved reports or briefings.
 
 Current first-class report workflows:
 
@@ -160,7 +161,7 @@ Historical report reads remain user-scoped and readable after entitlement loss.
 
 ### Financial Health Scores
 
-Financial health assessments persist as `FinancialHealthScoreArtifact` records linked to snapshots.
+Financial health assessments persist as `FinancialHealthScoreArtifact` records linked to snapshots. Product UI generally describes these as saved scores.
 
 This remains a deterministic analysis artifact rather than a free-form chat output.
 
@@ -170,8 +171,8 @@ Saved conversations persist separately as user-owned conversation and message re
 
 Important product rules:
 
-- Quick Chat is ephemeral by default.
-- Chats are only persisted when explicitly saved.
+- Quick Chat is temporary by default.
+- Chats are only saved when explicitly saved.
 - Saved conversations can be listed, reopened, renamed, and deleted.
 - Conversation persistence does not replace the snapshot-first artifact model.
 
@@ -224,6 +225,16 @@ Current productized workflows include:
 - Quick Chat
 - Save to Conversations
 
+Milestone 14 refined this surface into a desktop-first AI workspace with clearer Reports, Analysis, Conversations, and Planning hierarchy while keeping mobile usable and navigable.
+
+### Home and Portfolio Entry Points
+
+AI is also surfaced outside `/ai-insights`:
+
+- Home shows the latest AI brief, score posture, Quick Chat entry, and AI Insights CTA.
+- Portfolio links into guided Portfolio Analysis using the selected asset context.
+- The mobile command menu exposes Ask AI, Quick Chat, and Quick Analysis actions.
+
 ### AI Workbench
 
 `/dev/ai-workbench` remains the developer validation surface.
@@ -239,7 +250,7 @@ It is intentionally separate from product UI and is used for:
 
 ## What Is Still Intentionally Incomplete
 
-The current AI layer is strong enough for Milestone 13 closeout, but some work is intentionally deferred:
+The current AI layer is strong enough for the Milestone 14 product experience, but some work is intentionally deferred:
 
 - richer prompt-pack iteration and tuning
 - more structured portfolio analysis beyond the guided entry point

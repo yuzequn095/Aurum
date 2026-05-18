@@ -22,7 +22,7 @@ This document serves as both a product overview and developer reference for Auru
 - [What Milestone 11 Changed](#what-milestone-11-changed)
 - [What Milestone 12 Changed](#what-milestone-12-changed)
 - [What Milestone 13 Changed](#what-milestone-13-changed)
-- [What Milestone 14 Will Change](#what-milestone-14-will-change)
+- [What Milestone 14 Changed](#what-milestone-14-changed)
 - [Current Architecture](#current-architecture)
 - [Long-term Vision](#long-term-vision)
 - [Architecture Documents](#architecture-documents)
@@ -51,23 +51,23 @@ Aurum aims to become a **central financial intelligence layer** for users.
 
 ## Core Product Modules
 
-Aurum V1 consists of four primary modules:
+Aurum V1 consists of five primary user-facing surfaces:
 
-### Dashboard
+### Home / Dashboard
 
-High-level financial overview.
+Daily wealth command center.
 
 **Includes:**
 
-- Net Worth
-- Assets / Liabilities
-- Monthly Income / Expense
-- Portfolio overview
-- Financial Health Score
-- AI Brief
+- cashflow, portfolio, and AI summary cues
+- monthly income / expense / retained cash state
+- cashflow channel visualization
+- latest portfolio snapshot posture
+- latest AI report and Financial Health Score posture
+- quick actions into Transactions, Portfolio, and AI Insights
 
 **Purpose:**
-Give users a quick snapshot of their financial status.
+Give users a product-grade daily starting point for wealth state, cashflow pressure, and next actions.
 
 ### Portfolio
 
@@ -112,7 +112,7 @@ Transactions represent **cash flow tracking**.
 
 ### AI Insights
 
-AI-powered financial intelligence center.
+AI-powered financial intelligence workspace.
 
 - Reports:
   Monthly Financial Review and Daily Market Brief
@@ -121,10 +121,23 @@ AI-powered financial intelligence center.
 - Planning:
   reserved budget and goals slots for future guided workflows
 - Conversations:
-  ephemeral Quick Chat plus explicit Save into persistent Conversations
-- persisted report, score, and conversation history with entitlement-aware create actions
+  temporary Quick Chat plus explicit Save into Conversations
+- saved report, score, and conversation history with access-aware create actions
 
-AI Insights is the product surface where Aurum's snapshot-driven artifacts, preset AI workflows, and saved conversations come together.
+AI Insights is the product surface where Aurum's snapshot-driven analysis, preset AI workflows, and saved conversations come together.
+
+### Settings
+
+Account and session support surface.
+
+**Includes:**
+
+- signed-in account identity
+- session/logout action
+- preference entry points that map to existing behavior
+
+**Purpose:**
+Keep account/session controls reachable without turning Settings into an unsupported billing or admin console.
 
 ## AI System Design
 
@@ -145,12 +158,12 @@ Aurum's AI architecture is now split into four practical layers that work togeth
 
 ### 3. AI Product Workflows
 
-Current Milestone 13 workflows include:
+Current shipped workflows include:
 
 - Quick Chat:
-  protected, ephemeral by default, and explicitly savable into Conversations
+  protected, temporary by default, and explicitly savable into Conversations
 - Reports:
-  Monthly Financial Review and Daily Market Brief with persisted history
+  Monthly Financial Review and Daily Market Brief with saved history
 - Analysis:
   Financial Health Score plus first-class portfolio analysis entry points
 - Planning:
@@ -183,12 +196,15 @@ That engine remains a reusable foundation, while Milestone 13 productized concre
 
 ## Mobile UX Concept
 
+Milestone 14 productized the web app's responsive shell and page-level mobile hierarchy.
+
 **Mobile navigation:**
 
 - Home
 - Portfolio
 - Transactions
-- AI Insights
+- AI Insights / AI
+- Settings via topbar/account surfaces
 
 **Center action button `+` opens a quick command menu:**
 
@@ -199,9 +215,11 @@ That engine remains a reusable foundation, while Milestone 13 productized concre
 
 This allows fast interactions without navigating across multiple pages.
 
+Mobile is intentionally not a separate route tree. The same product surfaces adapt into single-column, touch-friendly layouts while preserving key desktop workflows.
+
 ## Current Status
 
-Milestones 1-13 are now complete at the foundation-plus-productization level. Milestone 13 delivered the AI Product Layer on top of the Milestone 11 snapshot-driven analysis architecture and the Milestone 12 connected-finance ingestion foundation. Milestone 14 is now the current focus: **Experience Layer / Productization**.
+Milestones 1-14 are now complete at the foundation-plus-productization level. Milestone 14 delivered the Experience Layer on top of the Milestone 11 snapshot-driven analysis architecture, Milestone 12 connected-finance ingestion foundation, and Milestone 13 AI Product Layer.
 
 - Platform status:
   monorepo, API, web, auth, ledger, taxonomy, analytics, import/export, and dashboard foundations are stable.
@@ -211,8 +229,10 @@ Milestones 1-13 are now complete at the foundation-plus-productization level. Mi
   AI Insights is now organized into Reports, Analysis, Planning, and Conversations with entitlement-aware create/save/reply paths and historical read preservation.
 - Manual/no-key status:
   AI Workbench can prepare and inspect preset prompt packs without API keys, and Quick Chat can fall back cleanly when no live provider is available.
+- Experience status:
+  Home, Portfolio, Transactions, AI Insights, Settings, Login/Register, desktop shell, mobile bottom nav, and command menu have been productized into a coherent day-to-day web experience.
 - Current execution focus:
-  Milestone 14 is about making Aurum feel like a coherent, mature, day-to-day product across desktop and mobile rather than adding a large new backend platform scope.
+  the next major product direction is connected-finance depth, portfolio modeling, and advanced AI automation rather than more Milestone 14 foundation cleanup.
 
 ## Milestone Summary
 
@@ -227,7 +247,7 @@ Milestones 1-13 are now complete at the foundation-plus-productization level. Mi
 | 11 | AI Foundation / Snapshot-Driven Analysis | Done | Shared AI contracts, prompt/task/provider/router/run foundations, workbench validation, canonical `PortfolioSnapshot`, snapshot-driven report/score flows, report persistence, score persistence, and snapshot-linked history with server-backed creation. |
 | 12 | Connected Finance & Real Ingestion | Done | Connected source foundation, source accounts, sync runs, snapshot lineage and ingestion hardening, manual static accounts with valuation history, Plaid bank foundation, SnapTrade brokerage holdings foundation, Coinbase crypto foundation, and provider-aware fallback guidance to Manual Create when backend provider config is missing. |
 | 13 | AI Product Layer | Done | Artifact ownership hardening, entitlement foundation, saved conversations, Quick Chat to Save to Conversations, AI Insights IA productization, Monthly Financial Review, Daily Market Brief, first-class analysis workflows, and preset prompt pack expansion. |
-| 14 | Experience Layer / Productization | Current Focus | Product structure cleanup, desktop polish, full mobile productization, and cross-platform consistency so Aurum becomes usable as a real day-to-day product. |
+| 14 | Experience Layer / Productization | Done | Product structure cleanup, desktop polish, mobile page-level productization, command menu refinement, visual polish, and final cross-surface acceptance review. |
 | 15 | Connected Finance Expansion / Portfolio Depth | Future | Richer holdings and institution modeling, sync hardening, reconciliation, and deeper asset modeling. |
 | 16 | Advanced AI / Automation | Future | Scheduled delivery, richer memory/orchestration, proactive alerts, and deeper planning/budgeting/goals workflows. |
 
@@ -255,9 +275,9 @@ Milestones 1-13 are now complete at the foundation-plus-productization level. Mi
 - JWT-guarded ownership hardening for AI reports and financial health scores using snapshot ownership as the visibility boundary
 - entitlement foundation with reusable feature checks, historical-read preservation, and `GET /v1/entitlements/me`
 - saved conversation persistence plus current-user save/list/get/rename/delete APIs
-- Quick Chat ephemeral execution with explicit Save into Conversations and persistent conversation history
+- Quick Chat temporary execution with explicit Save into Conversations and persistent conversation history
 - AI Insights productization around Reports, Analysis, Planning, and Conversations
-- Reports workflows for Monthly Financial Review and Daily Market Brief with persisted history plus Daily Market Brief delivery-preferences foundation
+- Reports workflows for Monthly Financial Review and Daily Market Brief with saved history plus Daily Market Brief delivery-preferences foundation
 - Analysis workflows for Financial Health Score and a guided Portfolio Analysis entry point into Quick Chat with context
 - entitlement-aware AI create/save/reply actions while preserving historical readability
 - preset task prompt packs, provider/model-swappable task execution, and workbench-based no-key validation improvements
@@ -292,9 +312,9 @@ Milestone 13 changed Aurum from a snapshot-driven AI foundation into a usable AI
 
 - AI artifacts now enforce the same user-scoped ownership boundary standard as portfolio snapshots.
 - Entitlements now gate premium create, refresh, save, and reply actions without blocking historical reads.
-- Quick Chat is implemented as an ephemeral-by-default flow with explicit Save into persistent Conversations.
+- Quick Chat is implemented as a temporary-by-default flow with explicit Save into persistent Conversations.
 - AI Insights is now organized into Reports, Analysis, Planning, and Conversations rather than behaving like a single AI demo surface.
-- Monthly Financial Review and Daily Market Brief are first-class server-backed report workflows with persisted history, and Daily Market Brief now has a delivery-preferences foundation.
+- Monthly Financial Review and Daily Market Brief are first-class server-backed report workflows with saved history, and Daily Market Brief now has a delivery-preferences foundation.
 - Financial Health Score is productized as a first-class analysis workflow, and portfolio analysis now exists as a guided entry into Quick Chat with contextual inputs.
 - Saved conversations can be listed, opened, renamed, and deleted after an explicit Save from Quick Chat.
 - Preset prompt packs and manual prepared-run support now make no-key testing practical across key report, analysis, and planning tasks.
@@ -302,38 +322,41 @@ Milestone 13 changed Aurum from a snapshot-driven AI foundation into a usable AI
 
 In practical terms, Milestone 13 turned Aurum's AI layer into a coherent product surface while preserving the snapshot-first artifact architecture and provider-agnostic foundations.
 
-## What Milestone 14 Will Change
+## What Milestone 14 Changed
 
 Milestone 14 = **Experience Layer / Productization**.
 
-The goal of Milestone 14 is to bring Aurum much closer to a mature product-grade UX so it no longer feels like a side-project toy. This milestone is about product coherence, workflow clarity, and desktop/mobile usability, not about inventing a large new backend platform.
+Milestone 14 brought Aurum much closer to a mature product-grade UX. This milestone focused on product coherence, workflow clarity, desktop/mobile usability, and visual system consistency rather than inventing a large new backend platform.
 
-After Milestone 14, Aurum should be usable as a real product for regular day-to-day use.
+After Milestone 14, Aurum is usable as a coherent day-to-day product surface for local/demo flows.
 
 ### 14A Product Structure & Workflow Cleanup
 
-- clarify page responsibilities across dashboard, portfolio, transactions, AI Insights, and settings
-- clean up navigation and information architecture
-- make snapshot/report/score/conversation relationships easier to understand
-- ensure key user flows feel coherent end to end
+- clarified page responsibilities across Home, Portfolio, Transactions, AI Insights, and Settings
+- cleaned up navigation and information architecture
+- made snapshot/report/score/conversation relationships easier to understand
+- stabilized responsive app shell, sidebar navigation, mobile bottom navigation, and command menu entry points
 
 ### 14B Desktop Product Polish
 
-- refine dashboard, portfolio, transactions, AI Insights, and settings
-- improve spacing, typography, hierarchy, chart styling, and empty/loading/error states
-- align desktop more closely with `Aurum-Web-UX-Demo` without requiring pixel-perfect cloning
+- reworked Home into a daily wealth command center rather than a legacy analytics page
+- polished AI Insights into a Reports / Analysis / Conversations / Planning workspace
+- polished Portfolio into an asset-center-first product page
+- polished Transactions into a ledger/cashflow workspace and Settings into a clean support surface
+- improved spacing, hierarchy, empty/loading/error states, CTA placement, and product copy
 
 ### 14C Mobile Full Productization
 
-- implement mobile as a real product rather than a partial companion
-- preserve core desktop capabilities as much as possible
-- align the mobile product direction with `Aurum-Mobile-UX-Demo`
-- support Home, Portfolio, Transactions, AI Insights, and `+` command menu flows
+- implemented mobile as an intentional product surface rather than a squeezed desktop companion
+- preserved the main Home, Portfolio, Transactions, AI Insights, Settings, and `+` command menu flows
+- improved mobile login, modal fit, bottom padding, card hierarchy, and mobile-native ordering
+- added a mobile-specific thin-line cashflow channel visualization while keeping desktop Sankey-style flow treatment
 
 ### 14D Cross-Platform Consistency & Final Polish
 
-- unify naming, navigation, visual language, AI entry points, and design consistency across desktop and mobile
-- make the product feel coherent and pleasant to use daily
+- unified naming, navigation, AI entry points, saved-history language, and provider/status copy
+- removed user-visible internal wording such as sync-run IDs and implementation-oriented AI phrasing
+- completed final lint/typecheck/build acceptance for the Milestone 14 UX layer
 
 ### What Milestone 14 Is Not
 
@@ -341,6 +364,12 @@ After Milestone 14, Aurum should be usable as a real product for regular day-to-
 - not a major new AI orchestration, memory, or automation backend milestone
 - not execution-layer, wallet, trading, or financial marketplace work
 - not endless visual polish for its own sake
+
+### Known Non-Blocking Product Debt After 14D
+
+- Some secondary Transactions category/account creation and destructive confirmation flows still use native browser prompt/confirm dialogs.
+- Provider integrations remain foundation-level and require environment credentials for full connected-finance behavior.
+- Planning slots in AI Insights are reserved until budget/goal workflow backends are intentionally built.
 
 ## Current Architecture
 
@@ -431,6 +460,7 @@ All within one unified platform.
 - [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md) - backend modules, AI layer, data flow, extensibility.
 - [PRODUCT_ARCHITECTURE.md](./PRODUCT_ARCHITECTURE.md) - information architecture, UX structure, AI interaction model.
 - [AI_ARCHITECTURE.md](./AI_ARCHITECTURE.md) - insight engine modes, prompt architecture, AI pipeline.
+- [MILESTONE_14_CLOSEOUT.md](./MILESTONE_14_CLOSEOUT.md) - delivered Experience Layer / Productization scope, acceptance notes, and remaining non-blocking debt.
 - [MILESTONE_13_CLOSEOUT.md](./MILESTONE_13_CLOSEOUT.md) - delivered AI Product Layer capabilities, limitations, and Milestone 14 handoff notes.
 - [FINANCIAL_DOMAIN_MODEL.md](./FINANCIAL_DOMAIN_MODEL.md) - financial entities, relationships, domain concepts.
 - [ROADMAP.md](./ROADMAP.md) - long-term product and platform evolution.
@@ -669,7 +699,7 @@ This section is a curated reference for the main product routes, not an exhausti
 | `/v1/portfolio-snapshots/:id` | GET | Yes | Get single portfolio snapshot by id. |
 | `/v1/portfolio-snapshots/:id` | DELETE | Yes | Delete snapshot if no linked persisted reports (409 when blocked). |
 | `/v1/entitlements/me` | GET | Yes | Get current user's effective AI entitlements and historical-read flags. |
-| `/v1/ai/quick-chat` | POST | Yes | Run ephemeral Quick Chat with optional snapshot/report/score context. |
+| `/v1/ai/quick-chat` | POST | Yes | Run temporary Quick Chat with optional snapshot/report/score context. |
 | `/v1/ai/monthly-financial-review` | POST | Yes | Create a Monthly Financial Review report artifact. |
 | `/v1/ai/daily-market-brief` | POST | Yes | Create a Daily Market Brief report artifact. |
 | `/v1/ai/daily-market-brief/preferences/me` | GET / PATCH | Yes | Read or update current-user Daily Market Brief delivery preferences. |
