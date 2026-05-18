@@ -1465,11 +1465,12 @@ export default function AiInsightsPage() {
                 Saved Quick Chat transcripts you explicitly kept.
             </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               <Button
                 variant="secondary"
                 onClick={() => void loadConversations(selectedConversationId ?? undefined)}
                 disabled={isConversationsLoading}
+                className="w-full"
               >
                 {isConversationsLoading ? 'Loading...' : 'Refresh Conversations'}
               </Button>
@@ -1477,6 +1478,7 @@ export default function AiInsightsPage() {
                 variant="destructive"
                 onClick={() => void onDeleteSelectedConversation()}
                 disabled={!selectedConversationId || isDeletingConversation}
+                className="w-full"
               >
                 {isDeletingConversation ? 'Deleting...' : 'Delete Selected'}
               </Button>
@@ -1592,11 +1594,12 @@ export default function AiInsightsPage() {
                 also return to Portfolio to create or sync a richer asset view.
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               <Button
                 variant="primary"
                 onClick={() => void onCreateDemoSnapshot()}
                 disabled={isCreatingSnapshot || isSnapshotsLoading}
+                className="w-full"
               >
                 {isCreatingSnapshot ? 'Creating...' : 'Create Starter Snapshot'}
               </Button>
@@ -1604,6 +1607,7 @@ export default function AiInsightsPage() {
                 variant="secondary"
                 onClick={() => void loadSnapshots()}
                 disabled={isSnapshotsLoading || isCreatingSnapshot}
+                className="w-full"
               >
                 {isSnapshotsLoading ? 'Loading...' : 'Refresh Snapshots'}
               </Button>

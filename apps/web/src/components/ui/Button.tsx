@@ -39,7 +39,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap font-medium shadow-[var(--aurum-shadow)] transition active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aurum-accent)]/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-55',
+        'inline-flex max-w-full items-center justify-center text-center font-medium leading-snug shadow-[var(--aurum-shadow)] transition active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aurum-accent)]/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-55',
         variantClasses[variant],
         sizeClasses[size],
         className,
