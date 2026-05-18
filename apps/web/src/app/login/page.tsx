@@ -151,7 +151,7 @@ function LoginPageContent() {
             <button
               type='button'
               className='text-[10px] font-medium uppercase tracking-[0.3em] text-[color:var(--aurum-auth-muted)] transition hover:text-[color:var(--aurum-auth-text)]'
-              aria-label='Recover password (coming soon)'
+              aria-label='Recover password'
             >
               Recover
             </button>

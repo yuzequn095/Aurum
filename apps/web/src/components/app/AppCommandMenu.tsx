@@ -56,7 +56,7 @@ export function AppCommandMenu({ open, onClose }: AppCommandMenuProps) {
               Move quickly
             </h2>
             <p className='text-sm text-[var(--aurum-text-muted)]'>
-              Common product actions stay one tap away without changing the route foundation.
+              Start the most common Aurum workflows from anywhere in the product.
             </p>
           </div>
 

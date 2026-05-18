@@ -82,6 +82,17 @@ function formatAssetCategory(category: PortfolioAssetCategory | undefined): stri
     .join(' ');
 }
 
+function formatSourceType(value: string | undefined): string {
+  if (!value) {
+    return 'Portfolio source';
+  }
+
+  return value
+    .split('_')
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+}
+
 function getAssetAllocation(snapshot: PortfolioSnapshot | null) {
   if (!snapshot) {
     return [];
@@ -362,14 +373,12 @@ export default function PortfolioPage() {
     setStatusMessage('');
 
     try {
-      const result = await materializeManualStaticSnapshot(
+      await materializeManualStaticSnapshot(
         selectedSourceId,
         materializeSnapshotDate.trim() || undefined,
       );
       await Promise.all([loadAccountsForSource(selectedSourceId), loadAllSnapshots()]);
-      setStatusMessage(
-        `Snapshot created: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
-      );
+      setStatusMessage('Snapshot created and saved to your portfolio history.');
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Failed to create snapshot.');
     } finally {
@@ -509,7 +518,7 @@ export default function PortfolioPage() {
             <CardTitle className="text-xl">{snapshotInventory.length}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0 text-sm text-[var(--aurum-text-muted)]">
-            Persisted snapshots available across connected and manual sources.
+            Saved snapshots available across connected and manual sources.
           </CardContent>
         </Card>
 
@@ -577,8 +586,9 @@ export default function PortfolioPage() {
                   <p className="mt-1 text-xs text-[var(--aurum-text-muted)]">
                     {snapshot.metadata.snapshotDate} | {snapshot.positions.length} positions
                   </p>
-                  <p className="mt-1 break-all text-xs text-[var(--aurum-text-muted)]">
-                    {snapshot.id}
+                  <p className="mt-1 text-xs text-[var(--aurum-text-muted)]">
+                    Source:{' '}
+                    {snapshot.metadata.sourceLabel ?? formatSourceType(snapshot.metadata.sourceType)}
                   </p>
                 </div>
               ))

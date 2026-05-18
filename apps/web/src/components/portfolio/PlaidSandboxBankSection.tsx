@@ -214,13 +214,13 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
     setProviderNotice(null);
 
     try {
-      const result = await syncConnectedBankSource(selectedSourceId);
+      await syncConnectedBankSource(selectedSourceId);
       await Promise.all([
         loadSourceDetails(selectedSourceId),
         loadSources(),
         onSnapshotsChanged?.(),
       ]);
-      setStatusMessage(`Bank snapshot created: ${result.snapshot.id} via sync run ${result.syncRun.id}.`);
+      setStatusMessage('Bank snapshot created and saved to your portfolio history.');
     } catch (error) {
       const notice =
         error instanceof ApiError

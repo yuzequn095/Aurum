@@ -61,7 +61,7 @@ export const APP_COMMAND_ACTIONS: AppCommandAction[] = [
   },
   {
     label: 'Quick Chat',
-    description: 'Open the saved and ephemeral Quick Chat workspace.',
+    description: 'Ask a short question and save the transcript if it matters.',
     href: '/ai-insights#quick-chat-section',
     icon: 'chat',
   },

@@ -253,7 +253,7 @@ export default function AiReportPage() {
                   </div>
                 ))}
                 <p className='pt-1 text-xs text-aurum-muted'>
-                  Insights are currently rule-based. LLM-based insights will be added in a later milestone.
+                  Insights use the available analysis layer for this account.
                 </p>
               </div>
             )}

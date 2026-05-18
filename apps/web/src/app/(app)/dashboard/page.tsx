@@ -110,7 +110,7 @@ export default function DashboardPage() {
         ? latestScore.result.grade.replace('_', ' ')
         : homeOverview.entitlements?.status === 'active'
           ? 'AI ready'
-          : 'Historical read',
+          : 'History visible',
       badgeVariant: latestScore
         ? getHealthVariant(latestScore.result.grade)
         : homeOverview.entitlements?.status === 'active'
@@ -219,7 +219,7 @@ export default function DashboardPage() {
                     <p className='mt-2 text-lg font-semibold text-[var(--aurum-text)]'>
                       {latestSnapshot
                         ? `${latestSnapshot.positions.length} positions across the latest snapshot`
-                        : 'No snapshot persisted yet'}
+                        : 'No snapshot yet'}
                     </p>
                     <p className='mt-2 text-sm leading-6 text-[var(--aurum-text-muted)]'>
                       {latestSnapshot
@@ -230,7 +230,7 @@ export default function DashboardPage() {
 
                   <div className='rounded-[22px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] p-4'>
                     <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
-                      AI artifact history
+                      AI history
                     </p>
                     <p className='mt-2 text-lg font-semibold text-[var(--aurum-text)]'>
                       {homeOverview.reports.length} reports / {homeOverview.scores.length} scores
@@ -238,7 +238,7 @@ export default function DashboardPage() {
                     <p className='mt-2 text-sm leading-6 text-[var(--aurum-text-muted)]'>
                       {homeOverview.latestReport
                         ? `Latest brief: ${homeOverview.latestReport.title}.`
-                        : 'No persisted brief yet. AI Insights remains available for on-demand analysis.'}
+                        : 'No saved brief yet. AI Insights remains available for on-demand analysis.'}
                     </p>
                   </div>
                 </div>

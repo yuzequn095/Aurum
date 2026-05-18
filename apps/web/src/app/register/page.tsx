@@ -81,7 +81,7 @@ export default function RegisterPage() {
         </div>
       ) : (
         <form onSubmit={onSubmit} className='space-y-7'>
-          <div className='space-y-2'>
+          <div className='space-y-3'>
             <label
               htmlFor='register-email'
               className='text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--aurum-auth-muted)]'
@@ -101,7 +101,7 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div className='space-y-2'>
+          <div className='space-y-3'>
             <label
               htmlFor='register-password'
               className='text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--aurum-auth-muted)]'
@@ -122,7 +122,7 @@ export default function RegisterPage() {
             />
           </div>
 
-          <p className='text-sm text-[color:var(--aurum-auth-muted)]'>
+          <p className='text-center text-sm text-[color:var(--aurum-auth-muted)] lg:text-left'>
             Already have access?{' '}
             <Link
               href='/login'
@@ -134,8 +134,12 @@ export default function RegisterPage() {
 
           {error ? <p className='text-sm text-red-600'>{error}</p> : null}
 
-          <PrimaryButton type='submit' disabled={submitting}>
-            {submitting ? 'Creating account...' : 'Enter Suite'}
+          <PrimaryButton
+            type='submit'
+            disabled={submitting}
+            className='px-7 tracking-[0.16em] lg:px-9 lg:tracking-[0.3em]'
+          >
+            {submitting ? 'Creating...' : 'Create Account'}
           </PrimaryButton>
         </form>
       )}

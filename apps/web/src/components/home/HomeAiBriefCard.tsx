@@ -33,7 +33,7 @@ function getPlanBadge(entitlements: CurrentUserEntitlementsView | null) {
   }
 
   return {
-    label: 'Historical read only',
+    label: 'History available',
     variant: 'warn' as const,
   };
 }
@@ -93,7 +93,7 @@ export function HomeAiBriefCard({
                 </div>
               ) : (
                 <div className='space-y-3'>
-                  <Badge variant='neutral'>No persisted brief yet</Badge>
+                  <Badge variant='neutral'>No saved brief yet</Badge>
                   <p className='text-lg font-semibold text-[var(--aurum-text)]'>
                     AI Insights is ready when you need it
                   </p>
@@ -134,8 +134,8 @@ export function HomeAiBriefCard({
                     Financial Health Score
                   </p>
                   <p className='text-sm leading-7 text-[var(--aurum-text-muted)]'>
-                    No score artifact yet. Home will surface your latest grade and summary here once
-                    AI analysis has been generated from a portfolio snapshot.
+                    No score yet. Home will surface your latest grade and summary here once AI
+                    analysis has been generated from a portfolio snapshot.
                   </p>
                 </div>
               )}

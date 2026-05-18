@@ -173,15 +173,13 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
     setProviderNotice(null);
 
     try {
-      const result = await syncConnectedCryptoSource(selectedSourceId);
+      await syncConnectedCryptoSource(selectedSourceId);
       await Promise.all([
         loadSourceDetails(selectedSourceId),
         loadSources(),
         onSnapshotsChanged?.(),
       ]);
-      setStatusMessage(
-        `Crypto snapshot created: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
-      );
+      setStatusMessage('Crypto snapshot created and saved to your portfolio history.');
     } catch (error) {
       const notice =
         error instanceof ApiError

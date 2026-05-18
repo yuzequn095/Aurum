@@ -590,7 +590,7 @@ export default function AiInsightsPage() {
 
       if (nextSnapshots.length === 0) {
         setSelectedSnapshotId(null);
-        setSnapshotsStatusMessage('No persisted snapshots found yet.');
+        setSnapshotsStatusMessage('No saved snapshots found yet.');
         return;
       }
 
@@ -600,10 +600,10 @@ export default function AiInsightsPage() {
           : false;
         return hasCurrent ? currentSelectedId : (nextSnapshots[0].id ?? null);
       });
-      setSnapshotsStatusMessage(`Loaded ${nextSnapshots.length} persisted snapshots.`);
+      setSnapshotsStatusMessage(`Loaded ${nextSnapshots.length} saved snapshots.`);
     } catch (error) {
       setSnapshotsStatusMessage(
-        error instanceof Error ? error.message : 'Failed to load snapshots from API.',
+        error instanceof Error ? error.message : 'Failed to load portfolio snapshots.',
       );
     } finally {
       setIsSnapshotsLoading(false);
@@ -618,7 +618,7 @@ export default function AiInsightsPage() {
       setEntitlements(nextEntitlements);
     } catch (error) {
       setEntitlementsStatusMessage(
-        error instanceof Error ? error.message : 'Failed to load AI entitlements.',
+        error instanceof Error ? error.message : 'Failed to load AI access status.',
       );
     }
   };
@@ -706,13 +706,13 @@ export default function AiInsightsPage() {
         return hasCurrent ? currentSelectedId : (nextReports[0]?.id ?? null);
       });
       if (nextReports.length === 0) {
-        setReportsStatusMessage('No persisted reports found yet.');
+        setReportsStatusMessage('No saved reports found yet.');
       } else {
-        setReportsStatusMessage(`Loaded ${nextReports.length} persisted reports.`);
+        setReportsStatusMessage(`Loaded ${nextReports.length} saved reports.`);
       }
     } catch (error) {
       setReportsStatusMessage(
-        error instanceof Error ? error.message : 'Failed to load reports from API.',
+        error instanceof Error ? error.message : 'Failed to load report history.',
       );
     } finally {
       setIsReportsLoading(false);
@@ -742,11 +742,11 @@ export default function AiInsightsPage() {
       if (nextScores.length === 0) {
         setScoreStatusMessage('No financial health scores found for selected snapshot yet.');
       } else {
-        setScoreStatusMessage(`Loaded ${nextScores.length} score artifacts for selected snapshot.`);
+        setScoreStatusMessage(`Loaded ${nextScores.length} scores for selected snapshot.`);
       }
     } catch (error) {
       setScoreStatusMessage(
-        error instanceof Error ? error.message : 'Failed to load score history from API.',
+        error instanceof Error ? error.message : 'Failed to load score history.',
       );
     } finally {
       setIsScoresLoading(false);
@@ -877,10 +877,10 @@ export default function AiInsightsPage() {
 
       await loadSnapshots();
       setSelectedSnapshotId(created.id ?? null);
-      setSnapshotsStatusMessage(`Sample snapshot created: ${created.id}`);
+      setSnapshotsStatusMessage('Starter snapshot created and saved.');
     } catch (error) {
       setSnapshotsStatusMessage(
-        error instanceof Error ? error.message : 'Failed to create sample snapshot.',
+        error instanceof Error ? error.message : 'Failed to create starter snapshot.',
       );
     } finally {
       setIsCreatingSnapshot(false);
@@ -942,7 +942,9 @@ export default function AiInsightsPage() {
         return;
       }
       if (!selectedSnapshot.id) {
-        setScoreStatusMessage('Selected snapshot is missing an id and cannot create a score.');
+        setScoreStatusMessage(
+          'This snapshot cannot create a score yet. Refresh snapshots and try again.',
+        );
         return;
       }
 
@@ -952,7 +954,7 @@ export default function AiInsightsPage() {
 
       await loadScoresForSelectedSnapshot(selectedSnapshot.id);
       setSelectedScoreId(createdScore.id);
-      setScoreStatusMessage(`Server-created score artifact generated: ${createdScore.id}`);
+      setScoreStatusMessage('Financial Health Score generated and saved.');
     } catch (error) {
       setScoreStatusMessage(
         error instanceof Error ? error.message : 'Failed to generate financial health score',
@@ -964,7 +966,7 @@ export default function AiInsightsPage() {
 
   const onStartPortfolioAnalysis = () => {
     if (!portfolioAnalysisEnabled) {
-      setQuickChatStatusMessage('Current entitlement does not enable portfolio analysis yet.');
+      setQuickChatStatusMessage('Your current access does not include portfolio analysis yet.');
       scrollToAnchor('quick-chat-section');
       return;
     }
@@ -1033,8 +1035,8 @@ export default function AiInsightsPage() {
       setQuickChatContext(response.context ?? nextContext);
       setQuickChatStatusMessage(
         response.mode === 'fallback'
-          ? 'Quick Chat replied from local fallback context. The draft is still ephemeral until you save it.'
-          : 'Quick Chat replied. The draft is still ephemeral until you save it.',
+          ? 'Quick Chat replied using the available local context. Save it if this thread should stay in Conversations.'
+          : 'Quick Chat replied. Save it if this thread should stay in Conversations.',
       );
     } catch (error) {
       setQuickChatStatusMessage(
@@ -1048,7 +1050,7 @@ export default function AiInsightsPage() {
   const onClearQuickChat = () => {
     setQuickChatMessages([]);
     setQuickChatDraft('');
-    setQuickChatStatusMessage('Quick Chat draft cleared. Nothing was persisted.');
+    setQuickChatStatusMessage('Quick Chat draft cleared. Nothing was saved.');
     setQuickChatContext(selectedContext);
     setLastSavedConversationId(null);
   };
@@ -1131,7 +1133,7 @@ export default function AiInsightsPage() {
   const getEntryHint = (entry: AIInsightsCatalogEntry): string => {
     const enabled = getEntryEnabled(entry);
     if (!enabled) {
-      return 'Current entitlement does not enable this action yet.';
+      return 'Your current access does not include this action yet.';
     }
 
     switch (entry.id) {
@@ -1155,7 +1157,7 @@ export default function AiInsightsPage() {
           : 'Creates a Daily Market Brief using the latest available snapshot.';
       case 'financial-health-score':
         return selectedSnapshot?.id
-          ? 'Generates and stores a snapshot-linked analysis artifact.'
+          ? 'Generates and saves a snapshot-linked score.'
           : 'Select a portfolio snapshot to activate score generation.';
       case 'portfolio-analysis':
         return selectedSnapshot?.id
@@ -1163,9 +1165,9 @@ export default function AiInsightsPage() {
           : 'Select a portfolio snapshot to prepare a portfolio analysis draft.';
       case 'budget-planning':
       case 'goals-planning':
-        return 'Planning workflows are intentionally reserved for the next milestone.';
+        return 'Planning workflows are reserved until budget and goal automation is ready.';
       case 'quick-chat':
-        return 'Ephemeral by default. Save only when the transcript deserves a place in history.';
+        return 'Temporary by default. Save only when the transcript deserves a place in history.';
       case 'saved-conversations':
         return 'Saved conversations remain readable, even when creation or saving is unavailable.';
       default:
@@ -1203,7 +1205,7 @@ export default function AiInsightsPage() {
                     A calm workspace for reports, analysis, conversations, and planning.
                   </h1>
                   <p className="max-w-3xl text-sm leading-7 text-aurum-muted sm:text-[15px]">
-                    Generate durable financial artifacts, inspect the latest score, or ask a quick
+                    Generate saved financial briefings, inspect the latest score, or ask a quick
                     grounded question. Quick Chat stays temporary until you explicitly save it into
                     Conversations.
                   </p>
@@ -1233,7 +1235,7 @@ export default function AiInsightsPage() {
               />
               <MetadataTile label="Portfolio Value" value={selectedSnapshotValue} />
               <MetadataTile
-                label="Latest Artifact"
+                label="Latest AI Item"
                 value={latestReport?.title ?? latestConversation?.title ?? 'No AI history yet'}
               />
             </div>
@@ -1294,7 +1296,7 @@ export default function AiInsightsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3 xl:grid-cols-1">
-            <MetadataTile label="Reports" value="Monthly reviews and market briefs are persisted." />
+            <MetadataTile label="Reports" value="Monthly reviews and market briefs are saved." />
             <MetadataTile label="Analysis" value="Scores are stored against the selected snapshot." />
             <MetadataTile label="Conversations" value="Quick Chat saves only when you choose Save." />
           </CardContent>
@@ -1308,7 +1310,7 @@ export default function AiInsightsPage() {
           eyebrow="Conversations"
           title="Ask quickly, save deliberately"
           description="Quick Chat is the fast lane for grounded questions. It remains temporary until you decide the transcript belongs in saved history."
-          badge={<Badge variant="neutral">Ephemeral first</Badge>}
+          badge={<Badge variant="neutral">Temporary first</Badge>}
         />
       </section>
 
@@ -1321,7 +1323,7 @@ export default function AiInsightsPage() {
             <div className="space-y-1">
               <CardTitle>Quick Chat</CardTitle>
               <CardDescription>
-                Ephemeral by default. Use selected snapshot, report, or score context when you want
+                Temporary by default. Use selected snapshot, report, or score context when you want
                 grounded answers, then explicitly save the transcript if you want it in
                 Conversations.
               </CardDescription>
@@ -1577,9 +1579,9 @@ export default function AiInsightsPage() {
       <section id="reports" className="scroll-mt-24 space-y-4">
         <SectionHeading
           eyebrow="Reports"
-          title="Durable AI briefings"
-          description="Monthly reviews and market briefs are first-class artifacts: generated from selected context, saved to history, and readable later."
-          badge={<Badge variant="info">Persisted deliverables</Badge>}
+          title="Saved AI briefings"
+          description="Monthly reviews and market briefs are first-class AI outputs: generated from selected context, saved to history, and readable later."
+          badge={<Badge variant="info">Saved reports</Badge>}
         />
       </section>
 
@@ -1649,7 +1651,7 @@ export default function AiInsightsPage() {
             <div className="space-y-1">
               <CardTitle>Monthly Financial Review</CardTitle>
               <CardDescription>
-                Create a persisted review for a finished month, grounded in the selected portfolio
+                Create a saved review for a finished month, grounded in the selected portfolio
                 context when you choose to override the default anchor.
               </CardDescription>
             </div>
@@ -2054,7 +2056,7 @@ export default function AiInsightsPage() {
           <CardHeader>
             <CardTitle>Report History</CardTitle>
             <CardDescription>
-              Persisted Monthly Financial Reviews and Daily Market Briefs loaded from the API.
+              Saved Monthly Financial Reviews and Daily Market Briefs loaded for this account.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -2066,7 +2068,7 @@ export default function AiInsightsPage() {
             ) : reports.length === 0 ? (
               <p className="text-sm text-aurum-muted">
                 No reports yet. Generate a Monthly Financial Review or Daily Market Brief to create
-                the first persisted report.
+                the first saved report.
               </p>
             ) : (
               reports.map((report) => (
@@ -2180,7 +2182,7 @@ export default function AiInsightsPage() {
         <SectionHeading
           eyebrow="Analysis"
           title="Score the current posture, then decide what deserves attention"
-          description="Financial Health Score stays persisted and snapshot-linked. Portfolio Analysis is a guided Quick Chat entry point, not a hidden demo flow."
+          description="Financial Health Score stays saved with the selected snapshot. Portfolio Analysis starts as a guided Quick Chat draft and becomes durable only if saved."
           badge={<Badge variant="info">Diagnostics</Badge>}
         />
       </section>
@@ -2229,7 +2231,7 @@ export default function AiInsightsPage() {
             <div className="space-y-1">
               <CardTitle>Financial Health Score</CardTitle>
               <CardDescription>
-                Generate and browse score artifacts for the selected snapshot.
+                Generate and browse scores for the selected snapshot.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -2253,7 +2255,7 @@ export default function AiInsightsPage() {
                 <p className="text-sm text-aurum-muted">Loading snapshot-scoped score history...</p>
               ) : scores.length === 0 ? (
                 <p className="text-sm text-aurum-muted">
-                  No persisted scores yet. Click &quot;Generate Score from Selected Snapshot&quot;
+                  No saved scores yet. Click &quot;Generate Score from Selected Snapshot&quot;
                   to create one.
                 </p>
               ) : (
@@ -2282,7 +2284,7 @@ export default function AiInsightsPage() {
 
             {!selectedScoreResult || !selectedScoreInsight ? (
               <p className="text-sm text-aurum-muted">
-                Select a score artifact from history to view details.
+                Select a score from history to view details.
               </p>
             ) : (
               <div className="grid grid-cols-1 gap-4 text-sm xl:grid-cols-[260px_1fr]">
@@ -2434,7 +2436,7 @@ export default function AiInsightsPage() {
         <SectionHeading
           eyebrow="Planning"
           title="Reserved space for future guidance"
-          description="Budget and goal workflows stay visible as intentional placeholders, without pretending unbuilt planning automation is live."
+          description="Budget and goal workflows stay visible as future planning lanes, without presenting unbuilt automation as live."
           badge={<Badge variant="warn">Reserved</Badge>}
         />
 

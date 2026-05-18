@@ -115,7 +115,7 @@ export function SnapTradeBrokerageSection({
       const result = await createSnapTradeConnectionPortalUrl();
       window.open(result.connectionPortalUrl, '_blank', 'noopener,noreferrer');
       setStatusMessage(
-        `SnapTrade portal opened for provider user ${result.providerUserId}. Complete the connection, then click Import Accounts.`,
+        'SnapTrade portal opened. Complete the connection, then return here to import accounts.',
       );
     } catch (error) {
       setStatusMessage(
@@ -137,9 +137,7 @@ export function SnapTradeBrokerageSection({
       await loadSources();
       const firstSourceId = result.sources[0]?.source.id ?? null;
       setSelectedSourceId(firstSourceId);
-      setStatusMessage(
-        `Imported ${result.sources.length} brokerage source(s) for provider user ${result.providerUserId}.`,
-      );
+      setStatusMessage(`Imported ${result.sources.length} brokerage source(s).`);
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : 'Failed to import SnapTrade accounts.',
@@ -159,15 +157,13 @@ export function SnapTradeBrokerageSection({
     setStatusMessage('');
 
     try {
-      const result = await syncConnectedBrokerageSource(selectedSourceId);
+      await syncConnectedBrokerageSource(selectedSourceId);
       await Promise.all([
         loadSourceDetails(selectedSourceId),
         loadSources(),
         onSnapshotsChanged?.(),
       ]);
-      setStatusMessage(
-        `Brokerage snapshot created: ${result.snapshot.id} via sync run ${result.syncRun.id}.`,
-      );
+      setStatusMessage('Brokerage snapshot created and saved to your portfolio history.');
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : 'Failed to sync brokerage source.',
