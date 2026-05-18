@@ -11,6 +11,10 @@ Aurum is a pnpm workspace + Turborepo monorepo for building an AI-driven Persona
 
 This document serves as both a product overview and developer reference for Aurum.
 
+<p align="center">
+  <img src="./assets/readme/aurum-product-showcase.png" alt="Aurum desktop and mobile product showcase" width="100%" />
+</p>
+
 ## Table of Contents
 
 - [Vision](#vision)
