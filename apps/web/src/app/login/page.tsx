@@ -100,8 +100,8 @@ function LoginPageContent() {
           <span className='text-sm text-aurum-muted'>Entering your suite...</span>
         </div>
       ) : (
-        <form onSubmit={onSubmit} className='space-y-5 lg:space-y-7'>
-          <div className='space-y-2'>
+        <form onSubmit={onSubmit} className='space-y-7 lg:space-y-7'>
+          <div className='space-y-3'>
             <label
               htmlFor='email'
               className='text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--aurum-auth-muted)]'
@@ -121,7 +121,7 @@ function LoginPageContent() {
             />
           </div>
 
-          <div className='space-y-2'>
+          <div className='space-y-3'>
             <label
               htmlFor='password'
               className='text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--aurum-auth-muted)]'
@@ -144,8 +144,8 @@ function LoginPageContent() {
           {error ? <p className='text-sm text-red-600'>{error}</p> : null}
 
           <div className='flex items-center justify-between gap-4 pt-1 lg:justify-start lg:gap-7 lg:pt-2'>
-            <PrimaryButton type='submit' disabled={submitting} className='min-w-[172px] px-7 lg:min-w-0 lg:px-9'>
-              {submitting ? 'Entering...' : 'Enter Suite'}
+            <PrimaryButton type='submit' disabled={submitting} className='min-w-[172px] px-7 tracking-[0.18em] lg:min-w-0 lg:px-9 lg:tracking-[0.3em]'>
+              {submitting ? 'Entering...' : 'Sign In'}
             </PrimaryButton>
 
             <button
@@ -157,7 +157,7 @@ function LoginPageContent() {
             </button>
           </div>
 
-          <p className='text-xs text-[color:var(--aurum-auth-muted)] lg:text-sm'>
+          <p className='text-center text-xs text-[color:var(--aurum-auth-muted)] lg:text-left lg:text-sm'>
             New to Aurum?{' '}
             <Link
               href='/register'
