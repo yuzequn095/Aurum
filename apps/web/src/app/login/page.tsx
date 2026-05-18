@@ -100,7 +100,7 @@ function LoginPageContent() {
           <span className='text-sm text-aurum-muted'>Entering your suite...</span>
         </div>
       ) : (
-        <form onSubmit={onSubmit} className='space-y-7'>
+        <form onSubmit={onSubmit} className='space-y-6 lg:space-y-7'>
           <div className='space-y-2'>
             <label
               htmlFor='email'
@@ -143,8 +143,8 @@ function LoginPageContent() {
 
           {error ? <p className='text-sm text-red-600'>{error}</p> : null}
 
-          <div className='flex items-center gap-7 pt-2'>
-            <PrimaryButton type='submit' disabled={submitting}>
+          <div className='flex items-center gap-5 pt-1 lg:gap-7 lg:pt-2'>
+            <PrimaryButton type='submit' disabled={submitting} className='min-w-[180px] px-7 lg:min-w-0 lg:px-9'>
               {submitting ? 'Entering...' : 'Enter Suite'}
             </PrimaryButton>
 

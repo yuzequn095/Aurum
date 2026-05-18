@@ -16,28 +16,28 @@ const tabs = [
 
 export function AuthShell({ mode, heading, subheading, children }: AuthShellProps) {
   return (
-    <main className='relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[color:var(--aurum-auth-bg-0)] px-4 py-8 sm:px-6 lg:px-10'>
+    <main className='relative flex min-h-screen w-full items-start justify-center overflow-hidden bg-[color:var(--aurum-auth-bg-0)] px-4 py-7 sm:px-6 lg:items-center lg:px-10 lg:py-8'>
       <div className='absolute inset-0 aurum-auth-bg' />
-      <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(212,175,55,0.04),transparent_55%)]' />
+      <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(212,175,55,0.06),transparent_52%)] lg:bg-[radial-gradient(ellipse_at_top,rgba(212,175,55,0.04),transparent_55%)]' />
       <div
         aria-hidden='true'
-        className='pointer-events-none absolute left-1/2 top-1/2 h-[72vh] w-[72vh] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color:var(--aurum-auth-text)]/[0.03]'
+        className='pointer-events-none absolute left-1/2 top-[45%] h-[60vh] w-[60vh] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color:var(--aurum-auth-text)]/[0.025] lg:top-1/2 lg:h-[72vh] lg:w-[72vh] lg:border-[color:var(--aurum-auth-text)]/[0.03]'
       />
 
-      <div className='relative mx-auto flex w-full max-w-[980px] translate-y-2 flex-col items-center gap-6 md:translate-y-3 lg:translate-y-4'>
-        <div className='flex flex-col items-center gap-3 pt-1'>
+      <div className='relative mx-auto flex w-full max-w-[350px] flex-col items-center gap-5 lg:max-w-[980px] lg:translate-y-4 lg:gap-6'>
+        <div className='flex flex-col items-center gap-2 pt-0 lg:gap-3 lg:pt-1'>
           {/* Dev note: keep auth logo on a plain img because Next image handling was part of the unstable dev-only path here. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src='/aurum_logo_thin.svg'
             alt='Aurum'
-            className='h-[70px] w-[180px] object-contain'
+            className='h-[62px] w-[150px] object-contain lg:h-[70px] lg:w-[180px]'
           />
         </div>
 
-        <AuthCard className='w-full max-w-[980px]'>
-          <div className='grid gap-8 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] lg:gap-10'>
-            <div className='space-y-8 px-2'>
+        <AuthCard className='w-full max-w-[350px] rounded-[32px] p-7 lg:max-w-[980px] lg:rounded-[40px] lg:p-10'>
+          <div className='grid gap-9 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] lg:gap-10'>
+            <div className='space-y-7 lg:space-y-8 lg:px-2'>
               <SegmentedTabs items={tabs} activeKey={mode} />
               {heading || subheading ? (
                 <header className='space-y-2'>
@@ -56,8 +56,8 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
 
             <div className='hidden rounded-full bg-[color:var(--aurum-auth-border)] lg:block' />
 
-            <aside className='space-y-6 px-2'>
-              <h2 className='text-[52px] leading-none font-medium tracking-tight text-[color:var(--aurum-auth-text)] [font-family:Georgia,Times_New_Roman,serif]'>
+            <aside className='space-y-6 lg:px-2'>
+              <h2 className='text-[46px] leading-none font-medium tracking-tight text-[color:var(--aurum-auth-text)] [font-family:Georgia,Times_New_Roman,serif] lg:text-[52px]'>
                 Private Management.
               </h2>
               <p className='max-w-[320px] text-[15px] leading-7 text-[color:var(--aurum-auth-muted)]'>
@@ -88,7 +88,7 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
           </div>
         </AuthCard>
 
-        <div className='w-full max-w-[980px] rounded-b-[18px] border border-t-0 border-[color:var(--aurum-auth-border)] bg-white/35 px-6 py-5 text-center'>
+        <div className='hidden w-full max-w-[980px] rounded-b-[18px] border border-t-0 border-[color:var(--aurum-auth-border)] bg-white/35 px-6 py-5 text-center lg:block'>
           <p className='text-[10px] font-light uppercase tracking-[0.4em] text-[color:var(--aurum-auth-muted)]/50'>
             AURUM &#183; MMXXIV &#183; SECURE END-TO-END ENCRYPTION
           </p>
