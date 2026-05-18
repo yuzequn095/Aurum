@@ -335,6 +335,13 @@ function MobileSankeyChart({
   const bottomAnchors = makeDistributedXAnchors(mobileDestinations, sourceTotal, 48, 312);
   const centerX = mobileChart.width / 2;
   const lineWidth = 2.2;
+  const centerLabelX = centerX + 74;
+
+  function getMobileNodeColor(anchor: VerticalFlowAnchor, index: number) {
+    if (anchor.tone === 'saved') return '#2F9E68';
+    if (anchor.tone === 'expense' || anchor.tone === 'reserve') return '#D96868';
+    return getToneColor('income', index);
+  }
 
   return (
     <div className='rounded-[24px] border border-[var(--aurum-border)] bg-white px-2 py-4 md:hidden'>
@@ -344,11 +351,31 @@ function MobileSankeyChart({
         viewBox={`0 0 ${mobileChart.width} ${mobileChart.height}`}
         className='h-[560px] w-full overflow-visible'
       >
+        <defs>
+          <marker
+            id='mobile-flow-arrow-expense'
+            markerHeight='6'
+            markerWidth='6'
+            orient='auto'
+            refX='5.2'
+            refY='3'
+          >
+            <path d='M 0 0 L 6 3 L 0 6 Z' fill='#D96868' />
+          </marker>
+          <marker
+            id='mobile-flow-arrow-saved'
+            markerHeight='6'
+            markerWidth='6'
+            orient='auto'
+            refX='5.2'
+            refY='3'
+          >
+            <path d='M 0 0 L 6 3 L 0 6 Z' fill='#2F9E68' />
+          </marker>
+        </defs>
+
         <text x='180' y='30' textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
           Income Sources
-        </text>
-        <text x='180' y='398' textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
-          Spending / Retained
         </text>
 
         {topAnchors.map((anchor, index) => {
@@ -387,29 +414,31 @@ function MobileSankeyChart({
               strokeLinecap='round'
               strokeWidth={lineWidth}
               opacity='0.7'
+              markerEnd={anchor.tone === 'saved' ? 'url(#mobile-flow-arrow-saved)' : 'url(#mobile-flow-arrow-expense)'}
             />
           );
         })}
 
         {topAnchors.map((anchor, index) => (
           <g key={`mobile-source-node-${anchor.label}`}>
-            <circle cx={anchor.x} cy={mobileChart.topNodeY} r='4' fill={getToneColor(anchor.tone, index)} />
+            <circle cx={anchor.x} cy={mobileChart.topNodeY} r='4' fill={getMobileNodeColor(anchor, index)} />
             <MobileFlowLabel anchor={anchor} y={mobileChart.topNodeY - 24} secondaryY={mobileChart.topNodeY - 9} />
           </g>
         ))}
 
         {bottomAnchors.map((anchor, index) => (
           <g key={`mobile-destination-node-${anchor.label}`}>
-            <circle cx={anchor.x} cy={mobileChart.bottomNodeY} r='4' fill={getToneColor(anchor.tone, index)} />
             <MobileFlowLabel anchor={anchor} y={mobileChart.bottomNodeY + 34} secondaryY={mobileChart.bottomNodeY + 49} />
+            <text x={anchor.x} y={mobileChart.bottomNodeY + 76} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[8px] font-semibold uppercase tracking-[0.14em]'>
+              {index === 0 ? 'Spending' : anchor.tone === 'saved' ? 'Retained' : ''}
+            </text>
           </g>
         ))}
 
-        <circle cx={centerX} cy={mobileChart.centerY} r='5.5' fill='#D4AF37' />
-        <text x='180' y={mobileChart.centerY - 34} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
+        <text x={centerLabelX} y={mobileChart.centerY - 10} textAnchor='start' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
           Monthly Flow
         </text>
-        <text x='180' y={mobileChart.centerY - 12} textAnchor='middle' className='fill-[var(--aurum-text)] text-[22px] font-semibold'>
+        <text x={centerLabelX} y={mobileChart.centerY + 16} textAnchor='start' className='fill-[var(--aurum-text)] text-[22px] font-semibold'>
           {formatMoney(sourceTotal)}
         </text>
       </svg>
