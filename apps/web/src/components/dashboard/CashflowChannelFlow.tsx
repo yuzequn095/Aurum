@@ -1,8 +1,8 @@
 'use client';
 
 import { Skeleton } from '@/components/ui/Skeleton';
-import { formatMoney } from '@/lib/format';
 import type { CashflowChannel } from '@/hooks/useCashflowChannels';
+import { formatMoney } from '@/lib/format';
 
 type CashflowChannelFlowProps = {
   incomeCents: number;
@@ -15,10 +15,18 @@ type CashflowChannelFlowProps = {
   error?: string | null;
 };
 
+type FlowTone = 'income' | 'expense' | 'reserve' | 'saved';
+
 type FlowNode = {
   label: string;
   amountCents: number;
-  tone?: 'income' | 'expense' | 'reserve' | 'saved';
+  tone?: FlowTone;
+};
+
+type FlowAnchor = FlowNode & {
+  y: number;
+  width: number;
+  share: number;
 };
 
 const sampleIncomeChannels: FlowNode[] = [
@@ -34,7 +42,19 @@ const sampleExpenseChannels: FlowNode[] = [
   { label: 'Subscriptions', amountCents: 42500, tone: 'expense' },
 ];
 
-const sampleNetCents = 395000;
+const sampleNetCents = 595000;
+
+const chart = {
+  width: 900,
+  height: 370,
+  leftLabelX: 42,
+  leftNodeX: 214,
+  centerLeftX: 402,
+  centerRightX: 548,
+  rightNodeX: 692,
+  rightLabelX: 724,
+  centerY: 190,
+};
 
 function sum(nodes: FlowNode[]) {
   return nodes.reduce((total, node) => total + node.amountCents, 0);
@@ -54,7 +74,7 @@ function reconcileNodes(
   totalCents: number,
   fallbackLabel: string,
   otherLabel: string,
-  tone: FlowNode['tone'],
+  tone: FlowTone,
 ): FlowNode[] {
   if (totalCents <= 0) return [];
 
@@ -95,23 +115,102 @@ function distributeY(count: number, top: number, bottom: number) {
   return Array.from({ length: count }, (_, index) => top + step * index);
 }
 
-function getStroke(tone: FlowNode['tone']) {
-  if (tone === 'saved') return 'rgba(212, 175, 55, 0.88)';
-  if (tone === 'reserve') return 'rgba(27, 156, 100, 0.48)';
-  if (tone === 'income') return 'rgba(212, 175, 55, 0.66)';
-  return 'rgba(115, 112, 107, 0.18)';
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
 }
 
-function getDot(tone: FlowNode['tone']) {
+function getFlowWidth(amountCents: number, totalCents: number) {
+  if (totalCents <= 0) return 8;
+  return clamp((amountCents / totalCents) * 146, 8, 54);
+}
+
+function makeDistributedAnchors(nodes: FlowNode[], totalCents: number, top: number, bottom: number) {
+  const yValues = distributeY(nodes.length, top, bottom);
+  return nodes.map((node, index) => ({
+    ...node,
+    y: yValues[index],
+    width: getFlowWidth(node.amountCents, totalCents),
+    share: totalCents > 0 ? node.amountCents / totalCents : 0,
+  }));
+}
+
+function makeStackedAnchors(nodes: FlowNode[], totalCents: number, centerY: number) {
+  const widths = nodes.map((node) => getFlowWidth(node.amountCents, totalCents));
+  const gap = 4;
+  const height = widths.reduce((total, width) => total + width, 0) + gap * Math.max(0, widths.length - 1);
+  let cursor = centerY - height / 2;
+
+  return nodes.map((node, index) => {
+    const width = widths[index];
+    const y = cursor + width / 2;
+    cursor += width + gap;
+    return {
+      ...node,
+      y,
+      width,
+      share: totalCents > 0 ? node.amountCents / totalCents : 0,
+    };
+  });
+}
+
+function getToneColor(tone: FlowTone | undefined, index = 0) {
+  if (tone === 'saved') return '#D4AF37';
+  if (tone === 'reserve') return '#1B9C64';
+  if (tone === 'expense') return ['#DADADA', '#E4E4E4', '#CFCFCF', '#ECECEC'][index % 4];
+  return ['#D4AF37', '#E0BD42', '#C99B1F', '#E8CD72'][index % 4];
+}
+
+function getFlowOpacity(tone: FlowTone | undefined) {
+  if (tone === 'expense') return 0.68;
+  if (tone === 'reserve') return 0.42;
+  return 0.72;
+}
+
+function getDot(tone: FlowTone | undefined) {
   if (tone === 'saved') return 'bg-[var(--aurum-accent)]';
   if (tone === 'reserve') return 'bg-[var(--aurum-success)]';
   if (tone === 'income') return 'bg-[var(--aurum-accent)]/80';
   return 'bg-[var(--aurum-border)]';
 }
 
-function getStrokeWidth(amountCents: number, maxAmountCents: number) {
-  if (maxAmountCents <= 0) return 4;
-  return Math.max(4, Math.min(22, 4 + Math.sqrt(amountCents / maxAmountCents) * 18));
+function getProgressClass(tone: FlowTone | undefined) {
+  if (tone === 'expense') return 'bg-[var(--aurum-border)]';
+  if (tone === 'reserve') return 'bg-[var(--aurum-success)]';
+  return 'bg-[var(--aurum-accent)]';
+}
+
+function formatPercent(value: number) {
+  if (value > 0 && value < 0.01) return '<1%';
+  return `${Math.round(value * 100)}%`;
+}
+
+function truncateLabel(label: string, max = 20) {
+  if (label.length <= max) return label;
+  return `${label.slice(0, max - 3)}...`;
+}
+
+function ribbonPath(
+  startX: number,
+  startY: number,
+  startWidth: number,
+  endX: number,
+  endY: number,
+  endWidth: number,
+) {
+  const controlA = startX + (endX - startX) * 0.48;
+  const controlB = startX + (endX - startX) * 0.58;
+  const startTop = startY - startWidth / 2;
+  const startBottom = startY + startWidth / 2;
+  const endTop = endY - endWidth / 2;
+  const endBottom = endY + endWidth / 2;
+
+  return [
+    `M ${startX} ${startTop}`,
+    `C ${controlA} ${startTop}, ${controlB} ${endTop}, ${endX} ${endTop}`,
+    `L ${endX} ${endBottom}`,
+    `C ${controlB} ${endBottom}, ${controlA} ${startBottom}, ${startX} ${startBottom}`,
+    'Z',
+  ].join(' ');
 }
 
 function NodeList({ title, nodes }: { title: string; nodes: FlowNode[] }) {
@@ -139,14 +238,48 @@ function NodeList({ title, nodes }: { title: string; nodes: FlowNode[] }) {
             </div>
             <div className='mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--aurum-surface-alt)]'>
               <div
-                className='h-full rounded-full bg-[var(--aurum-accent)]'
-                style={{ width: `${total > 0 ? Math.max(8, (node.amountCents / total) * 100) : 0}%` }}
+                className={`h-full rounded-full ${getProgressClass(node.tone)}`}
+                style={{
+                  width: `${total > 0 ? Math.max(8, (node.amountCents / total) * 100) : 0}%`,
+                }}
               />
             </div>
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+function FlowLabel({
+  anchor,
+  align,
+  x,
+}: {
+  anchor: FlowAnchor;
+  align: 'left' | 'right';
+  x: number;
+}) {
+  return (
+    <g>
+      <title>{`${anchor.label}: ${formatMoney(anchor.amountCents)}`}</title>
+      <text
+        x={x}
+        y={anchor.y - 10}
+        textAnchor={align === 'right' ? 'end' : 'start'}
+        className='fill-[var(--aurum-text)] text-[12px] font-semibold'
+      >
+        {truncateLabel(anchor.label)}
+      </text>
+      <text
+        x={x}
+        y={anchor.y + 9}
+        textAnchor={align === 'right' ? 'end' : 'start'}
+        className='fill-[var(--aurum-text-muted)] text-[11px]'
+      >
+        {formatMoney(anchor.amountCents)} / {formatPercent(anchor.share)}
+      </text>
+    </g>
   );
 }
 
@@ -188,14 +321,26 @@ export function CashflowChannelFlow({
 
   const sources = usingSample ? sampleIncomeChannels : [...liveSources, ...liveReserve];
   const destinations = usingSample
-    ? [...sampleExpenseChannels, { label: 'Saved / invested', amountCents: sampleNetCents, tone: 'saved' as const }]
+    ? [
+        ...sampleExpenseChannels,
+        { label: 'Saved / invested', amountCents: sampleNetCents, tone: 'saved' as const },
+      ]
     : [...liveExpenses, ...liveSaved];
 
   const sourceTotal = sum(sources);
-  const maxAmount = Math.max(...sources.map((node) => node.amountCents), ...destinations.map((node) => node.amountCents), 1);
-  const sourceY = distributeY(sources.length, 68, 230);
-  const destinationY = distributeY(destinations.length, 58, 238);
+  const expenseTotal = usingSample ? sum(sampleExpenseChannels) : expenseCents;
   const displayedNetCents = usingSample ? sampleNetCents : netCents;
+  const leftAnchors = makeDistributedAnchors(sources, sourceTotal, 92, 288);
+  const leftCenterAnchors = makeStackedAnchors(sources, sourceTotal, chart.centerY);
+  const rightAnchors = makeDistributedAnchors(destinations, sourceTotal, 78, 302);
+  const rightCenterAnchors = makeStackedAnchors(destinations, sourceTotal, chart.centerY);
+  const centerStackHeight = Math.max(
+    leftCenterAnchors.reduce((total, anchor) => total + anchor.width, 0) + leftCenterAnchors.length * 4,
+    rightCenterAnchors.reduce((total, anchor) => total + anchor.width, 0) + rightCenterAnchors.length * 4,
+    98,
+  );
+  const centerNodeHeight = clamp(centerStackHeight + 22, 106, 178);
+  const centerNodeY = chart.centerY - centerNodeHeight / 2;
 
   return (
     <section className='rounded-[28px] border border-[var(--aurum-border)] bg-white p-4 shadow-[var(--aurum-shadow)] sm:p-5'>
@@ -214,7 +359,7 @@ export function CashflowChannelFlow({
           </h3>
           <p className='max-w-2xl text-sm leading-7 text-[var(--aurum-text-muted)]'>
             {usingSample
-              ? 'Previewing the complete flow treatment with sample channels until this month has both income and spending records.'
+              ? 'Previewing a complete Sankey treatment with sample channels until this month has both income and spending records.'
               : `${monthLabel} channels are grouped from transaction categories so income sources, spending paths, and retained cash stay visible together.`}
           </p>
         </div>
@@ -233,7 +378,7 @@ export function CashflowChannelFlow({
               Outflow
             </p>
             <p className='mt-1 text-base font-semibold text-[var(--aurum-text)]'>
-              {formatMoney(usingSample ? sum(sampleExpenseChannels) : expenseCents)}
+              {formatMoney(expenseTotal)}
             </p>
           </div>
           <div className='rounded-[18px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3'>
@@ -249,79 +394,157 @@ export function CashflowChannelFlow({
 
       <div className='mt-5'>
         {loading ? (
-          <Skeleton className='h-[340px] rounded-[24px]' />
+          <Skeleton className='h-[380px] rounded-[24px]' />
         ) : (
           <>
-            <div className='hidden rounded-[24px] border border-[var(--aurum-border)] bg-white p-4 sm:block'>
+            <div className='hidden rounded-[24px] border border-[var(--aurum-border)] bg-white p-4 md:block'>
               <svg
                 role='img'
-                aria-label='Monthly cashflow channel flow'
-                viewBox='0 0 720 300'
-                className='h-[300px] w-full overflow-visible'
+                aria-label='Monthly cashflow channel Sankey chart'
+                viewBox={`0 0 ${chart.width} ${chart.height}`}
+                className='h-[380px] w-full overflow-visible'
               >
                 <defs>
                   <filter id='aurum-flow-soft-shadow' x='-20%' y='-20%' width='140%' height='140%'>
-                    <feDropShadow dx='0' dy='10' stdDeviation='12' floodColor='rgba(17,24,39,0.08)' />
+                    <feDropShadow dx='0' dy='12' stdDeviation='12' floodColor='rgba(17,24,39,0.08)' />
                   </filter>
+                  <linearGradient id='aurum-income-flow' x1='0%' x2='100%' y1='0%' y2='0%'>
+                    <stop offset='0%' stopColor='#D4AF37' stopOpacity='0.72' />
+                    <stop offset='100%' stopColor='#E7CA68' stopOpacity='0.48' />
+                  </linearGradient>
+                  <linearGradient id='aurum-saved-flow' x1='0%' x2='100%' y1='0%' y2='0%'>
+                    <stop offset='0%' stopColor='#E7CA68' stopOpacity='0.42' />
+                    <stop offset='100%' stopColor='#D4AF37' stopOpacity='0.86' />
+                  </linearGradient>
                 </defs>
 
-                <rect x='292' y='112' width='136' height='76' rx='22' fill='#ffffff' stroke='#e8e8e8' filter='url(#aurum-flow-soft-shadow)' />
-                <text x='360' y='142' textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
+                <text x='42' y='34' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
+                  Income Sources
+                </text>
+                <text x='438' y='34' textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
+                  Monthly Cashflow
+                </text>
+                <text x='724' y='34' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
+                  Spending / Retained
+                </text>
+
+                {leftAnchors.map((anchor, index) => {
+                  const centerAnchor = leftCenterAnchors[index];
+                  return (
+                    <path
+                      key={`income-ribbon-${anchor.label}`}
+                      d={ribbonPath(
+                        chart.leftNodeX + 13,
+                        anchor.y,
+                        anchor.width,
+                        chart.centerLeftX,
+                        centerAnchor.y,
+                        centerAnchor.width,
+                      )}
+                      fill={anchor.tone === 'income' ? 'url(#aurum-income-flow)' : getToneColor(anchor.tone, index)}
+                      opacity={getFlowOpacity(anchor.tone)}
+                    />
+                  );
+                })}
+
+                {rightAnchors.map((anchor, index) => {
+                  const centerAnchor = rightCenterAnchors[index];
+                  return (
+                    <path
+                      key={`expense-ribbon-${anchor.label}`}
+                      d={ribbonPath(
+                        chart.centerRightX,
+                        centerAnchor.y,
+                        centerAnchor.width,
+                        chart.rightNodeX,
+                        anchor.y,
+                        anchor.width,
+                      )}
+                      fill={anchor.tone === 'saved' ? 'url(#aurum-saved-flow)' : getToneColor(anchor.tone, index)}
+                      opacity={getFlowOpacity(anchor.tone)}
+                    />
+                  );
+                })}
+
+                {leftAnchors.map((anchor, index) => {
+                  const color = getToneColor(anchor.tone, index);
+                  const nodeHeight = clamp(anchor.width + 10, 18, 64);
+                  return (
+                    <g key={`source-node-${anchor.label}`}>
+                      <rect
+                        x={chart.leftNodeX}
+                        y={anchor.y - nodeHeight / 2}
+                        width='13'
+                        height={nodeHeight}
+                        rx='5'
+                        fill={color}
+                      />
+                      <circle cx={chart.leftNodeX + 6.5} cy={anchor.y} r='2.2' fill='rgba(26,26,26,0.22)' />
+                      <FlowLabel anchor={anchor} align='right' x={chart.leftNodeX - 22} />
+                    </g>
+                  );
+                })}
+
+                {rightAnchors.map((anchor, index) => {
+                  const color = getToneColor(anchor.tone, index);
+                  const nodeHeight = clamp(anchor.width + 10, 18, 64);
+                  return (
+                    <g key={`destination-node-${anchor.label}`}>
+                      <rect
+                        x={chart.rightNodeX}
+                        y={anchor.y - nodeHeight / 2}
+                        width='13'
+                        height={nodeHeight}
+                        rx='5'
+                        fill={color}
+                      />
+                      <circle cx={chart.rightNodeX + 6.5} cy={anchor.y} r='2.2' fill='rgba(26,26,26,0.18)' />
+                      <FlowLabel anchor={anchor} align='left' x={chart.rightLabelX} />
+                    </g>
+                  );
+                })}
+
+                <g filter='url(#aurum-flow-soft-shadow)'>
+                  <rect
+                    x={chart.centerLeftX}
+                    y={centerNodeY}
+                    width={chart.centerRightX - chart.centerLeftX}
+                    height={centerNodeHeight}
+                    rx='22'
+                    fill='#ffffff'
+                    stroke='#e8e8e8'
+                  />
+                  <rect
+                    x={chart.centerLeftX}
+                    y={centerNodeY}
+                    width='14'
+                    height={centerNodeHeight}
+                    rx='7'
+                    fill='#1f1f1d'
+                  />
+                  <rect
+                    x={chart.centerRightX - 14}
+                    y={centerNodeY}
+                    width='14'
+                    height={centerNodeHeight}
+                    rx='7'
+                    fill='#D4AF37'
+                  />
+                </g>
+
+                <text x='475' y={chart.centerY - 17} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
                   Monthly Flow
                 </text>
-                <text x='360' y='166' textAnchor='middle' className='fill-[var(--aurum-text)] text-[18px] font-semibold'>
-                  {formatMoney(usingSample ? sourceTotal : incomeCents)}
+                <text x='475' y={chart.centerY + 10} textAnchor='middle' className='fill-[var(--aurum-text)] text-[20px] font-semibold'>
+                  {formatMoney(sourceTotal)}
                 </text>
-
-                {sources.map((node, index) => {
-                  const y = sourceY[index];
-                  const strokeWidth = getStrokeWidth(node.amountCents, maxAmount);
-                  return (
-                    <g key={`source-${node.label}`}>
-                      <path
-                        d={`M 178 ${y} C 230 ${y}, 245 150, 292 150`}
-                        fill='none'
-                        stroke={getStroke(node.tone)}
-                        strokeLinecap='round'
-                        strokeWidth={strokeWidth}
-                      />
-                      <circle cx='178' cy={y} r='4' fill={node.tone === 'reserve' ? '#1b9c64' : '#d4af37'} />
-                      <text x='28' y={y - 6} className='fill-[var(--aurum-text)] text-[12px] font-semibold'>
-                        {node.label}
-                      </text>
-                      <text x='28' y={y + 13} className='fill-[var(--aurum-text-muted)] text-[11px]'>
-                        {formatMoney(node.amountCents)}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {destinations.map((node, index) => {
-                  const y = destinationY[index];
-                  const strokeWidth = getStrokeWidth(node.amountCents, maxAmount);
-                  return (
-                    <g key={`destination-${node.label}`}>
-                      <path
-                        d={`M 428 150 C 476 150, 486 ${y}, 538 ${y}`}
-                        fill='none'
-                        stroke={getStroke(node.tone)}
-                        strokeLinecap='round'
-                        strokeWidth={strokeWidth}
-                      />
-                      <circle cx='538' cy={y} r='4' fill={node.tone === 'saved' ? '#d4af37' : '#d9d9d9'} />
-                      <text x='558' y={y - 6} className='fill-[var(--aurum-text)] text-[12px] font-semibold'>
-                        {node.label}
-                      </text>
-                      <text x='558' y={y + 13} className='fill-[var(--aurum-text-muted)] text-[11px]'>
-                        {formatMoney(node.amountCents)}
-                      </text>
-                    </g>
-                  );
-                })}
+                <text x='475' y={chart.centerY + 31} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[11px]'>
+                  {sources.length} in / {destinations.length} out
+                </text>
               </svg>
             </div>
 
-            <div className='grid grid-cols-1 gap-4 sm:hidden'>
+            <div className='grid grid-cols-1 gap-4 md:hidden'>
               <NodeList title='Income channels' nodes={sources} />
               <NodeList title='Expense and retained channels' nodes={destinations} />
             </div>
