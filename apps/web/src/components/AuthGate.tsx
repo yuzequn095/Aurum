@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { PropsWithChildren, useEffect } from 'react';
+import { AuthSpinner } from '@/components/auth/AuthSpinner';
 import { useAuthSession } from '@/lib/auth/session';
 
 export function AuthGate({ children }: PropsWithChildren) {
@@ -31,7 +32,7 @@ export function AuthGate({ children }: PropsWithChildren) {
     return (
       <div className='relative flex min-h-screen items-center justify-center overflow-hidden bg-aurum-bg'>
         <div className='absolute inset-0 aurum-app-bg' />
-        <div className='relative h-8 w-8 animate-spin rounded-full border-2 border-aurum-primary border-t-aurum-primaryHover' />
+        <AuthSpinner size='md' className='relative' />
       </div>
     );
   }

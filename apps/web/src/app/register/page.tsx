@@ -1,15 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import { AuthShell } from '@/components/auth/AuthShell';
+import { AuthSpinner } from '@/components/auth/AuthSpinner';
 import { PrimaryButton } from '@/components/auth/PrimaryButton';
 import { useToast } from '@/components/toast/ToastProvider';
 import { useAuthSession } from '@/lib/auth/session';
 import { apiPublicPost } from '@/lib/api';
-import { setAccessToken, setRefreshToken, setUserEmail } from '@/lib/auth/tokens';
+import { setAuthSessionTokens } from '@/lib/auth/tokens';
 
 type AuthResponse = {
   user: { id: string; email: string };
@@ -24,11 +24,19 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isHydrated && isAuthenticated) {
+    if (isHydrated && isAuthenticated && !redirecting) {
+      setRedirecting(true);
       router.replace('/dashboard');
+    }
+  }, [isAuthenticated, isHydrated, redirecting, router]);
+
+  useEffect(() => {
+    if (isHydrated && !isAuthenticated) {
+      router.prefetch('/dashboard');
     }
   }, [isAuthenticated, isHydrated, router]);
 
@@ -42,14 +50,18 @@ export default function RegisterPage() {
         email,
         password,
       });
-      setAccessToken(payload.accessToken);
-      setRefreshToken(payload.refreshToken);
-      setUserEmail(payload.user.email);
+      setAuthSessionTokens({
+        accessToken: payload.accessToken,
+        refreshToken: payload.refreshToken,
+        userEmail: payload.user.email,
+      });
       toast.success('Account created successfully.');
-      router.push('/dashboard');
+      setRedirecting(true);
+      router.replace('/dashboard');
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setError(message);
+      setRedirecting(false);
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -62,9 +74,9 @@ export default function RegisterPage() {
         <div className='rounded-aurum border border-aurum-border bg-white/85 p-4 text-sm text-aurum-muted'>
           Preparing secure session...
         </div>
-      ) : isAuthenticated ? (
+      ) : isAuthenticated || redirecting ? (
         <div className='flex items-center gap-3 rounded-aurum border border-aurum-border bg-white/85 p-4'>
-          <span className='h-4 w-4 animate-spin rounded-full border-2 border-aurum-primary border-t-aurum-primaryHover' />
+          <AuthSpinner />
           <span className='text-sm text-aurum-muted'>Opening dashboard...</span>
         </div>
       ) : (

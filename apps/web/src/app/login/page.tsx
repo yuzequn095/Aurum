@@ -4,17 +4,26 @@ import Link from 'next/link';
 import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthShell } from '@/components/auth/AuthShell';
+import { AuthSpinner } from '@/components/auth/AuthSpinner';
 import { PrimaryButton } from '@/components/auth/PrimaryButton';
 import { useToast } from '@/components/toast/ToastProvider';
 import { useAuthSession } from '@/lib/auth/session';
 import { apiPublicPost } from '@/lib/api';
-import { setAccessToken, setRefreshToken, setUserEmail } from '@/lib/auth/tokens';
+import { setAuthSessionTokens } from '@/lib/auth/tokens';
 
 type AuthResponse = {
   user: { id: string; email: string };
   accessToken: string;
   refreshToken: string;
 };
+
+function getSafeNext(value: string | null): string {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) {
+    return '/dashboard';
+  }
+
+  return value;
+}
 
 function LoginFallback() {
   return (
@@ -34,12 +43,20 @@ function LoginPageContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const next = searchParams.get('next') || '/dashboard';
+  const next = getSafeNext(searchParams.get('next'));
 
   useEffect(() => {
-    if (isHydrated && isAuthenticated) {
+    if (isHydrated && isAuthenticated && !redirecting) {
+      setRedirecting(true);
       router.replace(next);
+    }
+  }, [isAuthenticated, isHydrated, next, redirecting, router]);
+
+  useEffect(() => {
+    if (isHydrated && !isAuthenticated) {
+      router.prefetch(next);
     }
   }, [isAuthenticated, isHydrated, next, router]);
 
@@ -53,14 +70,18 @@ function LoginPageContent() {
         email,
         password,
       });
-      setAccessToken(payload.accessToken);
-      setRefreshToken(payload.refreshToken);
-      setUserEmail(payload.user.email);
+      setAuthSessionTokens({
+        accessToken: payload.accessToken,
+        refreshToken: payload.refreshToken,
+        userEmail: payload.user.email,
+      });
       toast.success('Logged in successfully.');
-      router.push(next);
+      setRedirecting(true);
+      router.replace(next);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setError(message);
+      setRedirecting(false);
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -73,9 +94,9 @@ function LoginPageContent() {
         <div className='rounded-aurum border border-aurum-border bg-white/85 p-4 text-sm text-aurum-muted'>
           Preparing secure session...
         </div>
-      ) : isAuthenticated ? (
+      ) : isAuthenticated || redirecting ? (
         <div className='flex items-center gap-3 rounded-aurum border border-aurum-border bg-white/85 p-4'>
-          <span className='h-4 w-4 animate-spin rounded-full border-2 border-aurum-primary border-t-aurum-primaryHover' />
+          <AuthSpinner />
           <span className='text-sm text-aurum-muted'>Entering your suite...</span>
         </div>
       ) : (

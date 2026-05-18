@@ -71,3 +71,16 @@ export function setUserEmail(email: string | null): void {
   write(USER_EMAIL_KEY, email);
   notifyAuthChanged();
 }
+
+export function setAuthSessionTokens(payload: {
+  accessToken: string;
+  refreshToken: string;
+  userEmail: string;
+}): void {
+  write(ACCESS_TOKEN_KEY, payload.accessToken);
+  setCookie('aurum_access_token', payload.accessToken);
+  write(REFRESH_TOKEN_KEY, payload.refreshToken);
+  setCookie('aurum_refresh_token', payload.refreshToken);
+  write(USER_EMAIL_KEY, payload.userEmail);
+  notifyAuthChanged();
+}
