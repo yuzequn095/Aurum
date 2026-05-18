@@ -42,17 +42,17 @@ export function SidebarNav() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'group relative flex items-start gap-3 rounded-[18px] px-3 py-3 text-sm transition-colors',
+                  'group relative flex items-start gap-3 rounded-[18px] border px-3 py-3 text-sm transition-colors',
                   active
-                    ? 'bg-aurum-primarySoft text-aurum-text shadow-aurumSm'
-                    : 'text-aurum-muted hover:bg-white hover:text-aurum-text',
+                    ? 'border-[var(--aurum-accent)]/45 bg-white text-aurum-text shadow-aurumSm'
+                    : 'border-transparent text-aurum-muted hover:border-aurum-border hover:bg-white hover:text-aurum-text',
                 )}
               >
                 <span
                   className={cn(
                     'mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border transition-colors',
                     active
-                      ? 'border-aurum-primaryHover/30 bg-white text-aurum-primaryHover'
+                      ? 'border-[var(--aurum-accent)]/35 bg-white text-[var(--aurum-accent)]'
                       : 'border-transparent bg-white text-aurum-muted group-hover:border-aurum-border group-hover:text-aurum-text',
                   )}
                 >
@@ -76,7 +76,7 @@ export function SidebarNav() {
             className={cn(
               'group flex items-center gap-3 rounded-[var(--aurum-radius-lg)] border px-3 py-3 transition',
               isNavItemActive(pathname, SETTINGS_HREF)
-                ? 'border-[var(--aurum-accent)]/45 bg-[var(--aurum-surface-alt)]'
+                ? 'border-[var(--aurum-accent)]/45 bg-white'
                 : 'border-[var(--aurum-border)] bg-[var(--aurum-surface)] hover:border-[var(--aurum-accent)]/35 hover:bg-[var(--aurum-surface-alt)]',
             )}
           >

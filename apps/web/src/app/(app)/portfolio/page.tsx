@@ -380,7 +380,6 @@ export default function PortfolioPage() {
   return (
     <PageContainer className="space-y-6">
       <Card className="aurum-elevated-surface relative overflow-hidden border-[var(--aurum-border)]">
-        <div className="pointer-events-none absolute inset-0 aurum-hero-wash" />
         <CardContent className="relative space-y-8 px-5 py-6 sm:px-6 sm:py-7 lg:px-8">
           <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)] xl:items-start">
             <div className="space-y-5">
@@ -620,7 +619,7 @@ export default function PortfolioPage() {
                         )}
                       </p>
                     </div>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-[rgba(197,160,89,0.14)]">
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-[rgba(212,175,55,0.14)]">
                       <div
                         className="h-full rounded-full bg-[var(--aurum-accent)]"
                         style={{ width: `${Math.min(100, Math.max(0, item.percent))}%` }}

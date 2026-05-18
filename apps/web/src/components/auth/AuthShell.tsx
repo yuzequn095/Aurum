@@ -18,7 +18,7 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
   return (
     <main className='relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[color:var(--aurum-auth-bg-0)] px-4 py-8 sm:px-6 lg:px-10'>
       <div className='absolute inset-0 aurum-auth-bg' />
-      <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(197,160,89,0.06),transparent_55%)]' />
+      <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(212,175,55,0.04),transparent_55%)]' />
       <div
         aria-hidden='true'
         className='pointer-events-none absolute left-1/2 top-1/2 h-[72vh] w-[72vh] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color:var(--aurum-auth-text)]/[0.03]'

@@ -144,7 +144,7 @@ export function HomeAiBriefCard({
             <div className='flex flex-wrap gap-3'>
               <Link
                 href='/ai-insights'
-                className='inline-flex min-h-11 items-center justify-center rounded-full border border-transparent bg-[linear-gradient(135deg,var(--aurum-accent),var(--aurum-gold-strong))] px-4 text-sm font-medium text-white shadow-[var(--aurum-shadow)] transition active:translate-y-px hover:brightness-95'
+                className='inline-flex min-h-11 items-center justify-center rounded-full border border-transparent bg-[var(--aurum-accent)] px-4 text-sm font-medium text-white shadow-[var(--aurum-shadow)] transition active:translate-y-px hover:brightness-95'
               >
                 Open AI Insights
               </Link>

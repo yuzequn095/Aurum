@@ -421,7 +421,7 @@ function ScoreGauge({
 
   return (
     <div className="space-y-2">
-      <div className="h-2.5 overflow-hidden rounded-full bg-[rgba(197,160,89,0.14)]">
+      <div className="h-2.5 overflow-hidden rounded-full bg-[rgba(212,175,55,0.14)]">
         <div
           className="h-full rounded-full bg-[var(--aurum-accent)]"
           style={{ width: `${percent}%` }}
@@ -449,7 +449,7 @@ function TranscriptBubble({
     <div
       className={`rounded-[18px] border px-4 py-3 text-sm ${
         assistant
-          ? 'border-[var(--aurum-accent)]/25 bg-[rgba(197,160,89,0.12)]'
+          ? 'border-[var(--aurum-accent)]/25 bg-[rgba(212,175,55,0.12)]'
           : role === 'system'
             ? 'border-dashed border-aurum-border bg-aurum-surface-alt'
             : 'border-aurum-border bg-aurum-surface'
@@ -1187,7 +1187,6 @@ export default function AiInsightsPage() {
   return (
     <PageContainer className="space-y-7 pb-8 md:space-y-8 md:pb-10">
       <Card className="aurum-elevated-surface relative overflow-hidden border-[var(--aurum-border)]">
-        <div className="absolute inset-0 aurum-hero-wash" />
         <CardContent className="relative space-y-8 px-5 py-6 sm:px-6 sm:py-7 lg:px-8">
           <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.18fr)_minmax(340px,0.82fr)] xl:items-start">
             <div className="space-y-6">

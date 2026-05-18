@@ -3,18 +3,18 @@
 @import "../styles/tokens.css";
 
 :root {
-  --background: #fcfbfa;
+  --background: #fafafa;
   --foreground: #1a1a1a;
-  --aurum-gold: #c5a059;
-  --aurum-gold-strong: #b58f48;
-  --aurum-app-grad-start: #fcfbfa;
-  --aurum-app-grad-end: #f7f4ee;
+  --aurum-gold: #d4af37;
+  --aurum-gold-strong: #c99b1f;
+  --aurum-app-grad-start: #fafafa;
+  --aurum-app-grad-end: #ffffff;
   --aurum-auth-grad-start: #faf8f3;
   --aurum-auth-grad-end: #f2ede2;
   --aurum-card-bg: #ffffff;
-  --aurum-card-border: #eaeaeb;
-  --aurum-auth-primary: #c5a059;
-  --aurum-auth-primary-strong: #d0ab62;
+  --aurum-card-border: #e8e8e8;
+  --aurum-auth-primary: #d4af37;
+  --aurum-auth-primary-strong: #e0bd42;
   --aurum-auth-bg-0: #f8f7f4;
   --aurum-auth-bg-1: #f1efea;
   --aurum-auth-text: #1a1a1a;
@@ -44,7 +44,7 @@ body {
 }
 
 ::selection {
-  background: rgba(197, 160, 89, 0.24);
+  background: rgba(212, 175, 55, 0.22);
   color: var(--aurum-text);
 }
 
@@ -64,7 +64,7 @@ button,
 input,
 select,
 textarea {
-  -webkit-tap-highlight-color: rgba(197, 160, 89, 0.12);
+  -webkit-tap-highlight-color: rgba(212, 175, 55, 0.14);
 }
 
 input,
@@ -74,13 +74,12 @@ textarea {
 }
 
 .aurum-app-bg {
-  background:
-    linear-gradient(180deg, #fcfbfa 0%, #faf9f7 44%, #ffffff 100%);
+  background: #fafafa;
 }
 
 .aurum-auth-bg {
   background:
-    radial-gradient(760px 420px at 50% -8%, rgba(197, 160, 89, 0.08), transparent 62%),
+    radial-gradient(760px 420px at 50% -8%, rgba(212, 175, 55, 0.06), transparent 62%),
     linear-gradient(170deg, var(--aurum-auth-bg-0), var(--aurum-auth-bg-1));
 }
 
@@ -103,7 +102,7 @@ textarea {
 }
 
 .aurum-scrollbar {
-  scrollbar-color: rgba(197, 160, 89, 0.34) transparent;
+  scrollbar-color: rgba(212, 175, 55, 0.42) transparent;
   scrollbar-width: thin;
 }
 
@@ -113,7 +112,7 @@ textarea {
 }
 
 .aurum-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(197, 160, 89, 0.34);
+  background: rgba(212, 175, 55, 0.42);
   border-radius: 999px;
 }
 
@@ -123,12 +122,6 @@ textarea {
 
 .aurum-elevated-surface {
   background: #ffffff;
-}
-
-.aurum-hero-wash {
-  background:
-    linear-gradient(90deg, rgba(197, 160, 89, 0.09) 0%, rgba(197, 160, 89, 0.035) 26%, transparent 52%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.98));
 }
 
 @media (min-width: 1024px) {

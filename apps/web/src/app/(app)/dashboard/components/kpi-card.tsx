@@ -19,7 +19,7 @@ export function KpiCard({ title, value, deltaText, tone, emphasized = false }: K
   return (
     <Card
       className={cn(
-        "relative overflow-hidden rounded-[14px] bg-white/80 shadow-aurumSm backdrop-blur transition hover:shadow-xl",
+        "relative overflow-hidden rounded-[14px] bg-white shadow-aurumSm transition hover:shadow-xl",
         emphasized && "before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-aurum-primary before:content-['']",
       )}
     >
@@ -28,7 +28,6 @@ export function KpiCard({ title, value, deltaText, tone, emphasized = false }: K
       </CardHeader>
       <CardContent>
         <div className='relative space-y-2'>
-          <div className='absolute -right-6 -top-6 h-24 w-24 rounded-full bg-aurum-primarySoft blur-2xl opacity-40' />
           <p className='text-2xl font-semibold text-aurum-text'>{value}</p>
           <p className={cn('text-sm font-medium', toneClasses[tone])}>{deltaText}</p>
         </div>

@@ -38,7 +38,7 @@ function insightClasses(severity: AiInsight['severity']) {
     return 'border-aurum-danger/40 bg-aurum-card text-aurum-danger';
   }
   if (severity === 'warn') {
-    return 'border-aurum-primaryHover/40 bg-aurum-primarySoft/35 text-aurum-text';
+    return 'border-[var(--aurum-accent)]/35 bg-white text-aurum-text';
   }
   if (severity === 'good') {
     return 'border-aurum-success/30 bg-aurum-card text-aurum-success';
@@ -176,7 +176,7 @@ export default function AiReportPage() {
       {isReportEmpty ? (
         <Card className='rounded-[14px] shadow-aurumSm'>
           <CardContent className='pt-6'>
-            <div className='rounded-[12px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 p-4 text-sm text-aurum-muted'>
+            <div className='rounded-[12px] border border-aurum-border bg-white p-4 text-sm text-aurum-muted'>
               No transactions or insights available for this month yet.
             </div>
           </CardContent>
@@ -188,11 +188,11 @@ export default function AiReportPage() {
           <CardContent className='pt-6'>
             {loading ? (
               <div className='space-y-4'>
-                <div className='h-12 w-56 animate-pulse rounded bg-aurum-primarySoft/50' />
+                <div className='h-12 w-56 animate-pulse rounded bg-[var(--aurum-surface-alt)]' />
                 <div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
-                  <div className='h-16 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-16 animate-pulse rounded bg-aurum-primarySoft/50' />
-                  <div className='h-16 animate-pulse rounded bg-aurum-primarySoft/50' />
+                  <div className='h-16 animate-pulse rounded bg-[var(--aurum-surface-alt)]' />
+                  <div className='h-16 animate-pulse rounded bg-[var(--aurum-surface-alt)]' />
+                  <div className='h-16 animate-pulse rounded bg-[var(--aurum-surface-alt)]' />
                 </div>
               </div>
             ) : (
@@ -237,8 +237,8 @@ export default function AiReportPage() {
           <CardContent className='pt-6'>
             {loading ? (
               <div className='space-y-3'>
-                <div className='h-20 animate-pulse rounded bg-aurum-primarySoft/50' />
-                <div className='h-20 animate-pulse rounded bg-aurum-primarySoft/50' />
+                <div className='h-20 animate-pulse rounded bg-[var(--aurum-surface-alt)]' />
+                <div className='h-20 animate-pulse rounded bg-[var(--aurum-surface-alt)]' />
               </div>
             ) : insights.length === 0 ? (
               <div className='rounded-[12px] border border-aurum-border bg-aurum-card p-4 text-sm text-aurum-muted'>
@@ -268,13 +268,13 @@ export default function AiReportPage() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className='h-[220px] animate-pulse rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner' />
+              <div className='h-[220px] animate-pulse rounded-[16px] border border-aurum-border bg-white shadow-inner' />
             ) : isCategoryEmptyState ? (
-              <div className='h-[220px] rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner text-sm text-aurum-muted flex items-center justify-center'>
+              <div className='h-[220px] rounded-[16px] border border-aurum-border bg-white shadow-inner text-sm text-aurum-muted flex items-center justify-center'>
                 No expenses this month
               </div>
             ) : (
-              <div className='rounded-[16px] border border-aurum-border bg-gradient-to-br from-white to-aurum-primarySoft/20 shadow-inner p-4 space-y-4'>
+              <div className='rounded-[16px] border border-aurum-border bg-white shadow-inner p-4 space-y-4'>
                 <div className='h-[220px]'>
                   <CategoryBreakdownPieChart data={categoryChartData} />
                 </div>

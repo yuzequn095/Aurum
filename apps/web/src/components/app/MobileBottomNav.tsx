@@ -34,7 +34,7 @@ export function MobileBottomNav({ onOpenCommandMenu }: MobileBottomNavProps) {
                 className={cn(
                   'flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-[20px] px-1 pb-1 pt-2 text-center transition',
                   active
-                    ? 'bg-aurum-primarySoft text-[var(--aurum-text)]'
+                    ? 'bg-white text-[var(--aurum-accent)] ring-1 ring-[var(--aurum-accent)]/25'
                     : 'text-[var(--aurum-text-muted)] hover:bg-[var(--aurum-surface-alt)] hover:text-[var(--aurum-text)]',
                 )}
               >
@@ -56,7 +56,7 @@ export function MobileBottomNav({ onOpenCommandMenu }: MobileBottomNavProps) {
             aria-label='Open command menu'
             className='flex min-h-[64px] flex-col items-center justify-end pb-1 transition active:scale-95'
           >
-            <span className='flex h-14 w-14 items-center justify-center rounded-full border border-[var(--aurum-accent)]/30 bg-[linear-gradient(135deg,var(--aurum-accent),var(--aurum-gold-strong))] text-white shadow-[0_18px_30px_-20px_rgba(17,24,39,0.7)]'>
+            <span className='flex h-14 w-14 items-center justify-center rounded-full border border-[var(--aurum-accent)]/30 bg-[var(--aurum-accent)] text-white shadow-[0_18px_30px_-20px_rgba(17,24,39,0.7)]'>
               <AppIcon name='plus' className='h-6 w-6' />
             </span>
           </button>
@@ -70,7 +70,7 @@ export function MobileBottomNav({ onOpenCommandMenu }: MobileBottomNavProps) {
                 className={cn(
                   'flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-[20px] px-1 pb-1 pt-2 text-center transition',
                   active
-                    ? 'bg-aurum-primarySoft text-[var(--aurum-text)]'
+                    ? 'bg-white text-[var(--aurum-accent)] ring-1 ring-[var(--aurum-accent)]/25'
                     : 'text-[var(--aurum-text-muted)] hover:bg-[var(--aurum-surface-alt)] hover:text-[var(--aurum-text)]',
                 )}
               >

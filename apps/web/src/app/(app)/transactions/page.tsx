@@ -729,7 +729,6 @@ export default function TransactionsPage() {
     <PageContainer className="space-y-6 py-2 text-aurum-text">
       <main className="space-y-6">
         <section className="aurum-elevated-surface relative overflow-hidden rounded-[28px] border border-aurum-border p-5 shadow-aurumSm sm:p-6">
-          <div className="pointer-events-none absolute inset-0 aurum-hero-wash" />
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-aurum-muted">

@@ -58,7 +58,7 @@ export function KpiSection({
   return (
     <section className='space-y-6'>
       <Card className='relative overflow-hidden border-0'>
-        <div className='absolute inset-0 bg-gradient-to-r from-aurum-primarySoft/70 via-white to-white' />
+        <div className='absolute inset-0 bg-white' />
         <CardContent className='relative py-14'>
           <div className='flex flex-col gap-6 md:flex-row md:items-end md:justify-between'>
             <div className='space-y-2'>

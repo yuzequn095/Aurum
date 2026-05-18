@@ -76,7 +76,7 @@ export function AppCommandMenu({ open, onClose }: AppCommandMenuProps) {
               key={action.label}
               href={action.href}
               onClick={onClose}
-              className='group rounded-[24px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] p-4 transition hover:border-[var(--aurum-accent)]/35 hover:bg-[rgba(197,160,89,0.08)]'
+              className='group rounded-[24px] border border-[var(--aurum-border)] bg-white p-4 transition hover:border-[var(--aurum-accent)]/35 hover:bg-[var(--aurum-surface-alt)]'
             >
               <div className='flex items-start gap-3'>
                 <span className='flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border border-[var(--aurum-border)] bg-white text-[var(--aurum-accent)] transition group-hover:border-[var(--aurum-accent)]/25'>

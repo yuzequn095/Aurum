@@ -21,7 +21,6 @@ export default function SettingsPage() {
   return (
     <PageContainer className='space-y-6 pb-8 md:pb-10'>
       <section className='aurum-elevated-surface relative overflow-hidden rounded-[28px] border border-[var(--aurum-border)] p-5 shadow-[var(--aurum-shadow)] sm:p-6 lg:p-7'>
-        <div className='pointer-events-none absolute inset-0 aurum-hero-wash' />
         <div className='relative grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px] lg:items-start'>
         <div className='space-y-3'>
           <div className='flex flex-wrap items-center gap-2'>

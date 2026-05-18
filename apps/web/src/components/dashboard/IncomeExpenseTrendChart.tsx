@@ -68,7 +68,7 @@ export function IncomeExpenseTrendChart({ data, loading }: IncomeExpenseTrendCha
                 tickFormatter={(value: number) => `$${Math.round(value)}`}
               />
               <Tooltip
-                cursor={{ fill: 'rgba(197,160,89,0.06)' }}
+                cursor={{ fill: 'rgba(212,175,55,0.08)' }}
                 content={({ active, label, payload }) => (
                   <ChartTooltip
                     active={active}
