@@ -13,7 +13,7 @@ export function SidebarNav() {
   const { userEmail } = useAuthSession();
 
   return (
-    <aside className='hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:w-[274px] lg:shrink-0 lg:border-r lg:border-aurum-border/80 lg:bg-white/78 lg:backdrop-blur'>
+    <aside className='hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:w-[274px] lg:shrink-0 lg:border-r lg:border-aurum-border lg:bg-white'>
       <div className='flex h-full flex-col px-5 py-6'>
         <div className='mb-9 px-1'>
           <Image
@@ -44,7 +44,7 @@ export function SidebarNav() {
                 className={cn(
                   'group relative flex items-start gap-3 rounded-[18px] px-3 py-3 text-sm transition-colors',
                   active
-                    ? 'bg-aurum-primarySoft/80 text-aurum-text shadow-aurumSm'
+                    ? 'bg-aurum-primarySoft text-aurum-text shadow-aurumSm'
                     : 'text-aurum-muted hover:bg-white hover:text-aurum-text',
                 )}
               >
@@ -53,7 +53,7 @@ export function SidebarNav() {
                     'mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border transition-colors',
                     active
                       ? 'border-aurum-primaryHover/30 bg-white text-aurum-primaryHover'
-                      : 'border-transparent bg-white/70 text-aurum-muted group-hover:border-aurum-border group-hover:text-aurum-text',
+                      : 'border-transparent bg-white text-aurum-muted group-hover:border-aurum-border group-hover:text-aurum-text',
                   )}
                 >
                   <AppIcon name={item.icon} className='h-[18px] w-[18px]' />

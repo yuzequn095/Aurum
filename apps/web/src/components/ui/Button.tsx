@@ -13,7 +13,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary:
     'border border-transparent bg-[linear-gradient(135deg,var(--aurum-accent),var(--aurum-gold-strong))] text-white hover:brightness-95',
   secondary:
-    'border border-[var(--aurum-border)] bg-[rgba(255,254,250,0.92)] text-[var(--aurum-text)] hover:border-[var(--aurum-accent)]/35 hover:bg-white',
+    'border border-[var(--aurum-border)] bg-white text-[var(--aurum-text)] hover:border-[var(--aurum-accent)]/35 hover:bg-[var(--aurum-surface-alt)]',
   ghost:
     'border border-transparent bg-transparent text-[var(--aurum-text-muted)] hover:bg-[var(--aurum-surface)] hover:text-[var(--aurum-text)]',
   danger:

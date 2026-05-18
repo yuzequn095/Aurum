@@ -14,7 +14,7 @@ export function Topbar({ onOpenCommandMenu }: TopbarProps) {
   const title = getNavTitle(pathname);
 
   return (
-    <header className='sticky top-0 z-30 border-b border-aurum-border/80 bg-white/78 backdrop-blur'>
+    <header className='sticky top-0 z-30 border-b border-aurum-border bg-white'>
       <div className='flex h-[74px] items-center gap-4 px-4 sm:px-6 lg:px-8'>
         <div className='flex min-w-0 flex-1 items-center gap-3'>
           <Link

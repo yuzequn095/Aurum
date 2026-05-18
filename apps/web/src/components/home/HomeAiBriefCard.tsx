@@ -47,7 +47,7 @@ export function HomeAiBriefCard({
   const planBadge = getPlanBadge(entitlements);
 
   return (
-    <Card className='bg-[rgba(255,255,255,0.9)]'>
+    <Card>
       <CardHeader className='space-y-3'>
         <div className='flex flex-wrap items-start justify-between gap-3'>
           <div className='space-y-1'>
@@ -150,7 +150,7 @@ export function HomeAiBriefCard({
               </Link>
               <Link
                 href='/ai-insights#quick-chat-section'
-                className='inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--aurum-border)] bg-[rgba(255,254,250,0.92)] px-4 text-sm font-medium text-[var(--aurum-text)] shadow-[var(--aurum-shadow)] transition active:translate-y-px hover:border-[var(--aurum-accent)]/35 hover:bg-white'
+                className='inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--aurum-border)] bg-white px-4 text-sm font-medium text-[var(--aurum-text)] shadow-[var(--aurum-shadow)] transition active:translate-y-px hover:border-[var(--aurum-accent)]/35 hover:bg-[var(--aurum-surface-alt)]'
               >
                 Quick Chat
               </Link>

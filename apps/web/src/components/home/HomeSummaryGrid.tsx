@@ -41,7 +41,7 @@ export function HomeSummaryGrid({ items, loading }: HomeSummaryGridProps) {
               </Card>
             ))
           : items.map((item) => (
-              <Card key={item.eyebrow} className='bg-[rgba(255,255,255,0.88)]'>
+              <Card key={item.eyebrow}>
                 <CardContent className='space-y-4 pt-5'>
                   <div className='space-y-2'>
                     <p className='text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>

@@ -10,14 +10,14 @@ const config: Config = {
     extend: {
       colors: {
         aurum: {
-          bg: '#F5F4F1',
-          card: '#FFFEFB',
-          border: '#ECE9DF',
+          bg: '#FCFBFA',
+          card: '#FFFFFF',
+          border: '#EAEAEB',
           text: '#1A1A1A',
-          muted: '#8A857A',
+          muted: '#73706B',
           primary: '#C5A059',
           primaryHover: '#B58F48',
-          primarySoft: '#F3E9D6',
+          primarySoft: '#F6EFE1',
           success: '#1B9C64',
           danger: '#C94B4B',
         },

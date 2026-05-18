@@ -23,7 +23,7 @@ export function MobileBottomNav({ onOpenCommandMenu }: MobileBottomNavProps) {
       aria-label='Primary'
       className='aurum-mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 lg:hidden'
     >
-      <div className='mx-3 rounded-[28px] border border-[var(--aurum-border)] bg-white/92 px-2 pb-2 pt-2 shadow-[0_24px_50px_-26px_rgba(17,24,39,0.5)] backdrop-blur'>
+      <div className='mx-3 rounded-[28px] border border-[var(--aurum-border)] bg-white px-2 pb-2 pt-2 shadow-[0_24px_50px_-26px_rgba(17,24,39,0.5)]'>
         <div className='grid grid-cols-5 items-end gap-1'>
           {[leftOne, leftTwo].map((item) => {
             const active = isNavItemActive(pathname, item.href);

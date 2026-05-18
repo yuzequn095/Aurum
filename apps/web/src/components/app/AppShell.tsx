@@ -10,7 +10,7 @@ export function AppShell({ children }: PropsWithChildren) {
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
 
   return (
-    <div className='relative min-h-screen w-full overflow-hidden aurum-noise'>
+    <div className='relative min-h-screen w-full overflow-hidden'>
       <div className='absolute inset-0 aurum-app-bg' />
       <div className='relative flex min-h-screen w-full'>
         <SidebarNav />

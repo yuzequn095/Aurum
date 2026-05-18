@@ -125,7 +125,7 @@ export default function DashboardPage() {
       ) : null}
 
       {homeOverview.errors.length > 0 ? (
-        <div className='rounded-[18px] border border-[var(--aurum-border)] bg-[rgba(255,255,255,0.72)] px-4 py-3 text-sm text-[var(--aurum-text-muted)]'>
+        <div className='rounded-[18px] border border-[var(--aurum-border)] bg-white px-4 py-3 text-sm text-[var(--aurum-text-muted)]'>
           Some portfolio or AI surfaces are temporarily unavailable. Home will keep the layout
           stable and fill those sections again once the data becomes reachable.
         </div>
@@ -175,7 +175,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className='space-y-6 rounded-[28px] border border-[var(--aurum-border)] bg-[rgba(255,255,255,0.66)] p-4 sm:p-5'>
+        <div className='space-y-6 rounded-[28px] border border-[var(--aurum-border)] bg-white p-4 sm:p-5'>
           <section className='grid grid-cols-1 gap-6 xl:grid-cols-[0.86fr_1.14fr]'>
             <HomeMonthlyFocusCard
               monthLabel={selectedMonthLabel}
@@ -186,7 +186,7 @@ export default function DashboardPage() {
               categoryBreakdown={categoryBreakdown}
               loading={loading}
             />
-            <Card className='bg-[rgba(255,255,255,0.9)]'>
+            <Card>
               <CardContent className='space-y-5 pt-5'>
                 <div className='space-y-2'>
                   <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--aurum-text-muted)]'>

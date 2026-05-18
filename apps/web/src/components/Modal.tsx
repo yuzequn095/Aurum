@@ -37,7 +37,7 @@ export function Modal(props: {
       <div
         onMouseDown={(e) => e.stopPropagation()}
         className={cn(
-          'aurum-scrollbar max-h-[calc(100dvh-24px)] w-full max-w-[720px] overflow-y-auto rounded-[28px] border border-[var(--aurum-border)] bg-[rgba(255,254,250,0.97)] p-4 shadow-[0_28px_70px_-28px_rgba(17,24,39,0.7)] backdrop-blur',
+          'aurum-scrollbar max-h-[calc(100dvh-24px)] w-full max-w-[720px] overflow-y-auto rounded-[28px] border border-[var(--aurum-border)] bg-white p-4 shadow-[0_28px_70px_-28px_rgba(17,24,39,0.7)]',
           'sm:max-h-[calc(100dvh-48px)] sm:p-5',
         )}
       >

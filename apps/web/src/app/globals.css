@@ -3,16 +3,16 @@
 @import "../styles/tokens.css";
 
 :root {
-  --background: #f5f4f1;
+  --background: #fcfbfa;
   --foreground: #1a1a1a;
   --aurum-gold: #c5a059;
   --aurum-gold-strong: #b58f48;
-  --aurum-app-grad-start: #f8f6f1;
-  --aurum-app-grad-end: #efe7d6;
+  --aurum-app-grad-start: #fcfbfa;
+  --aurum-app-grad-end: #f7f4ee;
   --aurum-auth-grad-start: #faf8f3;
   --aurum-auth-grad-end: #f2ede2;
-  --aurum-card-bg: rgba(255, 254, 251, 0.9);
-  --aurum-card-border: rgba(236, 233, 223, 0.9);
+  --aurum-card-bg: #ffffff;
+  --aurum-card-border: #eaeaeb;
   --aurum-auth-primary: #c5a059;
   --aurum-auth-primary-strong: #d0ab62;
   --aurum-auth-bg-0: #f8f7f4;
@@ -33,9 +33,7 @@
 
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(1200px circle at 30% 10%, rgba(212, 175, 55, 0.1), transparent 60%),
-    var(--aurum-bg);
+  background: var(--aurum-bg);
   color: var(--aurum-text);
   font-family: var(--aurum-font-sans);
   font-feature-settings: 'tnum' 1, 'cv11' 1;
@@ -77,9 +75,7 @@ textarea {
 
 .aurum-app-bg {
   background:
-    radial-gradient(1200px circle at 30% 10%, rgba(212, 175, 55, 0.1), transparent 60%),
-    radial-gradient(900px circle at 80% 30%, rgba(0, 0, 0, 0.04), transparent 55%),
-    var(--aurum-bg);
+    linear-gradient(180deg, #fcfbfa 0%, #faf9f7 44%, #ffffff 100%);
 }
 
 .aurum-auth-bg {
@@ -93,7 +89,7 @@ textarea {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.03;
+  opacity: 0;
   background-image: radial-gradient(#000 0.5px, transparent 0.5px);
   background-size: 3px 3px;
 }
@@ -126,9 +122,13 @@ textarea {
 }
 
 .aurum-elevated-surface {
+  background: #ffffff;
+}
+
+.aurum-hero-wash {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 254, 251, 0.76)),
-    radial-gradient(circle at top left, rgba(197, 160, 89, 0.08), transparent 42%);
+    linear-gradient(90deg, rgba(197, 160, 89, 0.09) 0%, rgba(197, 160, 89, 0.035) 26%, transparent 52%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.98));
 }
 
 @media (min-width: 1024px) {

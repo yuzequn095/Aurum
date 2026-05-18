@@ -1187,7 +1187,7 @@ export default function AiInsightsPage() {
   return (
     <PageContainer className="space-y-7 pb-8 md:space-y-8 md:pb-10">
       <Card className="aurum-elevated-surface relative overflow-hidden border-[var(--aurum-border)]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,160,89,0.18),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(17,24,39,0.06),transparent_32%)]" />
+        <div className="absolute inset-0 aurum-hero-wash" />
         <CardContent className="relative space-y-8 px-5 py-6 sm:px-6 sm:py-7 lg:px-8">
           <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1.18fr)_minmax(340px,0.82fr)] xl:items-start">
             <div className="space-y-6">
@@ -1250,7 +1250,7 @@ export default function AiInsightsPage() {
                 key={section.key}
                 type="button"
                 onClick={() => scrollToAnchor(section.anchor)}
-                className="group rounded-[22px] border border-white/70 bg-white/78 p-4 text-left shadow-[var(--aurum-shadow)] transition hover:border-[var(--aurum-accent)]/35 hover:bg-white"
+                className="group rounded-[22px] border border-[var(--aurum-border)] bg-white p-4 text-left shadow-[var(--aurum-shadow)] transition hover:border-[var(--aurum-accent)]/35 hover:bg-[var(--aurum-surface-alt)]"
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-aurum-text">{section.title}</p>
@@ -1266,7 +1266,7 @@ export default function AiInsightsPage() {
       </Card>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.08fr_0.92fr]">
-        <Card className="bg-[rgba(255,255,255,0.9)]">
+        <Card>
           <CardHeader>
             <CardTitle>Current Context</CardTitle>
             <CardDescription>
@@ -1286,7 +1286,7 @@ export default function AiInsightsPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-[rgba(255,255,255,0.9)]">
+        <Card>
           <CardHeader>
             <CardTitle>What Gets Saved</CardTitle>
             <CardDescription>

@@ -9,7 +9,7 @@ export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
 
 const variantClasses: Record<BadgeVariant, string> = {
   neutral:
-    'border-[var(--aurum-border)] bg-[rgba(250,247,239,0.9)] text-[var(--aurum-text-muted)]',
+    'border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] text-[var(--aurum-text-muted)]',
   info: 'border-[color:rgba(59,130,246,0.16)] bg-[color:rgba(59,130,246,0.1)] text-[color:#1D4ED8]',
   warn: 'border-[color:rgba(185,133,25,0.18)] bg-[color:rgba(185,133,25,0.12)] text-[var(--aurum-warning)]',
   good: 'border-[color:rgba(27,156,100,0.16)] bg-[color:rgba(27,156,100,0.12)] text-[var(--aurum-success)]',
