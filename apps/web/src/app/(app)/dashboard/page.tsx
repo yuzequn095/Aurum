@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useMemo, useState } from 'react';
+import { CashflowChannelFlow } from '@/components/dashboard/CashflowChannelFlow';
 import { HomeAiBriefCard } from '@/components/home/HomeAiBriefCard';
 import { HomeHero } from '@/components/home/HomeHero';
 import { HomeMonthlyFocusCard } from '@/components/home/HomeMonthlyFocusCard';
@@ -21,6 +22,7 @@ import {
   getHealthVariant,
 } from '@/components/home/format';
 import { useAuthSession } from '@/lib/auth/session';
+import { useCashflowChannels } from '@/hooks/useCashflowChannels';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useHomeOverview } from '@/hooks/useHomeOverview';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -49,6 +51,7 @@ export default function DashboardPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const { summary, categoryBreakdown, summarySeries, loading, error } = useDashboardData(year, month);
+  const cashflowChannels = useCashflowChannels(year, month);
   const homeOverview = useHomeOverview();
   const yearOptions = useMemo(() => [year, year - 1, year - 2], [year]);
 
@@ -176,6 +179,17 @@ export default function DashboardPage() {
         </div>
 
         <div className='space-y-6 rounded-[28px] border border-[var(--aurum-border)] bg-white p-4 sm:p-5'>
+          <CashflowChannelFlow
+            incomeCents={incomeCents}
+            expenseCents={expenseCents}
+            netCents={netCents}
+            incomeChannels={cashflowChannels.incomeChannels}
+            expenseChannels={cashflowChannels.expenseChannels}
+            monthLabel={selectedMonthLabel}
+            loading={loading || cashflowChannels.loading}
+            error={cashflowChannels.error}
+          />
+
           <section className='grid grid-cols-1 gap-6 xl:grid-cols-[0.86fr_1.14fr]'>
             <HomeMonthlyFocusCard
               monthLabel={selectedMonthLabel}
