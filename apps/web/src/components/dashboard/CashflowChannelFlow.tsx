@@ -49,8 +49,8 @@ const chart = {
   height: 370,
   leftLabelX: 42,
   leftNodeX: 214,
-  centerLeftX: 402,
-  centerRightX: 548,
+  centerNodeX: 444,
+  centerNodeWidth: 18,
   rightNodeX: 692,
   rightLabelX: 724,
   centerY: 190,
@@ -154,28 +154,37 @@ function makeStackedAnchors(nodes: FlowNode[], totalCents: number, centerY: numb
 }
 
 function getToneColor(tone: FlowTone | undefined, index = 0) {
-  if (tone === 'saved') return '#D4AF37';
-  if (tone === 'reserve') return '#1B9C64';
-  if (tone === 'expense') return ['#DADADA', '#E4E4E4', '#CFCFCF', '#ECECEC'][index % 4];
+  if (tone === 'saved') return '#2F9E68';
+  if (tone === 'reserve') return '#D96868';
+  if (tone === 'expense') return ['#D96868', '#E68C85', '#C95A56', '#F0B0AA'][index % 4];
   return ['#D4AF37', '#E0BD42', '#C99B1F', '#E8CD72'][index % 4];
 }
 
+function getFlowFill(tone: FlowTone | undefined) {
+  if (tone === 'expense') return 'url(#aurum-expense-flow)';
+  if (tone === 'saved') return 'url(#aurum-saved-flow)';
+  if (tone === 'reserve') return 'url(#aurum-reserve-flow)';
+  return 'url(#aurum-income-flow)';
+}
+
 function getFlowOpacity(tone: FlowTone | undefined) {
-  if (tone === 'expense') return 0.68;
-  if (tone === 'reserve') return 0.42;
+  if (tone === 'expense') return 0.58;
+  if (tone === 'reserve') return 0.5;
+  if (tone === 'saved') return 0.62;
   return 0.72;
 }
 
 function getDot(tone: FlowTone | undefined) {
   if (tone === 'saved') return 'bg-[var(--aurum-accent)]';
-  if (tone === 'reserve') return 'bg-[var(--aurum-success)]';
+  if (tone === 'reserve') return 'bg-[var(--aurum-danger)]';
   if (tone === 'income') return 'bg-[var(--aurum-accent)]/80';
-  return 'bg-[var(--aurum-border)]';
+  return 'bg-[var(--aurum-danger)]';
 }
 
 function getProgressClass(tone: FlowTone | undefined) {
-  if (tone === 'expense') return 'bg-[var(--aurum-border)]';
-  if (tone === 'reserve') return 'bg-[var(--aurum-success)]';
+  if (tone === 'expense') return 'bg-[var(--aurum-danger)]';
+  if (tone === 'reserve') return 'bg-[var(--aurum-danger)]';
+  if (tone === 'saved') return 'bg-[var(--aurum-success)]';
   return 'bg-[var(--aurum-accent)]';
 }
 
@@ -341,6 +350,7 @@ export function CashflowChannelFlow({
   );
   const centerNodeHeight = clamp(centerStackHeight + 22, 106, 178);
   const centerNodeY = chart.centerY - centerNodeHeight / 2;
+  const centerNodeRightX = chart.centerNodeX + chart.centerNodeWidth;
 
   return (
     <section className='rounded-[28px] border border-[var(--aurum-border)] bg-white p-4 shadow-[var(--aurum-shadow)] sm:p-5'>
@@ -365,24 +375,37 @@ export function CashflowChannelFlow({
         </div>
 
         <div className='grid grid-cols-3 gap-2 sm:min-w-[360px]'>
-          <div className='rounded-[18px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3'>
-            <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
+          <div className='rounded-[18px] border border-[rgba(212,175,55,0.34)] bg-white px-3 py-3'>
+            <p className='inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
+              <span className='h-1.5 w-1.5 rounded-full bg-[var(--aurum-accent)]' />
               Inflow
             </p>
             <p className='mt-1 text-base font-semibold text-[var(--aurum-text)]'>
               {formatMoney(sourceTotal)}
             </p>
           </div>
-          <div className='rounded-[18px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3'>
-            <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
+          <div className='rounded-[18px] border border-[rgba(210,75,75,0.28)] bg-white px-3 py-3'>
+            <p className='inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
+              <span className='h-1.5 w-1.5 rounded-full bg-[var(--aurum-danger)]' />
               Outflow
             </p>
             <p className='mt-1 text-base font-semibold text-[var(--aurum-text)]'>
               {formatMoney(expenseTotal)}
             </p>
           </div>
-          <div className='rounded-[18px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3'>
-            <p className='text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
+          <div
+            className={`rounded-[18px] border bg-white px-3 py-3 ${
+              displayedNetCents >= 0
+                ? 'border-[rgba(27,156,100,0.3)]'
+                : 'border-[rgba(210,75,75,0.28)]'
+            }`}
+          >
+            <p className='inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--aurum-text-muted)]'>
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  displayedNetCents >= 0 ? 'bg-[var(--aurum-success)]' : 'bg-[var(--aurum-danger)]'
+                }`}
+              />
               {displayedNetCents >= 0 ? 'Retained' : 'Shortfall'}
             </p>
             <p className='mt-1 text-base font-semibold text-[var(--aurum-text)]'>
@@ -405,16 +428,21 @@ export function CashflowChannelFlow({
                 className='h-[380px] w-full overflow-visible'
               >
                 <defs>
-                  <filter id='aurum-flow-soft-shadow' x='-20%' y='-20%' width='140%' height='140%'>
-                    <feDropShadow dx='0' dy='12' stdDeviation='12' floodColor='rgba(17,24,39,0.08)' />
-                  </filter>
                   <linearGradient id='aurum-income-flow' x1='0%' x2='100%' y1='0%' y2='0%'>
-                    <stop offset='0%' stopColor='#D4AF37' stopOpacity='0.72' />
-                    <stop offset='100%' stopColor='#E7CA68' stopOpacity='0.48' />
+                    <stop offset='0%' stopColor='#D4AF37' stopOpacity='0.84' />
+                    <stop offset='100%' stopColor='#EAD17A' stopOpacity='0.66' />
+                  </linearGradient>
+                  <linearGradient id='aurum-expense-flow' x1='0%' x2='100%' y1='0%' y2='0%'>
+                    <stop offset='0%' stopColor='#EFC0BA' stopOpacity='0.64' />
+                    <stop offset='100%' stopColor='#D96868' stopOpacity='0.82' />
                   </linearGradient>
                   <linearGradient id='aurum-saved-flow' x1='0%' x2='100%' y1='0%' y2='0%'>
-                    <stop offset='0%' stopColor='#E7CA68' stopOpacity='0.42' />
-                    <stop offset='100%' stopColor='#D4AF37' stopOpacity='0.86' />
+                    <stop offset='0%' stopColor='#A8DDBD' stopOpacity='0.56' />
+                    <stop offset='100%' stopColor='#2F9E68' stopOpacity='0.86' />
+                  </linearGradient>
+                  <linearGradient id='aurum-reserve-flow' x1='0%' x2='100%' y1='0%' y2='0%'>
+                    <stop offset='0%' stopColor='#D96868' stopOpacity='0.72' />
+                    <stop offset='100%' stopColor='#EFC0BA' stopOpacity='0.5' />
                   </linearGradient>
                 </defs>
 
@@ -437,11 +465,11 @@ export function CashflowChannelFlow({
                         chart.leftNodeX + 13,
                         anchor.y,
                         anchor.width,
-                        chart.centerLeftX,
+                        chart.centerNodeX,
                         centerAnchor.y,
                         centerAnchor.width,
                       )}
-                      fill={anchor.tone === 'income' ? 'url(#aurum-income-flow)' : getToneColor(anchor.tone, index)}
+                      fill={getFlowFill(anchor.tone)}
                       opacity={getFlowOpacity(anchor.tone)}
                     />
                   );
@@ -453,14 +481,14 @@ export function CashflowChannelFlow({
                     <path
                       key={`expense-ribbon-${anchor.label}`}
                       d={ribbonPath(
-                        chart.centerRightX,
+                        centerNodeRightX,
                         centerAnchor.y,
                         centerAnchor.width,
                         chart.rightNodeX,
                         anchor.y,
                         anchor.width,
                       )}
-                      fill={anchor.tone === 'saved' ? 'url(#aurum-saved-flow)' : getToneColor(anchor.tone, index)}
+                      fill={getFlowFill(anchor.tone)}
                       opacity={getFlowOpacity(anchor.tone)}
                     />
                   );
@@ -468,7 +496,7 @@ export function CashflowChannelFlow({
 
                 {leftAnchors.map((anchor, index) => {
                   const color = getToneColor(anchor.tone, index);
-                  const nodeHeight = clamp(anchor.width + 10, 18, 64);
+                  const nodeHeight = anchor.width;
                   return (
                     <g key={`source-node-${anchor.label}`}>
                       <rect
@@ -476,10 +504,9 @@ export function CashflowChannelFlow({
                         y={anchor.y - nodeHeight / 2}
                         width='13'
                         height={nodeHeight}
-                        rx='5'
+                        rx='4'
                         fill={color}
                       />
-                      <circle cx={chart.leftNodeX + 6.5} cy={anchor.y} r='2.2' fill='rgba(26,26,26,0.22)' />
                       <FlowLabel anchor={anchor} align='right' x={chart.leftNodeX - 22} />
                     </g>
                   );
@@ -487,7 +514,7 @@ export function CashflowChannelFlow({
 
                 {rightAnchors.map((anchor, index) => {
                   const color = getToneColor(anchor.tone, index);
-                  const nodeHeight = clamp(anchor.width + 10, 18, 64);
+                  const nodeHeight = anchor.width;
                   return (
                     <g key={`destination-node-${anchor.label}`}>
                       <rect
@@ -495,50 +522,31 @@ export function CashflowChannelFlow({
                         y={anchor.y - nodeHeight / 2}
                         width='13'
                         height={nodeHeight}
-                        rx='5'
+                        rx='4'
                         fill={color}
                       />
-                      <circle cx={chart.rightNodeX + 6.5} cy={anchor.y} r='2.2' fill='rgba(26,26,26,0.18)' />
                       <FlowLabel anchor={anchor} align='left' x={chart.rightLabelX} />
                     </g>
                   );
                 })}
 
-                <g filter='url(#aurum-flow-soft-shadow)'>
-                  <rect
-                    x={chart.centerLeftX}
-                    y={centerNodeY}
-                    width={chart.centerRightX - chart.centerLeftX}
-                    height={centerNodeHeight}
-                    rx='22'
-                    fill='#ffffff'
-                    stroke='#e8e8e8'
-                  />
-                  <rect
-                    x={chart.centerLeftX}
-                    y={centerNodeY}
-                    width='14'
-                    height={centerNodeHeight}
-                    rx='7'
-                    fill='#1f1f1d'
-                  />
-                  <rect
-                    x={chart.centerRightX - 14}
-                    y={centerNodeY}
-                    width='14'
-                    height={centerNodeHeight}
-                    rx='7'
-                    fill='#D4AF37'
-                  />
-                </g>
+                <rect
+                  x={chart.centerNodeX}
+                  y={centerNodeY}
+                  width={chart.centerNodeWidth}
+                  height={centerNodeHeight}
+                  rx='7'
+                  fill='#F0F0EE'
+                  stroke='#DFDFDC'
+                />
 
-                <text x='475' y={chart.centerY - 17} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
+                <text x='453' y={centerNodeY - 38} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
                   Monthly Flow
                 </text>
-                <text x='475' y={chart.centerY + 10} textAnchor='middle' className='fill-[var(--aurum-text)] text-[20px] font-semibold'>
+                <text x='453' y={centerNodeY - 13} textAnchor='middle' className='fill-[var(--aurum-text)] text-[20px] font-semibold'>
                   {formatMoney(sourceTotal)}
                 </text>
-                <text x='475' y={chart.centerY + 31} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[11px]'>
+                <text x='453' y={centerNodeY + 8} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[11px]'>
                   {sources.length} in / {destinations.length} out
                 </text>
               </svg>
