@@ -31,7 +31,6 @@ type FlowAnchor = FlowNode & {
 
 type VerticalFlowAnchor = FlowNode & {
   x: number;
-  width: number;
   share: number;
 };
 
@@ -64,12 +63,10 @@ const chart = {
 
 const mobileChart = {
   width: 360,
-  height: 620,
-  topNodeY: 116,
-  centerY: 312,
-  bottomNodeY: 464,
-  nodeHeight: 10,
-  centerNodeHeight: 12,
+  height: 560,
+  topNodeY: 118,
+  centerY: 292,
+  bottomNodeY: 436,
 };
 
 function sum(nodes: FlowNode[]) {
@@ -170,28 +167,8 @@ function makeDistributedXAnchors(nodes: FlowNode[], totalCents: number, left: nu
   return nodes.map((node, index) => ({
     ...node,
     x: xValues[index],
-    width: getFlowWidth(node.amountCents, totalCents),
     share: totalCents > 0 ? node.amountCents / totalCents : 0,
   }));
-}
-
-function makeStackedXAnchors(nodes: FlowNode[], totalCents: number, centerX: number) {
-  const widths = nodes.map((node) => getFlowWidth(node.amountCents, totalCents));
-  const gap = 0;
-  const width = widths.reduce((total, item) => total + item, 0) + gap * Math.max(0, widths.length - 1);
-  let cursor = centerX - width / 2;
-
-  return nodes.map((node, index) => {
-    const flowWidth = widths[index];
-    const x = cursor + flowWidth / 2;
-    cursor += flowWidth + gap;
-    return {
-      ...node,
-      x,
-      width: flowWidth,
-      share: totalCents > 0 ? node.amountCents / totalCents : 0,
-    };
-  });
 }
 
 function getYBounds(anchors: FlowAnchor[]) {
@@ -202,17 +179,6 @@ function getYBounds(anchors: FlowAnchor[]) {
       bottom: Math.max(bounds.bottom, anchor.y + anchor.width / 2),
     }),
     { top: Number.POSITIVE_INFINITY, bottom: Number.NEGATIVE_INFINITY },
-  );
-}
-
-function getXBounds(anchors: VerticalFlowAnchor[]) {
-  if (anchors.length === 0) return { left: 0, right: 0 };
-  return anchors.reduce(
-    (bounds, anchor) => ({
-      left: Math.min(bounds.left, anchor.x - anchor.width / 2),
-      right: Math.max(bounds.right, anchor.x + anchor.width / 2),
-    }),
-    { left: Number.POSITIVE_INFINITY, right: Number.NEGATIVE_INFINITY },
   );
 }
 
@@ -279,28 +245,15 @@ function ribbonPath(
   ].join(' ');
 }
 
-function verticalRibbonPath(
+function verticalLinePath(
   startX: number,
   startY: number,
-  startWidth: number,
   endX: number,
   endY: number,
-  endWidth: number,
 ) {
   const controlA = startY + (endY - startY) * 0.42;
-  const controlB = startY + (endY - startY) * 0.62;
-  const startLeft = startX - startWidth / 2;
-  const startRight = startX + startWidth / 2;
-  const endLeft = endX - endWidth / 2;
-  const endRight = endX + endWidth / 2;
-
-  return [
-    `M ${startLeft} ${startY}`,
-    `C ${startLeft} ${controlA}, ${endLeft} ${controlB}, ${endLeft} ${endY}`,
-    `L ${endRight} ${endY}`,
-    `C ${endRight} ${controlB}, ${startRight} ${controlA}, ${startRight} ${startY}`,
-    'Z',
-  ].join(' ');
+  const controlB = startY + (endY - startY) * 0.68;
+  return `M ${startX} ${startY} C ${startX} ${controlA}, ${endX} ${controlB}, ${endX} ${endY}`;
 }
 
 function FlowLabel({
@@ -379,142 +332,84 @@ function MobileSankeyChart({
   const mobileSources = compactNodes(sources, 3, 'Other income');
   const mobileDestinations = compactNodes(destinations, 4, 'Other flow');
   const topAnchors = makeDistributedXAnchors(mobileSources, sourceTotal, 58, 302);
-  const topCenterAnchors = makeStackedXAnchors(mobileSources, sourceTotal, mobileChart.width / 2);
   const bottomAnchors = makeDistributedXAnchors(mobileDestinations, sourceTotal, 48, 312);
-  const bottomCenterAnchors = makeStackedXAnchors(
-    mobileDestinations,
-    sourceTotal,
-    mobileChart.width / 2,
-  );
-  const topCenterBounds = getXBounds(topCenterAnchors);
-  const bottomCenterBounds = getXBounds(bottomCenterAnchors);
-  const centerLeft = Math.min(topCenterBounds.left, bottomCenterBounds.left);
-  const centerRight = Math.max(topCenterBounds.right, bottomCenterBounds.right);
-  const centerWidth = Math.max(96, centerRight - centerLeft);
-  const centerX = mobileChart.width / 2 - centerWidth / 2;
+  const centerX = mobileChart.width / 2;
+  const lineWidth = 2.2;
 
   return (
     <div className='rounded-[24px] border border-[var(--aurum-border)] bg-white px-2 py-4 md:hidden'>
       <svg
         role='img'
-        aria-label='Vertical monthly cashflow channel Sankey chart'
+        aria-label='Vertical monthly cashflow channel flow chart'
         viewBox={`0 0 ${mobileChart.width} ${mobileChart.height}`}
-        className='h-[620px] w-full overflow-visible'
+        className='h-[560px] w-full overflow-visible'
       >
-        <defs>
-          <linearGradient id='aurum-mobile-income-flow' x1='0%' x2='0%' y1='0%' y2='100%'>
-            <stop offset='0%' stopColor='#D4AF37' stopOpacity='0.82' />
-            <stop offset='100%' stopColor='#EAD17A' stopOpacity='0.62' />
-          </linearGradient>
-          <linearGradient id='aurum-mobile-expense-flow' x1='0%' x2='0%' y1='0%' y2='100%'>
-            <stop offset='0%' stopColor='#EFC0BA' stopOpacity='0.62' />
-            <stop offset='100%' stopColor='#D96868' stopOpacity='0.78' />
-          </linearGradient>
-          <linearGradient id='aurum-mobile-saved-flow' x1='0%' x2='0%' y1='0%' y2='100%'>
-            <stop offset='0%' stopColor='#A8DDBD' stopOpacity='0.5' />
-            <stop offset='100%' stopColor='#2F9E68' stopOpacity='0.82' />
-          </linearGradient>
-          <linearGradient id='aurum-mobile-reserve-flow' x1='0%' x2='0%' y1='0%' y2='100%'>
-            <stop offset='0%' stopColor='#D96868' stopOpacity='0.72' />
-            <stop offset='100%' stopColor='#EFC0BA' stopOpacity='0.48' />
-          </linearGradient>
-        </defs>
-
         <text x='180' y='30' textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
           Income Sources
         </text>
-        <text x='180' y='236' textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
-          Monthly Flow
-        </text>
-        <text x='180' y='430' textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
+        <text x='180' y='398' textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
           Spending / Retained
         </text>
 
         {topAnchors.map((anchor, index) => {
-          const centerAnchor = topCenterAnchors[index];
+          const color = anchor.tone === 'reserve' ? '#D96868' : getToneColor('income', index);
           return (
             <path
-              key={`mobile-income-ribbon-${anchor.label}`}
-              d={verticalRibbonPath(
+              key={`mobile-income-line-${anchor.label}`}
+              d={verticalLinePath(
                 anchor.x,
-                mobileChart.topNodeY + mobileChart.nodeHeight - 0.3,
-                anchor.width,
-                centerAnchor.x,
-                mobileChart.centerY - mobileChart.centerNodeHeight / 2 + 0.3,
-                centerAnchor.width,
+                mobileChart.topNodeY,
+                centerX,
+                mobileChart.centerY,
               )}
-              fill={
-                anchor.tone === 'reserve'
-                  ? 'url(#aurum-mobile-reserve-flow)'
-                  : 'url(#aurum-mobile-income-flow)'
-              }
-              opacity={getFlowOpacity(anchor.tone)}
+              fill='none'
+              stroke={color}
+              strokeLinecap='round'
+              strokeWidth={lineWidth}
+              opacity='0.78'
             />
           );
         })}
 
-        {bottomAnchors.map((anchor, index) => {
-          const centerAnchor = bottomCenterAnchors[index];
+        {bottomAnchors.map((anchor) => {
+          const color = anchor.tone === 'saved' ? '#2F9E68' : '#D96868';
           return (
             <path
-              key={`mobile-expense-ribbon-${anchor.label}`}
-              d={verticalRibbonPath(
-                centerAnchor.x,
-                mobileChart.centerY + mobileChart.centerNodeHeight / 2 - 0.3,
-                centerAnchor.width,
+              key={`mobile-expense-line-${anchor.label}`}
+              d={verticalLinePath(
+                centerX,
+                mobileChart.centerY,
                 anchor.x,
-                mobileChart.bottomNodeY + 0.3,
-                anchor.width,
+                mobileChart.bottomNodeY,
               )}
-              fill={
-                anchor.tone === 'saved'
-                  ? 'url(#aurum-mobile-saved-flow)'
-                  : anchor.tone === 'reserve'
-                    ? 'url(#aurum-mobile-reserve-flow)'
-                    : 'url(#aurum-mobile-expense-flow)'
-              }
-              opacity={getFlowOpacity(anchor.tone)}
+              fill='none'
+              stroke={color}
+              strokeLinecap='round'
+              strokeWidth={lineWidth}
+              opacity='0.7'
             />
           );
         })}
 
         {topAnchors.map((anchor, index) => (
           <g key={`mobile-source-node-${anchor.label}`}>
-            <rect
-              x={anchor.x - anchor.width / 2}
-              y={mobileChart.topNodeY}
-              width={anchor.width}
-              height={mobileChart.nodeHeight}
-              rx='0'
-              fill={getToneColor(anchor.tone, index)}
-            />
+            <circle cx={anchor.x} cy={mobileChart.topNodeY} r='4' fill={getToneColor(anchor.tone, index)} />
             <MobileFlowLabel anchor={anchor} y={mobileChart.topNodeY - 24} secondaryY={mobileChart.topNodeY - 9} />
           </g>
         ))}
 
         {bottomAnchors.map((anchor, index) => (
           <g key={`mobile-destination-node-${anchor.label}`}>
-            <rect
-              x={anchor.x - anchor.width / 2}
-              y={mobileChart.bottomNodeY}
-              width={anchor.width}
-              height={mobileChart.nodeHeight}
-              rx='0'
-              fill={getToneColor(anchor.tone, index)}
-            />
+            <circle cx={anchor.x} cy={mobileChart.bottomNodeY} r='4' fill={getToneColor(anchor.tone, index)} />
             <MobileFlowLabel anchor={anchor} y={mobileChart.bottomNodeY + 34} secondaryY={mobileChart.bottomNodeY + 49} />
           </g>
         ))}
 
-        <rect
-          x={centerX}
-          y={mobileChart.centerY - mobileChart.centerNodeHeight / 2}
-          width={centerWidth}
-          height={mobileChart.centerNodeHeight}
-          rx='0'
-          fill='#D4AF37'
-        />
-        <text x='180' y='270' textAnchor='middle' className='fill-[var(--aurum-text)] text-[22px] font-semibold'>
+        <circle cx={centerX} cy={mobileChart.centerY} r='5.5' fill='#D4AF37' />
+        <text x='180' y={mobileChart.centerY - 34} textAnchor='middle' className='fill-[var(--aurum-text-muted)] text-[10px] font-semibold uppercase tracking-[0.18em]'>
+          Monthly Flow
+        </text>
+        <text x='180' y={mobileChart.centerY - 12} textAnchor='middle' className='fill-[var(--aurum-text)] text-[22px] font-semibold'>
           {formatMoney(sourceTotal)}
         </text>
       </svg>
