@@ -15,6 +15,10 @@ const tabs = [
 ];
 
 export function AuthShell({ mode, heading, subheading, children }: AuthShellProps) {
+  const mobileHeading = mode === 'login' ? 'Welcome Back' : 'Create Account';
+  const mobileSubheading =
+    mode === 'login' ? 'Please sign in to access your portfolio.' : 'Set up your private suite.';
+
   return (
     <main className='relative flex min-h-screen w-full items-start justify-center overflow-hidden bg-[color:var(--aurum-auth-bg-0)] px-4 py-7 sm:px-6 lg:items-center lg:px-10 lg:py-8'>
       <div className='absolute inset-0 aurum-auth-bg' />
@@ -24,7 +28,7 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
         className='pointer-events-none absolute left-1/2 top-[45%] h-[60vh] w-[60vh] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color:var(--aurum-auth-text)]/[0.025] lg:top-1/2 lg:h-[72vh] lg:w-[72vh] lg:border-[color:var(--aurum-auth-text)]/[0.03]'
       />
 
-      <div className='relative mx-auto flex w-full max-w-[350px] flex-col items-center gap-5 lg:max-w-[980px] lg:translate-y-4 lg:gap-6'>
+      <div className='relative mx-auto flex w-full max-w-[350px] flex-col items-center gap-4 lg:max-w-[980px] lg:translate-y-4 lg:gap-6'>
         <div className='flex flex-col items-center gap-2 pt-0 lg:gap-3 lg:pt-1'>
           {/* Dev note: keep auth logo on a plain img because Next image handling was part of the unstable dev-only path here. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -35,12 +39,22 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
           />
         </div>
 
-        <AuthCard className='w-full max-w-[350px] rounded-[32px] p-7 lg:max-w-[980px] lg:rounded-[40px] lg:p-10'>
+        <AuthCard className='w-full max-w-[350px] rounded-[30px] p-7 lg:max-w-[980px] lg:rounded-[40px] lg:p-10'>
           <div className='grid gap-9 lg:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] lg:gap-10'>
-            <div className='space-y-7 lg:space-y-8 lg:px-2'>
-              <SegmentedTabs items={tabs} activeKey={mode} />
+            <div className='space-y-6 lg:space-y-8 lg:px-2'>
+              <div className='hidden lg:block'>
+                <SegmentedTabs items={tabs} activeKey={mode} />
+              </div>
+              <header className='space-y-1.5 lg:hidden'>
+                <h1 className='text-[25px] leading-tight font-medium tracking-tight text-[color:var(--aurum-auth-text)] [font-family:Georgia,Times_New_Roman,serif]'>
+                  {mobileHeading}
+                </h1>
+                <p className='text-xs leading-5 text-[color:var(--aurum-auth-muted)]'>
+                  {mobileSubheading}
+                </p>
+              </header>
               {heading || subheading ? (
-                <header className='space-y-2'>
+                <header className='hidden space-y-2 lg:block'>
                   {heading ? (
                     <h1 className='text-2xl font-semibold tracking-tight text-[color:var(--aurum-auth-text)]'>
                       {heading}
@@ -56,7 +70,7 @@ export function AuthShell({ mode, heading, subheading, children }: AuthShellProp
 
             <div className='hidden rounded-full bg-[color:var(--aurum-auth-border)] lg:block' />
 
-            <aside className='space-y-6 lg:px-2'>
+            <aside className='hidden space-y-6 lg:block lg:px-2'>
               <h2 className='text-[46px] leading-none font-medium tracking-tight text-[color:var(--aurum-auth-text)] [font-family:Georgia,Times_New_Roman,serif] lg:text-[52px]'>
                 Private Management.
               </h2>
