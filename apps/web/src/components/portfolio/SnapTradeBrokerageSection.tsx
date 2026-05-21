@@ -44,9 +44,7 @@ type SnapTradeBrokerageSectionProps = {
   onSnapshotsChanged?: () => Promise<void> | void;
 };
 
-export function SnapTradeBrokerageSection({
-  onSnapshotsChanged,
-}: SnapTradeBrokerageSectionProps) {
+export function SnapTradeBrokerageSection({ onSnapshotsChanged }: SnapTradeBrokerageSectionProps) {
   const [sources, setSources] = useState<ConnectedSource[]>([]);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<ConnectedSourceAccount[]>([]);
@@ -71,7 +69,7 @@ export function SnapTradeBrokerageSection({
       });
     } catch (error) {
       setStatusMessage(
-        error instanceof Error ? error.message : 'Failed to load brokerage sources.',
+        error instanceof Error ? error.message : 'Failed to load brokerage connections.',
       );
     } finally {
       setIsLoadingSources(false);
@@ -94,7 +92,7 @@ export function SnapTradeBrokerageSection({
       setSourceSnapshots(nextSnapshots);
     } catch (error) {
       setStatusMessage(
-        error instanceof Error ? error.message : 'Failed to load brokerage source details.',
+        error instanceof Error ? error.message : 'Failed to load brokerage connection details.',
       );
     }
   };
@@ -137,7 +135,7 @@ export function SnapTradeBrokerageSection({
       await loadSources();
       const firstSourceId = result.sources[0]?.source.id ?? null;
       setSelectedSourceId(firstSourceId);
-      setStatusMessage(`Imported ${result.sources.length} brokerage source(s).`);
+      setStatusMessage(`Imported ${result.sources.length} brokerage connection(s).`);
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : 'Failed to import SnapTrade accounts.',
@@ -149,7 +147,7 @@ export function SnapTradeBrokerageSection({
 
   const onSyncSelectedSource = async () => {
     if (!selectedSourceId) {
-      setStatusMessage('Select a brokerage source before running sync.');
+      setStatusMessage('Select a brokerage connection before running sync.');
       return;
     }
 
@@ -166,7 +164,7 @@ export function SnapTradeBrokerageSection({
       setStatusMessage('Brokerage snapshot created and saved to your portfolio history.');
     } catch (error) {
       setStatusMessage(
-        error instanceof Error ? error.message : 'Failed to sync brokerage source.',
+        error instanceof Error ? error.message : 'Failed to sync brokerage connection.',
       );
     } finally {
       setIsSyncing(false);
@@ -208,17 +206,17 @@ export function SnapTradeBrokerageSection({
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Brokerage Sources</CardTitle>
+            <CardTitle>Brokerage Connections</CardTitle>
             <CardDescription>
               {isLoadingSources
-                ? 'Loading sources...'
-                : `${sources.length} brokerage source(s) found.`}
+                ? 'Loading connections...'
+                : `${sources.length} brokerage connection(s) found.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {sources.length === 0 ? (
               <p className="text-sm text-[var(--aurum-text-muted)]">
-                No brokerage sources connected yet.
+                No brokerage connections connected yet.
               </p>
             ) : (
               sources.map((source) => (
@@ -237,7 +235,7 @@ export function SnapTradeBrokerageSection({
                     {source.institutionName ?? 'Unknown brokerage'} - {source.status}
                   </p>
                   <p className="text-xs text-[var(--aurum-text-muted)]">
-                    Last sync: {formatDateTime(source.lastSuccessfulSyncAt)}
+                    Last synced: {formatDateTime(source.lastSuccessfulSyncAt)}
                   </p>
                 </button>
               ))
@@ -256,7 +254,7 @@ export function SnapTradeBrokerageSection({
             <CardContent className="space-y-4">
               {!selectedSource ? (
                 <p className="text-sm text-[var(--aurum-text-muted)]">
-                  Select a brokerage source to inspect imported accounts.
+                  Select a brokerage connection to inspect imported accounts.
                 </p>
               ) : (
                 <>
@@ -269,7 +267,7 @@ export function SnapTradeBrokerageSection({
                   <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     {accounts.length === 0 ? (
                       <p className="text-sm text-[var(--aurum-text-muted)]">
-                        No brokerage accounts imported for this source yet.
+                        No brokerage accounts imported for this connection yet.
                       </p>
                     ) : (
                       accounts.map((account) => {
@@ -291,7 +289,9 @@ export function SnapTradeBrokerageSection({
                               {account.maskLast4 ? ` - **** ${account.maskLast4}` : ''}
                             </p>
                             <p className="text-xs text-[var(--aurum-text-muted)]">
-                              {account.institutionOrIssuer ?? selectedSource.institutionName ?? 'SnapTrade'}
+                              {account.institutionOrIssuer ??
+                                selectedSource.institutionName ??
+                                'SnapTrade'}
                             </p>
                             <p className="mt-2 text-sm text-[var(--aurum-text)]">
                               {balanceTotal !== undefined
@@ -312,13 +312,13 @@ export function SnapTradeBrokerageSection({
             <CardHeader>
               <CardTitle>Created Snapshots</CardTitle>
               <CardDescription>
-                Holdings syncs create portfolio snapshots for the selected brokerage source.
+                Holdings syncs create portfolio snapshots for the selected brokerage connection.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {sourceSnapshots.length === 0 ? (
                 <p className="text-sm text-[var(--aurum-text-muted)]">
-                  No snapshots have been created for this brokerage source yet.
+                  No snapshots have been created for this brokerage connection yet.
                 </p>
               ) : (
                 sourceSnapshots.map((snapshot) => (

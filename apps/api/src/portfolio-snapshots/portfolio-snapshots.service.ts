@@ -739,6 +739,26 @@ export class PortfolioSnapshotsService {
       return sourceScopedPrevious;
     }
 
+    const consolidatedPrevious =
+      current.sourceId === null
+        ? await this.prisma.portfolioSnapshotRecord.findFirst({
+            where: {
+              userId,
+              sourceId: null,
+              ...beforeCurrent,
+            },
+            orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
+            include: {
+              positions: {
+                orderBy: [{ marketValue: 'desc' }, { assetKey: 'asc' }],
+              },
+            },
+          })
+        : null;
+    if (consolidatedPrevious) {
+      return consolidatedPrevious;
+    }
+
     return this.prisma.portfolioSnapshotRecord.findFirst({
       where: {
         userId,

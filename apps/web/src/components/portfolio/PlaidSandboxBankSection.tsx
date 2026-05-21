@@ -104,7 +104,9 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
         return hasCurrent ? current : (nextSources[0]?.id ?? null);
       });
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to load bank sources.');
+      setStatusMessage(
+        error instanceof Error ? error.message : 'Failed to load bank institutions.',
+      );
     } finally {
       setIsLoadingSources(false);
     }
@@ -126,7 +128,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
       setSourceSnapshots(nextSnapshots);
     } catch (error) {
       setStatusMessage(
-        error instanceof Error ? error.message : 'Failed to load bank source details.',
+        error instanceof Error ? error.message : 'Failed to load bank institution details.',
       );
     }
   };
@@ -152,7 +154,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
       await loadSources();
       setSelectedSourceId(result.source.id);
       setStatusMessage(
-        `Bank source connected: ${result.source.displayName} with ${result.accounts.length} account(s).`,
+        `Bank institution connected: ${result.source.displayName} with ${result.accounts.length} account(s).`,
       );
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Failed to exchange Plaid token.');
@@ -188,9 +190,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
     } catch (error) {
       setPendingOpen(false);
       const notice =
-        error instanceof ApiError
-          ? parseProviderNotConfiguredDetails(error.details)
-          : null;
+        error instanceof ApiError ? parseProviderNotConfiguredDetails(error.details) : null;
       if (notice) {
         setProviderNotice(notice);
         return;
@@ -205,7 +205,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
 
   const onSyncSelectedSource = async () => {
     if (!selectedSourceId) {
-      setStatusMessage('Select a bank source before running sync.');
+      setStatusMessage('Select a bank institution before running sync.');
       return;
     }
 
@@ -223,14 +223,12 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
       setStatusMessage('Bank snapshot created and saved to your portfolio history.');
     } catch (error) {
       const notice =
-        error instanceof ApiError
-          ? parseProviderNotConfiguredDetails(error.details)
-          : null;
+        error instanceof ApiError ? parseProviderNotConfiguredDetails(error.details) : null;
       if (notice) {
         setProviderNotice(notice);
         return;
       }
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to sync bank source.');
+      setStatusMessage(error instanceof Error ? error.message : 'Failed to sync bank institution.');
     } finally {
       setIsSyncing(false);
     }
@@ -242,8 +240,8 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
         <CardHeader>
           <CardTitle>Bank Connection</CardTitle>
           <CardDescription>
-            Connect bank accounts, review balances, and create a portfolio snapshot when cash
-            should be reflected in Aurum.
+            Connect bank accounts, review balances, and create a portfolio snapshot when cash should
+            be reflected in Aurum.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -262,7 +260,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
               className={inputClassName}
               value={selectedSource?.displayName ?? ''}
               readOnly
-              placeholder="Connected source will appear here"
+              placeholder="Connected institution will appear here"
             />
           </div>
 
@@ -284,15 +282,17 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Bank Sources</CardTitle>
+            <CardTitle>Bank Institutions</CardTitle>
             <CardDescription>
-              {isLoadingSources ? 'Loading sources...' : `${sources.length} bank source(s) found.`}
+              {isLoadingSources
+                ? 'Loading institutions...'
+                : `${sources.length} bank institution(s) found.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {sources.length === 0 ? (
               <p className="text-sm text-[var(--aurum-text-muted)]">
-                No bank sources connected yet.
+                No bank institutions connected yet.
               </p>
             ) : (
               sources.map((source) => (
@@ -311,7 +311,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
                     {source.institutionName ?? 'Unknown institution'} - {source.status}
                   </p>
                   <p className="text-xs text-[var(--aurum-text-muted)]">
-                    Last sync: {formatDateTime(source.lastSuccessfulSyncAt)}
+                    Last synced: {formatDateTime(source.lastSuccessfulSyncAt)}
                   </p>
                 </button>
               ))
@@ -330,7 +330,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
             <CardContent className="space-y-4">
               {!selectedSource ? (
                 <p className="text-sm text-[var(--aurum-text-muted)]">
-                  Select a bank source to inspect linked accounts.
+                  Select a bank institution to inspect linked accounts.
                 </p>
               ) : (
                 <>
@@ -343,7 +343,7 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
                   <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     {accounts.length === 0 ? (
                       <p className="text-sm text-[var(--aurum-text-muted)]">
-                        No bank accounts have been fetched for this source yet.
+                        No bank accounts have been fetched for this institution yet.
                       </p>
                     ) : (
                       accounts.map((account) => {
@@ -391,13 +391,13 @@ export function PlaidSandboxBankSection({ onSnapshotsChanged }: PlaidSandboxBank
             <CardHeader>
               <CardTitle>Created Snapshots</CardTitle>
               <CardDescription>
-                Balance syncs create portfolio snapshots for the selected bank source.
+                Balance syncs create portfolio snapshots for the selected bank institution.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {sourceSnapshots.length === 0 ? (
                 <p className="text-sm text-[var(--aurum-text-muted)]">
-                  No snapshots have been created for this bank source yet.
+                  No snapshots have been created for this bank institution yet.
                 </p>
               ) : (
                 sourceSnapshots.map((snapshot) => (

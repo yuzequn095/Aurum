@@ -12,6 +12,7 @@ import type {
   CryptoSyncMaterializationResult,
   ManualStaticSnapshotMaterializationResult,
   ManualStaticValuation,
+  ManualInstitutionCreationResult,
   PortfolioAssetCategory,
   PortfolioSnapshot,
 } from '@aurum/core';
@@ -24,6 +25,21 @@ export interface CreateConnectedSourceRequest {
   institutionName?: string;
   baseCurrency?: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface CreateManualInstitutionRequest {
+  institutionKey: string;
+  displayName?: string;
+  baseCurrency?: string;
+  accountOverrides?: Array<{
+    accountKey: string;
+    displayName?: string;
+    accountType?: string;
+    assetType?: PortfolioAssetCategory;
+    assetSubType?: string;
+    currency?: string;
+    metadata?: Record<string, unknown>;
+  }>;
 }
 
 export interface CreateConnectedSourceAccountRequest {
@@ -98,6 +114,15 @@ export async function createConnectedSource(
   body: CreateConnectedSourceRequest,
 ): Promise<ConnectedSource> {
   return apiPost<ConnectedSource>('/v1/connected-finance/sources', body);
+}
+
+export async function createManualInstitution(
+  body: CreateManualInstitutionRequest,
+): Promise<ManualInstitutionCreationResult> {
+  return apiPost<ManualInstitutionCreationResult>(
+    '/v1/connected-finance/manual-institutions',
+    body,
+  );
 }
 
 export async function createPlaidLinkToken(): Promise<BankLinkTokenResult> {

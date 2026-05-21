@@ -89,7 +89,9 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
         return hasCurrent ? current : (nextSources[0]?.id ?? null);
       });
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to load crypto sources.');
+      setStatusMessage(
+        error instanceof Error ? error.message : 'Failed to load crypto connections.',
+      );
     } finally {
       setIsLoadingSources(false);
     }
@@ -111,7 +113,7 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
       setSourceSnapshots(nextSnapshots);
     } catch (error) {
       setStatusMessage(
-        error instanceof Error ? error.message : 'Failed to load crypto source details.',
+        error instanceof Error ? error.message : 'Failed to load crypto connection details.',
       );
     }
   };
@@ -145,13 +147,11 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
         apiPrivateKey: '',
       }));
       setStatusMessage(
-        `Crypto source connected: ${result.source.displayName} with ${result.accounts.length} account(s).`,
+        `Crypto connection added: ${result.source.displayName} with ${result.accounts.length} account(s).`,
       );
     } catch (error) {
       const notice =
-        error instanceof ApiError
-          ? parseProviderNotConfiguredDetails(error.details)
-          : null;
+        error instanceof ApiError ? parseProviderNotConfiguredDetails(error.details) : null;
       if (notice) {
         setProviderNotice(notice);
         return;
@@ -164,7 +164,7 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
 
   const onSyncSelectedSource = async () => {
     if (!selectedSourceId) {
-      setStatusMessage('Select a crypto source before running sync.');
+      setStatusMessage('Select a crypto connection before running sync.');
       return;
     }
 
@@ -182,14 +182,14 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
       setStatusMessage('Crypto snapshot created and saved to your portfolio history.');
     } catch (error) {
       const notice =
-        error instanceof ApiError
-          ? parseProviderNotConfiguredDetails(error.details)
-          : null;
+        error instanceof ApiError ? parseProviderNotConfiguredDetails(error.details) : null;
       if (notice) {
         setProviderNotice(notice);
         return;
       }
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to sync crypto source.');
+      setStatusMessage(
+        error instanceof Error ? error.message : 'Failed to sync crypto connection.',
+      );
     } finally {
       setIsSyncing(false);
     }
@@ -201,8 +201,8 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
         <CardHeader>
           <CardTitle>Crypto Connection</CardTitle>
           <CardDescription>
-            Connect a read-only Coinbase source, inspect balances, and create a portfolio snapshot
-            when crypto should be part of your Aurum asset layer.
+            Connect a read-only Coinbase connection, inspect balances, and create a portfolio
+            snapshot when crypto should be part of your Aurum asset layer.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -210,7 +210,7 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <input
                 className={inputClassName}
-                placeholder="Source name"
+                placeholder="Connection name"
                 value={formState.displayName}
                 onChange={(event) =>
                   setFormState((current) => ({
@@ -281,17 +281,17 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Crypto Sources</CardTitle>
+            <CardTitle>Crypto Connections</CardTitle>
             <CardDescription>
               {isLoadingSources
-                ? 'Loading sources...'
-                : `${sources.length} crypto source(s) found.`}
+                ? 'Loading connections...'
+                : `${sources.length} crypto connection(s) found.`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {sources.length === 0 ? (
               <p className="text-sm text-[var(--aurum-text-muted)]">
-                No crypto sources connected yet.
+                No crypto connections connected yet.
               </p>
             ) : (
               sources.map((source) => (
@@ -310,7 +310,7 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
                     {source.institutionName ?? 'Coinbase'} - {source.baseCurrency}
                   </p>
                   <p className="text-xs text-[var(--aurum-text-muted)]">
-                    Last sync: {formatDateTime(source.lastSuccessfulSyncAt)}
+                    Last synced: {formatDateTime(source.lastSuccessfulSyncAt)}
                   </p>
                 </button>
               ))
@@ -329,7 +329,7 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
             <CardContent className="space-y-4">
               {!selectedSource ? (
                 <p className="text-sm text-[var(--aurum-text-muted)]">
-                  Select a crypto source to inspect imported accounts.
+                  Select a crypto connection to inspect imported accounts.
                 </p>
               ) : (
                 <>
@@ -342,7 +342,7 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
                   <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     {accounts.length === 0 ? (
                       <p className="text-sm text-[var(--aurum-text-muted)]">
-                        No Coinbase accounts are imported for this source yet.
+                        No Coinbase accounts are imported for this connection yet.
                       </p>
                     ) : (
                       accounts.map((account) => (
@@ -373,13 +373,14 @@ export function CoinbaseCryptoSection({ onSnapshotsChanged }: CoinbaseCryptoSect
             <CardHeader>
               <CardTitle>Created Snapshots</CardTitle>
               <CardDescription>
-                Coinbase balance syncs create portfolio snapshots for the selected crypto source.
+                Coinbase balance syncs create portfolio snapshots for the selected crypto
+                connection.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {sourceSnapshots.length === 0 ? (
                 <p className="text-sm text-[var(--aurum-text-muted)]">
-                  No snapshots have been created for this crypto source yet.
+                  No snapshots have been created for this crypto connection yet.
                 </p>
               ) : (
                 sourceSnapshots.map((snapshot) => (

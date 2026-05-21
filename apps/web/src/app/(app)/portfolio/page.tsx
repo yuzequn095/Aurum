@@ -14,6 +14,7 @@ import type {
   PortfolioAssetCategory,
   PortfolioSnapshot,
 } from '@aurum/core';
+import { manualInstitutionPresets } from '@aurum/core';
 import { CoinbaseCryptoSection } from '@/components/portfolio/CoinbaseCryptoSection';
 import { PlaidSandboxBankSection } from '@/components/portfolio/PlaidSandboxBankSection';
 import { SnapTradeBrokerageSection } from '@/components/portfolio/SnapTradeBrokerageSection';
@@ -24,6 +25,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import {
   createConnectedSource,
   createConnectedSourceAccount,
+  createManualInstitution,
   createManualStaticValuation,
   getConnectedFinanceOverview,
   listConnectedSourceAccounts,
@@ -93,7 +95,7 @@ function formatAssetCategory(category: PortfolioAssetCategory | undefined): stri
 
 function formatSourceType(value: string | undefined): string {
   if (!value) {
-    return 'Portfolio source';
+    return 'Portfolio input';
   }
 
   return value
@@ -190,6 +192,7 @@ export default function PortfolioPage() {
   const [diagnostics, setDiagnostics] = useState<PortfolioDiagnostics | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [isLoadingSources, setIsLoadingSources] = useState(false);
+  const [isCreatingPresetInstitution, setIsCreatingPresetInstitution] = useState(false);
   const [isSubmittingSource, setIsSubmittingSource] = useState(false);
   const [isSubmittingAccount, setIsSubmittingAccount] = useState(false);
   const [isSubmittingValuation, setIsSubmittingValuation] = useState(false);
@@ -199,6 +202,9 @@ export default function PortfolioPage() {
     institutionName: '',
     baseCurrency: 'USD',
   });
+  const [selectedInstitutionPresetKey, setSelectedInstitutionPresetKey] = useState<string>(
+    manualInstitutionPresets[0]?.institutionKey ?? 'fidelity',
+  );
   const [accountForm, setAccountForm] = useState({
     displayName: '',
     accountType: 'RSU',
@@ -236,7 +242,7 @@ export default function PortfolioPage() {
       });
     } catch (error) {
       setStatusMessage(
-        error instanceof Error ? error.message : 'Failed to load manual asset sources.',
+        error instanceof Error ? error.message : 'Failed to load manual institutions.',
       );
     } finally {
       setIsLoadingSources(false);
@@ -284,7 +290,7 @@ export default function PortfolioPage() {
       setSourceSnapshots(nextSnapshots);
     } catch (error) {
       setStatusMessage(
-        error instanceof Error ? error.message : 'Failed to load source accounts and snapshots.',
+        error instanceof Error ? error.message : 'Failed to load accounts and snapshots.',
       );
     }
   };
@@ -352,18 +358,39 @@ export default function PortfolioPage() {
         institutionName: '',
         baseCurrency: sourceForm.baseCurrency.trim() || 'USD',
       });
-      setStatusMessage(`Manual asset source created: ${created.displayName}`);
+      setStatusMessage(`Manual institution created: ${created.displayName}`);
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to create source.');
+      setStatusMessage(error instanceof Error ? error.message : 'Failed to create institution.');
     } finally {
       setIsSubmittingSource(false);
+    }
+  };
+
+  const onCreatePresetInstitution = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsCreatingPresetInstitution(true);
+    setStatusMessage('');
+
+    try {
+      const result = await createManualInstitution({
+        institutionKey: selectedInstitutionPresetKey,
+      });
+      await Promise.all([loadSources(), loadOverview()]);
+      setSelectedSourceId(result.source.id);
+      setStatusMessage(`Manual institution created: ${result.source.displayName}`);
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : 'Failed to create manual institution.',
+      );
+    } finally {
+      setIsCreatingPresetInstitution(false);
     }
   };
 
   const onCreateAccount = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedSourceId) {
-      setStatusMessage('Select a manual asset source before adding a holding.');
+      setStatusMessage('Select a manual institution before adding an account.');
       return;
     }
 
@@ -438,7 +465,7 @@ export default function PortfolioPage() {
 
   const onMaterializeSnapshot = async () => {
     if (!selectedSourceId) {
-      setStatusMessage('Select a manual asset source before creating a snapshot.');
+      setStatusMessage('Select a manual institution before creating a snapshot.');
       return;
     }
 
@@ -557,8 +584,8 @@ export default function PortfolioPage() {
                 </div>
               ) : (
                 <p className="mt-4 text-sm leading-7 text-[var(--aurum-text-muted)]">
-                  No portfolio snapshot yet. Connect a source or use the manual workspace to create
-                  the first portfolio state for Aurum Home and AI workflows.
+                  No portfolio snapshot yet. Connect an institution or use the manual workspace to
+                  create the first portfolio state for Aurum Home and AI workflows.
                 </p>
               )}
             </div>
@@ -592,19 +619,19 @@ export default function PortfolioPage() {
             <CardTitle className="text-xl">{snapshotInventory.length}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0 text-sm text-[var(--aurum-text-muted)]">
-            Saved snapshots available across connected and manual sources.
+            Saved snapshots available across connected and manual institutions.
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="space-y-1">
-            <CardDescription>Manual Sources</CardDescription>
+            <CardDescription>Manual Institutions</CardDescription>
             <CardTitle className="text-xl">{sources.length}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0 text-sm text-[var(--aurum-text-muted)]">
             {selectedSource
-              ? `Current source: ${selectedSource.displayName}`
-              : 'Manual asset sources stay available when a live connection is not the right fit.'}
+              ? `Current institution: ${selectedSource.displayName}`
+              : 'Manual institutions stay available when a live connection is not the right fit.'}
           </CardContent>
         </Card>
 
@@ -620,7 +647,7 @@ export default function PortfolioPage() {
               ? `Valuation entries on ${selectedAccount.displayName}`
               : selectedSource
                 ? `Accounts under ${selectedSource.displayName}`
-                : 'Pick a manual source or holding when you need to maintain private assets.'}
+                : 'Pick a manual institution or account when you need to maintain private assets.'}
           </CardContent>
         </Card>
       </section>
@@ -656,7 +683,7 @@ export default function PortfolioPage() {
           ) : overview.sources.length === 0 ? (
             <p className="text-sm text-[var(--aurum-text-muted)]">
               No institutions connected yet. Add a manual institution or connect a read-only
-              provider source below.
+              provider connection below.
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -708,8 +735,8 @@ export default function PortfolioPage() {
           <CardContent className="space-y-3">
             {snapshotInventory.length === 0 ? (
               <p className="text-sm text-[var(--aurum-text-muted)]">
-                No portfolio snapshots found yet. Connect a source or create one from the manual
-                workspace below.
+                No portfolio snapshots found yet. Connect an institution or create one from the
+                manual workspace below.
               </p>
             ) : (
               snapshotInventory.slice(0, 6).map((snapshot) => (
@@ -732,7 +759,7 @@ export default function PortfolioPage() {
                     {snapshot.metadata.snapshotDate} | {snapshot.positions.length} positions
                   </p>
                   <p className="mt-1 text-xs text-[var(--aurum-text-muted)]">
-                    Source:{' '}
+                    Institution:{' '}
                     {snapshot.metadata.sourceLabel ??
                       formatSourceType(snapshot.metadata.sourceType)}
                   </p>
@@ -966,8 +993,8 @@ export default function PortfolioPage() {
             <CardHeader>
               <CardTitle>Portfolio Workflows</CardTitle>
               <CardDescription>
-                Start with snapshot truth, then maintain sources only when the asset layer needs
-                attention.
+                Start with snapshot truth, then maintain institutions only when the asset layer
+                needs attention.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-[var(--aurum-text)]">
@@ -992,7 +1019,7 @@ export default function PortfolioPage() {
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-semibold text-[var(--aurum-text)]">
-              Connections & Sources
+              Connections & Institutions
             </h2>
             <Badge variant="neutral">Supporting workflows</Badge>
           </div>
@@ -1018,8 +1045,8 @@ export default function PortfolioPage() {
             <Badge variant="neutral">Fallback asset maintenance</Badge>
           </div>
           <p className="text-sm text-[var(--aurum-text-muted)]">
-            Use manual sources for assets that should be represented in Aurum even when they are not
-            synced from a provider connection.
+            Use manual institutions and accounts for assets that should be represented in Aurum even
+            when they are not synced from a provider connection.
           </p>
         </div>
 
@@ -1027,60 +1054,84 @@ export default function PortfolioPage() {
           <div className="rounded-[18px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-4 text-sm text-[var(--aurum-text)]">
             <p className="font-medium">Manual asset flow</p>
             <p className="mt-1 text-[var(--aurum-text-muted)]">
-              Start by creating a source, then maintain holdings and valuations, and create
+              Start by creating an institution, then maintain accounts and valuations, and create
               snapshots when manual assets are ready to feed the broader product.
             </p>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Create Manual Source</CardTitle>
+              <CardTitle>Create Manual Institution</CardTitle>
               <CardDescription>
-                Add a manually maintained source for assets that need valuation history outside a
-                live connection.
+                Start from common institutions, or add a custom manual institution below.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <form onSubmit={onCreateSource} className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                <input
+              <form
+                onSubmit={onCreatePresetInstitution}
+                className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]"
+              >
+                <select
                   className={inputClassName}
-                  placeholder="Source name"
-                  value={sourceForm.displayName}
-                  onChange={(event) =>
-                    setSourceForm((current) => ({
-                      ...current,
-                      displayName: event.target.value,
-                    }))
-                  }
-                  required
-                />
-                <input
-                  className={inputClassName}
-                  placeholder="Issuer / institution"
-                  value={sourceForm.institutionName}
-                  onChange={(event) =>
-                    setSourceForm((current) => ({
-                      ...current,
-                      institutionName: event.target.value,
-                    }))
-                  }
-                />
-                <input
-                  className={inputClassName}
-                  placeholder="Base currency"
-                  value={sourceForm.baseCurrency}
-                  onChange={(event) =>
-                    setSourceForm((current) => ({
-                      ...current,
-                      baseCurrency: event.target.value.toUpperCase(),
-                    }))
-                  }
-                  maxLength={10}
-                />
-                <Button type="submit" disabled={isSubmittingSource}>
-                  {isSubmittingSource ? 'Creating...' : 'Create Manual Source'}
+                  value={selectedInstitutionPresetKey}
+                  onChange={(event) => setSelectedInstitutionPresetKey(event.target.value)}
+                >
+                  {manualInstitutionPresets.map((preset) => (
+                    <option key={preset.institutionKey} value={preset.institutionKey}>
+                      {preset.displayName}
+                    </option>
+                  ))}
+                </select>
+                <Button type="submit" disabled={isCreatingPresetInstitution}>
+                  {isCreatingPresetInstitution ? 'Creating...' : 'Create Institution'}
                 </Button>
               </form>
+
+              <div className="border-t border-[var(--aurum-border)] pt-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--aurum-text-muted)]">
+                  Custom manual institution
+                </p>
+                <form onSubmit={onCreateSource} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                  <input
+                    className={inputClassName}
+                    placeholder="Institution name"
+                    value={sourceForm.displayName}
+                    onChange={(event) =>
+                      setSourceForm((current) => ({
+                        ...current,
+                        displayName: event.target.value,
+                      }))
+                    }
+                    required
+                  />
+                  <input
+                    className={inputClassName}
+                    placeholder="Issuer / institution"
+                    value={sourceForm.institutionName}
+                    onChange={(event) =>
+                      setSourceForm((current) => ({
+                        ...current,
+                        institutionName: event.target.value,
+                      }))
+                    }
+                  />
+                  <input
+                    className={inputClassName}
+                    placeholder="Base currency"
+                    value={sourceForm.baseCurrency}
+                    onChange={(event) =>
+                      setSourceForm((current) => ({
+                        ...current,
+                        baseCurrency: event.target.value.toUpperCase(),
+                      }))
+                    }
+                    maxLength={10}
+                  />
+                  <Button type="submit" disabled={isSubmittingSource}>
+                    {isSubmittingSource ? 'Creating...' : 'Create Custom Institution'}
+                  </Button>
+                </form>
+              </div>
 
               {statusMessage ? (
                 <p className="rounded-[10px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-2 text-sm text-[var(--aurum-text)]">
@@ -1093,16 +1144,18 @@ export default function PortfolioPage() {
           <section className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_1fr]">
             <Card>
               <CardHeader>
-                <CardTitle>Manual Sources</CardTitle>
+                <CardTitle>Manual Institutions</CardTitle>
                 <CardDescription>
                   {isLoadingSources
-                    ? 'Loading sources...'
-                    : `${sources.length} manual source(s) available.`}
+                    ? 'Loading institutions...'
+                    : `${sources.length} manual institution(s) available.`}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {sources.length === 0 ? (
-                  <p className="text-sm text-[var(--aurum-text-muted)]">No manual sources yet.</p>
+                  <p className="text-sm text-[var(--aurum-text-muted)]">
+                    No manual institutions yet.
+                  </p>
                 ) : (
                   sources.map((source) => (
                     <button
@@ -1120,7 +1173,7 @@ export default function PortfolioPage() {
                         {source.institutionName ?? 'No issuer'} - {source.baseCurrency}
                       </p>
                       <p className="text-xs text-[var(--aurum-text-muted)]">
-                        Last sync: {formatDateTime(source.lastSuccessfulSyncAt)}
+                        Last synced: {formatDateTime(source.lastSuccessfulSyncAt)}
                       </p>
                     </button>
                   ))
@@ -1140,7 +1193,7 @@ export default function PortfolioPage() {
                 <CardContent className="space-y-4">
                   {!selectedSource ? (
                     <p className="text-sm text-[var(--aurum-text-muted)]">
-                      Select a manual source to manage holdings.
+                      Select a manual institution to manage accounts.
                     </p>
                   ) : (
                     <>
@@ -1232,7 +1285,7 @@ export default function PortfolioPage() {
                       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                         {accounts.length === 0 ? (
                           <p className="text-sm text-[var(--aurum-text-muted)]">
-                            No holdings under this source yet.
+                            No accounts under this institution yet.
                           </p>
                         ) : (
                           accounts.map((account) => (
@@ -1449,11 +1502,11 @@ export default function PortfolioPage() {
                   <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     <div className="space-y-2">
                       <p className="text-sm font-medium text-[var(--aurum-text)]">
-                        Snapshots for Selected Source
+                        Snapshots for Selected Institution
                       </p>
                       {sourceSnapshots.length === 0 ? (
                         <p className="text-sm text-[var(--aurum-text-muted)]">
-                          No snapshots created for this source yet.
+                          No snapshots created for this institution yet.
                         </p>
                       ) : (
                         [...sourceSnapshots].sort(compareSnapshots).map((snapshot) => (
