@@ -9,6 +9,7 @@ import type {
   ConnectedFinanceOverview,
   ConnectedFinanceHealthStatus,
   ManualStaticValuation,
+  PortfolioDiagnostics,
   PortfolioSnapshotDelta,
   PortfolioAssetCategory,
   PortfolioSnapshot,
@@ -31,7 +32,11 @@ import {
   listManualStaticValuations,
   materializeManualStaticSnapshot,
 } from '@/lib/api/connected-finance';
-import { getPortfolioSnapshotDelta, listPortfolioSnapshots } from '@/lib/api/portfolio-snapshots';
+import {
+  getPortfolioSnapshotDelta,
+  getPortfolioSnapshotDiagnostics,
+  listPortfolioSnapshots,
+} from '@/lib/api/portfolio-snapshots';
 
 const assetTypeOptions: PortfolioAssetCategory[] = [
   'cash',
@@ -182,6 +187,7 @@ export default function PortfolioPage() {
   const [allSnapshots, setAllSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [overview, setOverview] = useState<ConnectedFinanceOverview | null>(null);
   const [snapshotDelta, setSnapshotDelta] = useState<PortfolioSnapshotDelta | null>(null);
+  const [diagnostics, setDiagnostics] = useState<PortfolioDiagnostics | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [isLoadingSources, setIsLoadingSources] = useState(false);
   const [isSubmittingSource, setIsSubmittingSource] = useState(false);
@@ -313,12 +319,18 @@ export default function PortfolioPage() {
   useEffect(() => {
     if (!latestSnapshot?.id) {
       setSnapshotDelta(null);
+      setDiagnostics(null);
       return;
     }
 
-    getPortfolioSnapshotDelta(latestSnapshot.id)
-      .then(setSnapshotDelta)
-      .catch(() => setSnapshotDelta(null));
+    void Promise.all([
+      getPortfolioSnapshotDelta(latestSnapshot.id)
+        .then(setSnapshotDelta)
+        .catch(() => setSnapshotDelta(null)),
+      getPortfolioSnapshotDiagnostics(latestSnapshot.id)
+        .then(setDiagnostics)
+        .catch(() => setDiagnostics(null)),
+    ]);
   }, [latestSnapshot?.id]);
 
   const onCreateSource = async (event: FormEvent<HTMLFormElement>) => {
@@ -774,6 +786,97 @@ export default function PortfolioPage() {
                     </p>
                   </div>
                 ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Diagnostics</CardTitle>
+              <CardDescription>
+                Deterministic allocation, concentration, and data health signals from the latest
+                snapshot.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              {!latestSnapshot ? (
+                <p className="text-[var(--aurum-text-muted)]">
+                  Create a snapshot to calculate diagnostics.
+                </p>
+              ) : !diagnostics ? (
+                <p className="text-[var(--aurum-text-muted)]">Diagnostics are loading.</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-3">
+                      <p className="text-xs uppercase tracking-wide text-[var(--aurum-text-muted)]">
+                        Cash
+                      </p>
+                      <p className="mt-1 font-semibold text-[var(--aurum-text)]">
+                        {(diagnostics.postureSummary.cashRatio * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                    <div className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-3">
+                      <p className="text-xs uppercase tracking-wide text-[var(--aurum-text-muted)]">
+                        Crypto
+                      </p>
+                      <p className="mt-1 font-semibold text-[var(--aurum-text)]">
+                        {(diagnostics.postureSummary.cryptoRatio * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                    <div className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-3">
+                      <p className="text-xs uppercase tracking-wide text-[var(--aurum-text-muted)]">
+                        Health
+                      </p>
+                      <p className="mt-1 font-semibold capitalize text-[var(--aurum-text)]">
+                        {diagnostics.dataHealth.status}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--aurum-text-muted)]">
+                      Top Holdings
+                    </p>
+                    {diagnostics.topHoldings.slice(0, 3).map((holding) => (
+                      <div
+                        key={`${holding.sourceAccountId ?? 'unknown'}-${holding.assetKey}`}
+                        className="rounded-[12px] border border-[var(--aurum-border)] bg-white px-3 py-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="font-medium text-[var(--aurum-text)]">
+                            {holding.symbol ?? holding.name ?? holding.assetKey}
+                          </p>
+                          <p className="text-xs text-[var(--aurum-text-muted)]">
+                            {(holding.weight * 100).toFixed(1)}%
+                          </p>
+                        </div>
+                        <p className="mt-1 text-xs text-[var(--aurum-text-muted)]">
+                          {holding.sourceAccountName ?? 'Unknown account'} |{' '}
+                          {formatMoney(
+                            holding.marketValue,
+                            latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                          )}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {diagnostics.flags.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {diagnostics.flags.slice(0, 5).map((flag) => (
+                        <Badge
+                          key={flag.code}
+                          variant={flag.severity === 'warning' ? 'warn' : 'info'}
+                        >
+                          {flag.label}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <Badge variant="good">No diagnostic flags</Badge>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

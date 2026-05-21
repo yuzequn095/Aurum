@@ -99,3 +99,67 @@ export interface PortfolioSnapshotDelta {
   accountDeltas: PortfolioSnapshotAccountDelta[];
   baselineStatus: 'available' | 'no_baseline';
 }
+
+export type PortfolioDiagnosticsFlagSeverity = 'info' | 'warning';
+
+export interface PortfolioDiagnosticsAllocationItem {
+  key: string;
+  label: string;
+  value: number;
+  weight: number;
+}
+
+export interface PortfolioDiagnosticsTopHolding {
+  assetKey: string;
+  symbol?: string;
+  name?: string;
+  marketValue: number;
+  weight: number;
+  sourceAccountId?: string;
+  sourceAccountName?: string;
+}
+
+export interface PortfolioDiagnosticsFlag {
+  code:
+    | 'high_cash'
+    | 'high_crypto'
+    | 'high_single_name_concentration'
+    | 'high_institution_concentration'
+    | 'high_employer_stock_concentration'
+    | 'stale_data'
+    | 'missing_valuation'
+    | 'no_baseline_snapshot';
+  label: string;
+  severity: PortfolioDiagnosticsFlagSeverity;
+  detail?: string;
+}
+
+export interface PortfolioDiagnostics {
+  snapshotId: string;
+  snapshotDate: string;
+  totalValue: number;
+  allocationByAssetCategory: PortfolioDiagnosticsAllocationItem[];
+  allocationByInstitution: PortfolioDiagnosticsAllocationItem[];
+  allocationByAccount: PortfolioDiagnosticsAllocationItem[];
+  topHoldings: PortfolioDiagnosticsTopHolding[];
+  concentration: {
+    topHoldingWeight: number;
+    topInstitutionWeight: number;
+    employerStockWeight: number;
+  };
+  dataHealth: {
+    status: 'fresh' | 'stale' | 'incomplete';
+    staleSourceIds: string[];
+    missingSourceAccountPositionCount: number;
+    hasBaselineSnapshot: boolean;
+  };
+  postureSummary: {
+    cashRatio: number;
+    cryptoRatio: number;
+    topHoldingWeight: number;
+    topInstitutionWeight: number;
+    dataHealthStatus: 'fresh' | 'stale' | 'incomplete';
+    flags: PortfolioDiagnosticsFlag[];
+  };
+  flags: PortfolioDiagnosticsFlag[];
+}

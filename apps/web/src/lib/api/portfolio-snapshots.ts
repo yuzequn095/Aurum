@@ -1,6 +1,7 @@
 import type {
   PortfolioSnapshot,
   PortfolioSnapshotDelta,
+  PortfolioDiagnostics,
   PortfolioSnapshotLineage,
 } from '@aurum/core';
 import { apiGet, apiPost } from '@/lib/api';
@@ -29,4 +30,8 @@ export async function getPortfolioSnapshotDelta(
 ): Promise<PortfolioSnapshotDelta> {
   const qs = new URLSearchParams({ compareTo });
   return apiGet<PortfolioSnapshotDelta>(`/v1/portfolio-snapshots/${id}/delta?${qs.toString()}`);
+}
+
+export async function getPortfolioSnapshotDiagnostics(id: string): Promise<PortfolioDiagnostics> {
+  return apiGet<PortfolioDiagnostics>(`/v1/portfolio-snapshots/${id}/diagnostics`);
 }

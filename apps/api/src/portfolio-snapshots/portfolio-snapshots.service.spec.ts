@@ -437,4 +437,232 @@ describe('PortfolioSnapshotsService', () => {
       },
     });
   });
+
+  it('computes portfolio diagnostics allocations, top holdings, and concentration flags', async () => {
+    const staleDate = new Date('2026-03-01T00:00:00.000Z');
+    const diagnosticSnapshot = {
+      ...baseSnapshotRecord,
+      totalValue: 2000,
+      cashValue: 800,
+      positions: [
+        {
+          ...baseSnapshotRecord.positions[0],
+          id: 'position_rsu',
+          assetKey: 'symbol:ACME',
+          symbol: 'ACME',
+          name: 'Acme RSU',
+          marketValue: 800,
+          sourceAccountId: 'account_rsu',
+        },
+        {
+          ...baseSnapshotRecord.positions[1],
+          id: 'position_cash',
+          marketValue: 800,
+          sourceAccountId: 'account_cash',
+        },
+        {
+          ...baseSnapshotRecord.positions[0],
+          id: 'position_crypto',
+          assetKey: 'symbol:BTC',
+          symbol: 'BTC',
+          name: 'Bitcoin',
+          marketValue: 400,
+          category: 'CRYPTO',
+          sourceAccountId: 'account_crypto',
+        },
+        {
+          ...baseSnapshotRecord.positions[0],
+          id: 'position_unknown',
+          assetKey: 'manual:unknown',
+          symbol: null,
+          name: 'Private Asset',
+          marketValue: 0,
+          category: 'OTHER',
+          sourceAccountId: null,
+        },
+      ],
+      source: null,
+    };
+    const source = {
+      id: 'source_rsu',
+      userId: 'user_1',
+      kind: 'MANUAL_STATIC',
+      providerKey: null,
+      providerConnectionId: null,
+      displayName: 'RSU',
+      status: 'ACTIVE',
+      institutionName: 'RSU',
+      baseCurrency: 'USD',
+      metadata: { institutionKey: 'rsu' },
+      lastSuccessfulSyncAt: staleDate,
+      createdAt: staleDate,
+      updatedAt: staleDate,
+    };
+    const prisma = {
+      portfolioSnapshotRecord: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(diagnosticSnapshot)
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null),
+      },
+      connectedSourceAccountRecord: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'account_rsu',
+            sourceId: 'source_rsu',
+            externalAccountId: null,
+            displayName: 'RSU',
+            officialName: null,
+            accountType: 'RSU',
+            currency: 'USD',
+            assetType: 'EQUITY',
+            assetSubType: 'employer_rsu',
+            institutionOrIssuer: 'RSU',
+            maskLast4: null,
+            isActive: true,
+            metadata: { employerStockCandidate: true },
+            createdAt: staleDate,
+            updatedAt: staleDate,
+            source,
+          },
+          {
+            id: 'account_cash',
+            sourceId: 'source_rsu',
+            externalAccountId: null,
+            displayName: 'Cash',
+            officialName: null,
+            accountType: 'Cash',
+            currency: 'USD',
+            assetType: 'CASH',
+            assetSubType: 'cash',
+            institutionOrIssuer: 'RSU',
+            maskLast4: null,
+            isActive: true,
+            metadata: null,
+            createdAt: staleDate,
+            updatedAt: staleDate,
+            source,
+          },
+          {
+            id: 'account_crypto',
+            sourceId: 'source_coinbase',
+            externalAccountId: null,
+            displayName: 'Crypto',
+            officialName: null,
+            accountType: 'Crypto',
+            currency: 'USD',
+            assetType: 'CRYPTO',
+            assetSubType: 'crypto_wallet',
+            institutionOrIssuer: 'Coinbase',
+            maskLast4: null,
+            isActive: true,
+            metadata: null,
+            createdAt: staleDate,
+            updatedAt: staleDate,
+            source: {
+              ...source,
+              id: 'source_coinbase',
+              displayName: 'Coinbase',
+              institutionName: 'Coinbase',
+              metadata: { institutionKey: 'coinbase' },
+            },
+          },
+        ]),
+      },
+    };
+    const service = new PortfolioSnapshotsService(
+      prisma as unknown as PrismaService,
+    );
+
+    const diagnostics = await service.getSnapshotDiagnostics(
+      'snapshot_current',
+      'user_1',
+    );
+
+    expect(diagnostics).toMatchObject({
+      snapshotId: 'snapshot_current',
+      totalValue: 2000,
+      concentration: {
+        topHoldingWeight: 0.4,
+        topInstitutionWeight: 0.8,
+        employerStockWeight: 0.4,
+      },
+      dataHealth: {
+        status: 'incomplete',
+        missingSourceAccountPositionCount: 1,
+        hasBaselineSnapshot: false,
+      },
+    });
+    expect(diagnostics?.allocationByAssetCategory).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'cash', value: 800, weight: 0.4 }),
+        expect.objectContaining({ key: 'crypto', value: 400, weight: 0.2 }),
+      ]),
+    );
+    expect(diagnostics?.allocationByInstitution).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: 'RSU', value: 1600, weight: 0.8 }),
+        expect.objectContaining({ label: 'Coinbase', value: 400, weight: 0.2 }),
+      ]),
+    );
+    expect(diagnostics?.allocationByAccount).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: 'Unknown', value: 0, weight: 0 }),
+      ]),
+    );
+    expect(diagnostics?.topHoldings[0]).toMatchObject({
+      assetKey: 'symbol:ACME',
+      weight: 0.4,
+      sourceAccountName: 'RSU',
+    });
+    expect(diagnostics?.flags.map((flag) => flag.code)).toEqual(
+      expect.arrayContaining([
+        'high_cash',
+        'high_crypto',
+        'high_single_name_concentration',
+        'high_institution_concentration',
+        'high_employer_stock_concentration',
+        'stale_data',
+        'missing_valuation',
+        'no_baseline_snapshot',
+      ]),
+    );
+  });
+
+  it('keeps diagnostics safe for zero-value snapshots', async () => {
+    const zeroSnapshot = {
+      ...baseSnapshotRecord,
+      totalValue: 0,
+      cashValue: 0,
+      positions: [
+        {
+          ...baseSnapshotRecord.positions[0],
+          marketValue: 0,
+          sourceAccountId: null,
+        },
+      ],
+      source: null,
+    };
+    const prisma = {
+      portfolioSnapshotRecord: {
+        findFirst: jest.fn().mockResolvedValueOnce(zeroSnapshot),
+      },
+      connectedSourceAccountRecord: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const service = new PortfolioSnapshotsService(
+      prisma as unknown as PrismaService,
+    );
+
+    const diagnostics = await service.getSnapshotDiagnostics(
+      'snapshot_current',
+      'user_1',
+    );
+
+    expect(diagnostics?.allocationByAssetCategory[0]?.weight).toBe(0);
+    expect(diagnostics?.concentration.topHoldingWeight).toBe(0);
+    expect(diagnostics?.postureSummary.cashRatio).toBe(0);
+  });
 });

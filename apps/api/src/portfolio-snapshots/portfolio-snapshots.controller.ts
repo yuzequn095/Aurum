@@ -12,6 +12,7 @@ import {
 import type {
   PortfolioSnapshot,
   PortfolioSnapshotDelta,
+  PortfolioDiagnostics,
   PortfolioSnapshotLineage,
 } from '@aurum/core';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -81,6 +82,22 @@ export class PortfolioSnapshotsController {
     }
 
     return delta;
+  }
+
+  @Get(':id/diagnostics')
+  async getDiagnostics(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ): Promise<PortfolioDiagnostics> {
+    const diagnostics = await this.service.getSnapshotDiagnostics(
+      id,
+      user.userId,
+    );
+    if (!diagnostics) {
+      throw new NotFoundException('Portfolio snapshot not found');
+    }
+
+    return diagnostics;
   }
 
   @Delete(':id')
