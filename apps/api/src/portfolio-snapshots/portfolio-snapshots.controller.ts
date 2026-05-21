@@ -6,9 +6,14 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import type { PortfolioSnapshot } from '@aurum/core';
+import type {
+  PortfolioSnapshot,
+  PortfolioSnapshotDelta,
+  PortfolioSnapshotLineage,
+} from '@aurum/core';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -45,6 +50,37 @@ export class PortfolioSnapshotsController {
     }
 
     return snapshot;
+  }
+
+  @Get(':id/lineage')
+  async getLineage(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ): Promise<PortfolioSnapshotLineage> {
+    const lineage = await this.service.getSnapshotLineage(id, user.userId);
+    if (!lineage) {
+      throw new NotFoundException('Portfolio snapshot not found');
+    }
+
+    return lineage;
+  }
+
+  @Get(':id/delta')
+  async getDelta(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Query('compareTo') compareTo: 'previous' = 'previous',
+  ): Promise<PortfolioSnapshotDelta> {
+    const delta = await this.service.getSnapshotDelta(
+      id,
+      compareTo,
+      user.userId,
+    );
+    if (!delta) {
+      throw new NotFoundException('Portfolio snapshot not found');
+    }
+
+    return delta;
   }
 
   @Delete(':id')

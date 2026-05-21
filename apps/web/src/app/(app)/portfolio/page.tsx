@@ -9,6 +9,7 @@ import type {
   ConnectedFinanceOverview,
   ConnectedFinanceHealthStatus,
   ManualStaticValuation,
+  PortfolioSnapshotDelta,
   PortfolioAssetCategory,
   PortfolioSnapshot,
 } from '@aurum/core';
@@ -30,7 +31,7 @@ import {
   listManualStaticValuations,
   materializeManualStaticSnapshot,
 } from '@/lib/api/connected-finance';
-import { listPortfolioSnapshots } from '@/lib/api/portfolio-snapshots';
+import { getPortfolioSnapshotDelta, listPortfolioSnapshots } from '@/lib/api/portfolio-snapshots';
 
 const assetTypeOptions: PortfolioAssetCategory[] = [
   'cash',
@@ -180,6 +181,7 @@ export default function PortfolioPage() {
   const [sourceSnapshots, setSourceSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [allSnapshots, setAllSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [overview, setOverview] = useState<ConnectedFinanceOverview | null>(null);
+  const [snapshotDelta, setSnapshotDelta] = useState<PortfolioSnapshotDelta | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [isLoadingSources, setIsLoadingSources] = useState(false);
   const [isSubmittingSource, setIsSubmittingSource] = useState(false);
@@ -307,6 +309,17 @@ export default function PortfolioPage() {
   useEffect(() => {
     void loadValuationsForAccount(selectedAccountId);
   }, [selectedAccountId]);
+
+  useEffect(() => {
+    if (!latestSnapshot?.id) {
+      setSnapshotDelta(null);
+      return;
+    }
+
+    getPortfolioSnapshotDelta(latestSnapshot.id)
+      .then(setSnapshotDelta)
+      .catch(() => setSnapshotDelta(null));
+  }, [latestSnapshot?.id]);
 
   const onCreateSource = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -761,6 +774,87 @@ export default function PortfolioPage() {
                     </p>
                   </div>
                 ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>What Changed</CardTitle>
+              <CardDescription>
+                Delta from the previous snapshot, using market value as the comparison anchor.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              {!latestSnapshot ? (
+                <p className="text-[var(--aurum-text-muted)]">
+                  Create a snapshot to compare portfolio changes.
+                </p>
+              ) : !snapshotDelta ? (
+                <p className="text-[var(--aurum-text-muted)]">Snapshot delta is loading.</p>
+              ) : snapshotDelta.baselineStatus === 'no_baseline' ? (
+                <p className="text-[var(--aurum-text-muted)]">
+                  No earlier snapshot is available for comparison yet.
+                </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-3">
+                      <p className="text-xs uppercase tracking-wide text-[var(--aurum-text-muted)]">
+                        Total Change
+                      </p>
+                      <p className="mt-1 font-semibold text-[var(--aurum-text)]">
+                        {formatMoney(
+                          snapshotDelta.totalValueDelta,
+                          latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                        )}
+                      </p>
+                    </div>
+                    <div className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-3">
+                      <p className="text-xs uppercase tracking-wide text-[var(--aurum-text-muted)]">
+                        Cash Change
+                      </p>
+                      <p className="mt-1 font-semibold text-[var(--aurum-text)]">
+                        {formatMoney(
+                          snapshotDelta.cashValueDelta,
+                          latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {snapshotDelta.positionDeltas.slice(0, 5).map((item) => (
+                      <div
+                        key={`${item.sourceAccountId ?? 'unknown'}-${item.assetKey}`}
+                        className="rounded-[12px] border border-[var(--aurum-border)] bg-white px-3 py-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="font-medium text-[var(--aurum-text)]">
+                            {item.symbol ?? item.name ?? item.assetKey}
+                          </p>
+                          <Badge
+                            variant={
+                              item.changeType === 'added' || item.changeType === 'increased'
+                                ? 'good'
+                                : item.changeType === 'removed' || item.changeType === 'decreased'
+                                  ? 'warn'
+                                  : 'neutral'
+                            }
+                          >
+                            {formatSourceType(item.changeType)}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-xs text-[var(--aurum-text-muted)]">
+                          {item.sourceAccountName ?? 'Unknown account'} |{' '}
+                          {formatMoney(
+                            item.marketValueDelta,
+                            latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                          )}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
