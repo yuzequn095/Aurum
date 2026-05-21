@@ -58,6 +58,7 @@ The asset layer, built around:
 - source accounts and sync runs
 - canonical snapshots
 - snapshot library and source/account maintenance
+- institution health, snapshot delta, and deterministic diagnostics
 
 Portfolio is not just a holdings table. It is the upstream context provider for downstream analysis.
 

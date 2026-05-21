@@ -88,6 +88,8 @@ Connected-finance modules handle:
 - provider secret storage
 - provider-specific connect and sync foundations
 - manual-static valuation history
+- institution-aware manual presets
+- connected-finance overview and source health
 
 These flows materialize canonical snapshots rather than bypassing them.
 
@@ -98,6 +100,8 @@ These flows materialize canonical snapshots rather than bypassing them.
 This module is responsible for:
 
 - snapshot create/list/get/delete
+- snapshot lineage and previous-snapshot delta
+- deterministic diagnostics for allocation, concentration, and data health
 - snapshot ownership scoping
 - lifecycle protection when downstream artifacts exist
 

@@ -210,6 +210,8 @@ Normalization rule:
 
 - provider or manual-static inputs are normalized into canonical `PortfolioSnapshot` records
 - downstream AI reports and financial health scores consume snapshots rather than provider payloads directly
+- institution-aware manual presets still use `ConnectedSource` and `ConnectedSourceAccount`; no separate Institution table is required
+- snapshot lineage, delta, and diagnostics are derived from `PortfolioSnapshot` plus connected source/account context
 
 ---
 

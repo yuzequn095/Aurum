@@ -27,6 +27,7 @@ This document serves as both a product overview and developer reference for Auru
 - [What Milestone 12 Changed](#what-milestone-12-changed)
 - [What Milestone 13 Changed](#what-milestone-13-changed)
 - [What Milestone 14 Changed](#what-milestone-14-changed)
+- [What Milestone 15 Changed](#what-milestone-15-changed)
 - [Current Architecture](#current-architecture)
 - [Long-term Vision](#long-term-vision)
 - [Architecture Documents](#architecture-documents)
@@ -223,20 +224,20 @@ Mobile is intentionally not a separate route tree. The same product surfaces ada
 
 ## Current Status
 
-Milestones 1-14 are now complete at the foundation-plus-productization level. Milestone 14 delivered the Experience Layer on top of the Milestone 11 snapshot-driven analysis architecture, Milestone 12 connected-finance ingestion foundation, and Milestone 13 AI Product Layer.
+Milestones 1-15 are now complete at the foundation-plus-productization level. Milestone 15 expands connected-finance depth and portfolio diagnostics on top of the Milestone 11 snapshot-driven analysis architecture, Milestone 12 connected-finance ingestion foundation, Milestone 13 AI Product Layer, and Milestone 14 Experience Layer.
 
 - Platform status:
   monorepo, API, web, auth, ledger, taxonomy, analytics, import/export, and dashboard foundations are stable.
 - Connected-finance status:
-  connected sources, source accounts, sync runs, encrypted provider secret storage, and lineage-aware `PortfolioSnapshot` materialization are implemented.
+  connected sources, source accounts, sync runs, encrypted provider secret storage, manual institution presets, overview health, and lineage-aware `PortfolioSnapshot` materialization are implemented.
 - AI product status:
   AI Insights is now organized into Reports, Analysis, Planning, and Conversations with entitlement-aware create/save/reply paths and historical read preservation.
 - Manual/no-key status:
   AI Workbench can prepare and inspect preset prompt packs without API keys, and Quick Chat can fall back cleanly when no live provider is available.
 - Experience status:
-  Home, Portfolio, Transactions, AI Insights, Settings, Login/Register, desktop shell, mobile bottom nav, and command menu have been productized into a coherent day-to-day web experience.
+  Home, Portfolio, Transactions, AI Insights, Settings, Login/Register, desktop shell, mobile bottom nav, and command menu have been productized into a coherent day-to-day web experience with connected-finance status and portfolio depth visible where relevant.
 - Current execution focus:
-  the next major product direction is connected-finance depth, portfolio modeling, and advanced AI automation rather than more Milestone 14 foundation cleanup.
+  the next major product direction is advanced AI automation, reconciliation, and planning depth rather than execution-layer financial actions.
 
 ## Milestone Summary
 
@@ -252,8 +253,8 @@ Milestones 1-14 are now complete at the foundation-plus-productization level. Mi
 | 12 | Connected Finance & Real Ingestion | Done | Connected source foundation, source accounts, sync runs, snapshot lineage and ingestion hardening, manual static accounts with valuation history, Plaid bank foundation, SnapTrade brokerage holdings foundation, Coinbase crypto foundation, and provider-aware fallback guidance to Manual Create when backend provider config is missing. |
 | 13 | AI Product Layer | Done | Artifact ownership hardening, entitlement foundation, saved conversations, Quick Chat to Save to Conversations, AI Insights IA productization, Monthly Financial Review, Daily Market Brief, first-class analysis workflows, and preset prompt pack expansion. |
 | 14 | Experience Layer / Productization | Done | Product structure cleanup, desktop polish, mobile page-level productization, command menu refinement, visual polish, and final cross-surface acceptance review. |
-| 15 | Connected Finance Expansion / Portfolio Depth | Future | Richer holdings and institution modeling, sync hardening, reconciliation, and deeper asset modeling. |
-| 16 | Advanced AI / Automation | Future | Scheduled delivery, richer memory/orchestration, proactive alerts, and deeper planning/budgeting/goals workflows. |
+| 15 | Connected Finance Expansion / Portfolio Depth | Done | Institution-aware manual presets, connected-finance overview health, snapshot lineage/delta APIs, deterministic portfolio diagnostics, demo data, and validation docs. |
+| 16 | Advanced AI / Automation | Future | Scheduled delivery, richer report orchestration, proactive alerts, reconciliation depth, and deeper planning/budgeting/goals workflows. |
 
 **Milestone 11 delivered:**
 
@@ -374,6 +375,24 @@ After Milestone 14, Aurum is usable as a coherent day-to-day product surface for
 - Some secondary Transactions category/account creation and destructive confirmation flows still use native browser prompt/confirm dialogs.
 - Provider integrations remain foundation-level and require environment credentials for full connected-finance behavior.
 - Planning slots in AI Insights are reserved until budget/goal workflow backends are intentionally built.
+
+## What Milestone 15 Changed
+
+Milestone 15 = **Connected Finance Expansion / Portfolio Depth**.
+
+- Added institution-aware manual presets for Wells Fargo, SoFi, Webull, Tiger Brokers, Fidelity, Coinbase, and RSU using existing `ConnectedSourceRecord` and `ConnectedSourceAccountRecord` tables.
+- Added `POST /v1/connected-finance/manual-institutions` for read-only/manual institution creation with duplicate protection by `metadata.institutionKey`.
+- Added `GET /v1/connected-finance/overview` with institution health, last synced state, stale/attention status, account counts, latest source snapshot, and summary counts.
+- Added snapshot lineage and delta APIs: `GET /v1/portfolio-snapshots/:id/lineage` and `GET /v1/portfolio-snapshots/:id/delta?compareTo=previous`.
+- Added deterministic diagnostics at `GET /v1/portfolio-snapshots/:id/diagnostics` covering allocation, institution/account exposure, concentration, data health, and flags.
+- Integrated overview, delta, and diagnostics into Portfolio, with a small Settings institution summary.
+- Extended local seed data for `demo@aurum.local` / `password123` with manual institutions, valuation history, source snapshots, and consolidated demo snapshots.
+
+### What Milestone 15 Is Not
+
+- not payments, transfers, trading, wallet execution, staking, KYC, compliance, or tax-lot accounting
+- not a service split or provider writeback layer
+- not a full investment advice engine or AI-generated recommendation layer
 
 ## Current Architecture
 
@@ -684,6 +703,8 @@ This section is a curated reference for the main product routes, not an exhausti
 | `/v1/analytics/summary-series` | GET | Yes | Monthly summary series (`months`, `endYear`, `endMonth`) ordered oldest -> newest. |
 | `/v1/analytics/category-breakdown` | GET | Yes | Monthly expense breakdown by category. |
 | `/v1/ai/monthly-report` | GET | Yes | Monthly AI report payload with generated insights. |
+| `/v1/connected-finance/overview` | GET | Yes | Connected/manual institution overview with health, accounts, latest sync, and latest snapshot context. |
+| `/v1/connected-finance/manual-institutions` | POST | Yes | Create a preset manual institution and its accounts. |
 | `/v1/connected-finance/sources` | GET / POST | Yes | List or create connected-finance sources for the current user. |
 | `/v1/connected-finance/sources/:id` | GET / PATCH | Yes | Get or update a current-user connected source. |
 | `/v1/connected-finance/sources/:id/accounts` | GET / POST | Yes | List or create source accounts for a user-owned source. |
@@ -701,6 +722,9 @@ This section is a curated reference for the main product routes, not an exhausti
 | `/v1/portfolio-snapshots` | POST | Yes | Create canonical portfolio snapshot with nested positions. |
 | `/v1/portfolio-snapshots` | GET | Yes | List persisted portfolio snapshots (newest first). |
 | `/v1/portfolio-snapshots/:id` | GET | Yes | Get single portfolio snapshot by id. |
+| `/v1/portfolio-snapshots/:id/lineage` | GET | Yes | Get snapshot source, sync run, accounts, and positions with account context. |
+| `/v1/portfolio-snapshots/:id/delta` | GET | Yes | Compare a snapshot to the previous baseline. |
+| `/v1/portfolio-snapshots/:id/diagnostics` | GET | Yes | Get deterministic allocation, concentration, and data health diagnostics. |
 | `/v1/portfolio-snapshots/:id` | DELETE | Yes | Delete snapshot if no linked persisted reports (409 when blocked). |
 | `/v1/entitlements/me` | GET | Yes | Get current user's effective AI entitlements and historical-read flags. |
 | `/v1/ai/quick-chat` | POST | Yes | Run temporary Quick Chat with optional snapshot/report/score context. |
