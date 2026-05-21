@@ -1,4 +1,4 @@
-import type { PortfolioAssetCategory } from './types';
+import type { PortfolioAssetCategory, PortfolioSnapshot } from './types';
 
 export const connectedSourceKinds = ['MANUAL_STATIC', 'BANK', 'BROKERAGE', 'CRYPTO'] as const;
 
@@ -35,21 +35,13 @@ export const portfolioSnapshotIngestionModes = [
 
 export type PortfolioSnapshotIngestionMode = (typeof portfolioSnapshotIngestionModes)[number];
 
-export const connectedFinanceProviderKeys = [
-  'PLAID',
-  'COINBASE',
-  'SNAPTRADE',
-] as const;
+export const connectedFinanceProviderKeys = ['PLAID', 'COINBASE', 'SNAPTRADE'] as const;
 
-export type ConnectedFinanceProviderKey =
-  (typeof connectedFinanceProviderKeys)[number];
+export type ConnectedFinanceProviderKey = (typeof connectedFinanceProviderKeys)[number];
 
-export const connectedFinanceErrorCodes = [
-  'PROVIDER_NOT_CONFIGURED',
-] as const;
+export const connectedFinanceErrorCodes = ['PROVIDER_NOT_CONFIGURED'] as const;
 
-export type ConnectedFinanceErrorCode =
-  (typeof connectedFinanceErrorCodes)[number];
+export type ConnectedFinanceErrorCode = (typeof connectedFinanceErrorCodes)[number];
 
 export interface ConnectedFinanceProviderErrorDetails {
   statusCode?: number;
@@ -67,18 +59,15 @@ export function getProviderNotConfiguredGuidance(
 
   return {
     title: `${providerLabel} is not configured yet`,
-    body:
-      'This environment does not have the required backend credentials configured for this provider. For now, use Manual Create in Manual Static Accounts to add assets or accounts manually.',
+    body: 'This environment does not have the required backend credentials configured for this provider. For now, use Manual Create in Manual Static Accounts to add assets or accounts manually.',
   };
 }
 
-export function parseProviderNotConfiguredDetails(
-  details: unknown,
-): ({
+export function parseProviderNotConfiguredDetails(details: unknown): {
   provider: Extract<ConnectedFinanceProviderKey, 'PLAID' | 'COINBASE'>;
   title: string;
   body: string;
-} | null) {
+} | null {
   if (!details || typeof details !== 'object') {
     return null;
   }
@@ -150,6 +139,41 @@ export interface ConnectedSyncRun {
   metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
+}
+
+export type ConnectedFinanceHealthStatus =
+  | 'fresh'
+  | 'stale'
+  | 'needs_attention'
+  | 'never_synced'
+  | 'disconnected';
+
+export interface ConnectedFinanceSourceHealth {
+  status: ConnectedFinanceHealthStatus;
+  lastSuccessfulSyncAt?: string;
+  latestSyncStatus?: ConnectedSyncStatus;
+  staleReason?: string;
+  recommendedAction?: string;
+}
+
+export interface ConnectedFinanceOverviewSource {
+  source: ConnectedSource;
+  accounts: ConnectedSourceAccount[];
+  latestSyncRun?: ConnectedSyncRun;
+  latestSnapshot?: PortfolioSnapshot;
+  health: ConnectedFinanceSourceHealth;
+}
+
+export interface ConnectedFinanceOverview {
+  sources: ConnectedFinanceOverviewSource[];
+  summary: {
+    sourceCount: number;
+    accountCount: number;
+    staleSourceCount: number;
+    needsAttentionCount: number;
+    latestSnapshotId?: string;
+    latestSnapshotDate?: string;
+  };
 }
 
 export interface NormalizedConnectedSourceAccountInput {

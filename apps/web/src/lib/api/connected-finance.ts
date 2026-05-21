@@ -5,6 +5,7 @@ import type {
   BrokerageConnectionPortalResult,
   BrokerageSourceImportResult,
   BrokerageSyncMaterializationResult,
+  ConnectedFinanceOverview,
   ConnectedSource,
   ConnectedSourceAccount,
   CryptoSourceConnectionResult,
@@ -87,6 +88,10 @@ export async function listConnectedSources(
 
   const suffix = qs.size > 0 ? `?${qs.toString()}` : '';
   return apiGet<ConnectedSource[]>(`/v1/connected-finance/sources${suffix}`);
+}
+
+export async function getConnectedFinanceOverview(): Promise<ConnectedFinanceOverview> {
+  return apiGet<ConnectedFinanceOverview>('/v1/connected-finance/overview');
 }
 
 export async function createConnectedSource(

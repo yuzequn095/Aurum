@@ -9,6 +9,8 @@ import type {
   CryptoSyncMaterializationResult,
   ConnectedSource,
   ConnectedSourceAccount,
+  ConnectedFinanceOverview,
+  ConnectedFinanceSourceHealth,
   ConnectedSyncRun,
   ManualInstitutionCreationResult,
   ManualStaticSnapshotMaterializationResult,
@@ -71,6 +73,18 @@ type OwnedSourceAccountRecord = Prisma.ConnectedSourceAccountRecordGetPayload<{
 
 type SourceSnapshotRecord = Prisma.PortfolioSnapshotRecordGetPayload<{
   include: { positions: true };
+}>;
+
+type SourceOverviewRecord = Prisma.ConnectedSourceRecordGetPayload<{
+  include: {
+    accounts: true;
+    syncRuns: true;
+    snapshots: {
+      include: {
+        positions: true;
+      };
+    };
+  };
 }>;
 
 function mapMetadata(
@@ -202,6 +216,78 @@ function hasMetadataInstitutionKey(
   return mapMetadata(record.metadata)?.institutionKey === institutionKey;
 }
 
+const CONNECTED_FINANCE_STALE_THRESHOLD_DAYS = 7;
+
+function buildConnectedFinanceHealth(input: {
+  source: ConnectedSourceRecord;
+  latestSyncRun?: ConnectedSyncRunRecord;
+  latestSnapshot?: SourceSnapshotRecord;
+  now?: Date;
+}): ConnectedFinanceSourceHealth {
+  if (input.source.status === 'DISCONNECTED') {
+    return {
+      status: 'disconnected',
+      lastSuccessfulSyncAt: input.source.lastSuccessfulSyncAt?.toISOString(),
+      latestSyncStatus: input.latestSyncRun?.status,
+      recommendedAction:
+        'Reconnect this institution when you want it included again.',
+    };
+  }
+
+  if (
+    input.source.status === 'NEEDS_ATTENTION' ||
+    input.latestSyncRun?.status === 'FAILED'
+  ) {
+    return {
+      status: 'needs_attention',
+      lastSuccessfulSyncAt: input.source.lastSuccessfulSyncAt?.toISOString(),
+      latestSyncStatus: input.latestSyncRun?.status,
+      staleReason:
+        input.latestSyncRun?.errorMessage ?? 'Latest sync needs attention.',
+      recommendedAction:
+        'Review the institution connection and try syncing again.',
+    };
+  }
+
+  if (!input.source.lastSuccessfulSyncAt || !input.latestSnapshot) {
+    return {
+      status: 'never_synced',
+      lastSuccessfulSyncAt: input.source.lastSuccessfulSyncAt?.toISOString(),
+      latestSyncStatus: input.latestSyncRun?.status,
+      staleReason:
+        'No portfolio snapshot has been created from this institution yet.',
+      recommendedAction:
+        input.source.kind === 'MANUAL_STATIC'
+          ? 'Add valuations and create a snapshot.'
+          : 'Run a sync to create the first snapshot.',
+    };
+  }
+
+  const now = input.now ?? new Date();
+  const ageMs = now.getTime() - input.source.lastSuccessfulSyncAt.getTime();
+  const thresholdMs =
+    CONNECTED_FINANCE_STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
+  if (ageMs > thresholdMs) {
+    return {
+      status: 'stale',
+      lastSuccessfulSyncAt: input.source.lastSuccessfulSyncAt.toISOString(),
+      latestSyncStatus: input.latestSyncRun?.status,
+      staleReason: `Last synced more than ${CONNECTED_FINANCE_STALE_THRESHOLD_DAYS} days ago.`,
+      recommendedAction:
+        input.source.kind === 'MANUAL_STATIC'
+          ? 'Refresh valuations and create a new snapshot.'
+          : 'Sync this institution to refresh its data.',
+    };
+  }
+
+  return {
+    status: 'fresh',
+    lastSuccessfulSyncAt: input.source.lastSuccessfulSyncAt.toISOString(),
+    latestSyncStatus: input.latestSyncRun?.status,
+    recommendedAction: 'No action needed.',
+  };
+}
+
 function mapValuationRecord(
   record: ManualStaticValuationRecord,
 ): ManualStaticValuation {
@@ -301,6 +387,92 @@ export class ConnectedFinanceService {
     });
 
     return records.map(mapSourceRecord);
+  }
+
+  async getOverview(userId: string): Promise<ConnectedFinanceOverview> {
+    const [records, latestSnapshot] = await Promise.all([
+      this.prisma.connectedSourceRecord.findMany({
+        where: {
+          userId,
+          status: {
+            not: 'ARCHIVED',
+          },
+        },
+        orderBy: [{ createdAt: 'desc' }],
+        include: {
+          accounts: {
+            orderBy: [{ createdAt: 'asc' }],
+          },
+          syncRuns: {
+            orderBy: [{ createdAt: 'desc' }],
+            take: 1,
+          },
+          snapshots: {
+            orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
+            take: 1,
+            include: {
+              positions: {
+                orderBy: [{ marketValue: 'desc' }, { assetKey: 'asc' }],
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.portfolioSnapshotRecord.findFirst({
+        where: { userId },
+        orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
+        include: {
+          positions: {
+            orderBy: [{ marketValue: 'desc' }, { assetKey: 'asc' }],
+          },
+        },
+      }),
+    ]);
+
+    const sources = (records as SourceOverviewRecord[]).map((record) => {
+      const latestSyncRun = record.syncRuns[0];
+      const latestSourceSnapshot = record.snapshots[0] as
+        | SourceSnapshotRecord
+        | undefined;
+
+      return {
+        source: mapSourceRecord(record),
+        accounts: record.accounts.map(mapSourceAccountRecord),
+        latestSyncRun: latestSyncRun
+          ? mapSyncRunRecord(latestSyncRun)
+          : undefined,
+        latestSnapshot: latestSourceSnapshot
+          ? mapPortfolioSnapshotRecordToSnapshot(latestSourceSnapshot)
+          : undefined,
+        health: buildConnectedFinanceHealth({
+          source: record,
+          latestSyncRun,
+          latestSnapshot: latestSourceSnapshot,
+        }),
+      };
+    });
+
+    return {
+      sources,
+      summary: {
+        sourceCount: sources.length,
+        accountCount: sources.reduce(
+          (count, source) => count + source.accounts.length,
+          0,
+        ),
+        staleSourceCount: sources.filter(
+          (source) => source.health.status === 'stale',
+        ).length,
+        needsAttentionCount: sources.filter((source) =>
+          ['needs_attention', 'disconnected'].includes(source.health.status),
+        ).length,
+        latestSnapshotId: latestSnapshot?.id,
+        latestSnapshotDate: latestSnapshot
+          ? mapPortfolioSnapshotRecordToSnapshot(latestSnapshot).metadata
+              .snapshotDate
+          : undefined,
+      },
+    };
   }
 
   async createSource(

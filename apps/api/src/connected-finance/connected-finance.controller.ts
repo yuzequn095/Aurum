@@ -16,6 +16,7 @@ import type {
   BrokerageConnectionPortalResult,
   BrokerageSourceImportResult,
   BrokerageSyncMaterializationResult,
+  ConnectedFinanceOverview,
   CryptoSourceConnectionResult,
   CryptoSyncMaterializationResult,
   ConnectedSource,
@@ -52,6 +53,13 @@ export class ConnectedFinanceController {
     @Query() query: ListConnectedSourcesQueryDto,
   ): Promise<ConnectedSource[]> {
     return this.service.listSources(user.userId, query);
+  }
+
+  @Get('overview')
+  async getOverview(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ConnectedFinanceOverview> {
+    return this.service.getOverview(user.userId);
   }
 
   @Post('sources')

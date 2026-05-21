@@ -139,6 +139,7 @@ describe('ConnectedFinanceService', () => {
       },
       portfolioSnapshotRecord: {
         findMany: jest.fn(),
+        findFirst: jest.fn(),
       },
     };
 
@@ -440,6 +441,151 @@ describe('ConnectedFinanceService', () => {
       sourceAccountId: 'account_fidelity_shares',
       marketValue: 12000,
     });
+  });
+
+  it('builds overview health for manual setup, synced manual, failed provider, and stale sources', async () => {
+    const prisma = createPrismaMock();
+    const snapshotService = createSnapshotServiceMock();
+    const now = new Date();
+    const freshSyncDate = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+    const staleSyncDate = new Date(now.getTime() - 12 * 24 * 60 * 60 * 1000);
+    const snapshotRecord = {
+      id: 'snapshot_manual_1',
+      userId: 'user_1',
+      sourceId: 'source_manual_synced',
+      sourceSyncRunId: 'sync_manual_1',
+      ingestionMode: 'MANUAL_STATIC',
+      normalizationVersion: 'manual-static-source-adapter@1.0.0',
+      sourceFingerprint: 'fingerprint',
+      portfolioName: 'Fidelity',
+      sourceType: 'MANUAL',
+      sourceLabel: 'Fidelity',
+      snapshotDate: new Date('2026-03-20T00:00:00.000Z'),
+      valuationCurrency: 'USD',
+      totalValue: 1000,
+      cashValue: 1000,
+      createdAt: new Date('2026-03-20T10:00:00.000Z'),
+      updatedAt: new Date('2026-03-20T10:00:00.000Z'),
+      positions: [
+        {
+          id: 'position_cash',
+          snapshotId: 'snapshot_manual_1',
+          assetKey: 'manual-static:account_cash',
+          symbol: null,
+          name: 'Cash',
+          quantity: null,
+          marketValue: 1000,
+          portfolioWeight: null,
+          costBasis: null,
+          pnlPercent: null,
+          category: 'CASH',
+          sourceAccountId: 'account_cash',
+          notes: null,
+        },
+      ],
+    };
+    const succeededRun = {
+      id: 'sync_manual_1',
+      userId: 'user_1',
+      sourceId: 'source_manual_synced',
+      triggerType: 'MANUAL',
+      status: 'SUCCEEDED',
+      startedAt: freshSyncDate,
+      finishedAt: freshSyncDate,
+      errorCode: null,
+      errorMessage: null,
+      normalizationVersion: 'manual-static-source-adapter@1.0.0',
+      rawPayloadRef: null,
+      producedSnapshotId: 'snapshot_manual_1',
+      metadata: null,
+      createdAt: freshSyncDate,
+      updatedAt: freshSyncDate,
+    };
+    const failedRun = {
+      ...succeededRun,
+      id: 'sync_failed_1',
+      sourceId: 'source_bank_failed',
+      status: 'FAILED',
+      errorMessage: 'Provider credentials need attention.',
+      producedSnapshotId: null,
+    };
+
+    prisma.connectedSourceRecord.findMany.mockResolvedValue([
+      {
+        ...manualSourceRecord,
+        id: 'source_manual_setup',
+        displayName: 'RSU',
+        metadata: { institutionKey: 'rsu' },
+        accounts: [manualAccountRecord],
+        syncRuns: [],
+        snapshots: [],
+      },
+      {
+        ...manualSourceRecord,
+        id: 'source_manual_synced',
+        displayName: 'Fidelity',
+        institutionName: 'Fidelity',
+        lastSuccessfulSyncAt: freshSyncDate,
+        metadata: { institutionKey: 'fidelity' },
+        accounts: [
+          {
+            ...manualAccountRecord,
+            id: 'account_cash',
+            displayName: 'Cash',
+            assetType: 'CASH',
+          },
+        ],
+        syncRuns: [succeededRun],
+        snapshots: [snapshotRecord],
+      },
+      {
+        ...bankSourceRecord,
+        id: 'source_bank_failed',
+        status: 'ACTIVE',
+        accounts: [],
+        syncRuns: [failedRun],
+        snapshots: [],
+      },
+      {
+        ...cryptoSourceRecord,
+        id: 'source_crypto_stale',
+        lastSuccessfulSyncAt: staleSyncDate,
+        accounts: [cryptoAccountRecord],
+        syncRuns: [{ ...succeededRun, sourceId: 'source_crypto_stale' }],
+        snapshots: [
+          {
+            ...snapshotRecord,
+            id: 'snapshot_crypto_stale',
+            sourceId: 'source_crypto_stale',
+          },
+        ],
+      },
+    ]);
+    prisma.portfolioSnapshotRecord.findFirst.mockResolvedValue(snapshotRecord);
+
+    const { service } = createService(prisma, snapshotService);
+
+    const overview = await service.getOverview('user_1');
+
+    expect(overview.summary).toMatchObject({
+      sourceCount: 4,
+      accountCount: 3,
+      staleSourceCount: 1,
+      needsAttentionCount: 1,
+      latestSnapshotId: 'snapshot_manual_1',
+      latestSnapshotDate: '2026-03-20',
+    });
+    expect(
+      overview.sources.map((source) => [
+        source.source.id,
+        source.health.status,
+      ]),
+    ).toEqual([
+      ['source_manual_setup', 'never_synced'],
+      ['source_manual_synced', 'fresh'],
+      ['source_bank_failed', 'needs_attention'],
+      ['source_crypto_stale', 'stale'],
+    ]);
   });
 
   it('cannot append valuation to another user account', async () => {

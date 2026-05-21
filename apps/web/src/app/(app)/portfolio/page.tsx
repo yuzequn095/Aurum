@@ -6,6 +6,8 @@ import Link from 'next/link';
 import type {
   ConnectedSource,
   ConnectedSourceAccount,
+  ConnectedFinanceOverview,
+  ConnectedFinanceHealthStatus,
   ManualStaticValuation,
   PortfolioAssetCategory,
   PortfolioSnapshot,
@@ -21,6 +23,7 @@ import {
   createConnectedSource,
   createConnectedSourceAccount,
   createManualStaticValuation,
+  getConnectedFinanceOverview,
   listConnectedSourceAccounts,
   listConnectedSourceSnapshots,
   listConnectedSources,
@@ -93,6 +96,40 @@ function formatSourceType(value: string | undefined): string {
     .join(' ');
 }
 
+function formatHealthStatus(status: ConnectedFinanceHealthStatus): string {
+  switch (status) {
+    case 'fresh':
+      return 'Active';
+    case 'stale':
+      return 'Stale';
+    case 'needs_attention':
+      return 'Needs attention';
+    case 'never_synced':
+      return 'Needs setup';
+    case 'disconnected':
+      return 'Disconnected';
+    default:
+      return 'Unknown';
+  }
+}
+
+function getHealthBadgeVariant(
+  status: ConnectedFinanceHealthStatus,
+): 'neutral' | 'info' | 'warn' | 'good' | 'error' {
+  switch (status) {
+    case 'fresh':
+      return 'good';
+    case 'stale':
+    case 'never_synced':
+      return 'warn';
+    case 'needs_attention':
+    case 'disconnected':
+      return 'error';
+    default:
+      return 'neutral';
+  }
+}
+
 function getAssetAllocation(snapshot: PortfolioSnapshot | null) {
   if (!snapshot) {
     return [];
@@ -142,6 +179,7 @@ export default function PortfolioPage() {
   const [valuations, setValuations] = useState<ManualStaticValuation[]>([]);
   const [sourceSnapshots, setSourceSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [allSnapshots, setAllSnapshots] = useState<PortfolioSnapshot[]>([]);
+  const [overview, setOverview] = useState<ConnectedFinanceOverview | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [isLoadingSources, setIsLoadingSources] = useState(false);
   const [isSubmittingSource, setIsSubmittingSource] = useState(false);
@@ -207,6 +245,16 @@ export default function PortfolioPage() {
     }
   };
 
+  const loadOverview = async () => {
+    try {
+      setOverview(await getConnectedFinanceOverview());
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : 'Failed to load institution overview.',
+      );
+    }
+  };
+
   const loadAccountsForSource = async (sourceId: string | null) => {
     if (!sourceId) {
       setAccounts([]);
@@ -249,7 +297,7 @@ export default function PortfolioPage() {
   };
 
   useEffect(() => {
-    void Promise.all([loadSources(), loadAllSnapshots()]);
+    void Promise.all([loadSources(), loadAllSnapshots(), loadOverview()]);
   }, []);
 
   useEffect(() => {
@@ -272,7 +320,7 @@ export default function PortfolioPage() {
         institutionName: sourceForm.institutionName.trim() || undefined,
         baseCurrency: sourceForm.baseCurrency.trim() || 'USD',
       });
-      await loadSources();
+      await Promise.all([loadSources(), loadOverview()]);
       setSelectedSourceId(created.id);
       setSourceForm({
         displayName: '',
@@ -306,7 +354,7 @@ export default function PortfolioPage() {
         assetSubType: accountForm.assetSubType.trim() || undefined,
         institutionOrIssuer: accountForm.institutionOrIssuer.trim() || undefined,
       });
-      await loadAccountsForSource(selectedSourceId);
+      await Promise.all([loadAccountsForSource(selectedSourceId), loadOverview()]);
       setSelectedAccountId(created.id);
       setAccountForm({
         displayName: '',
@@ -377,7 +425,11 @@ export default function PortfolioPage() {
         selectedSourceId,
         materializeSnapshotDate.trim() || undefined,
       );
-      await Promise.all([loadAccountsForSource(selectedSourceId), loadAllSnapshots()]);
+      await Promise.all([
+        loadAccountsForSource(selectedSourceId),
+        loadAllSnapshots(),
+        loadOverview(),
+      ]);
       setStatusMessage('Snapshot created and saved to your portfolio history.');
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : 'Failed to create snapshot.');
@@ -419,10 +471,7 @@ export default function PortfolioPage() {
                 >
                   Manage Connections
                 </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => scrollToSection('manual-workspace')}
-                >
+                <Button variant="secondary" onClick={() => scrollToSection('manual-workspace')}>
                   Add Manual Asset
                 </Button>
                 <Link
@@ -507,7 +556,7 @@ export default function PortfolioPage() {
           </CardHeader>
           <CardContent className="pt-0 text-sm text-[var(--aurum-text-muted)]">
             {latestSnapshot
-              ? latestSnapshot.metadata.snapshotDate ?? 'Snapshot date unavailable'
+              ? (latestSnapshot.metadata.snapshotDate ?? 'Snapshot date unavailable')
               : 'Create or sync a first snapshot to activate the portfolio layer.'}
           </CardContent>
         </Card>
@@ -551,6 +600,77 @@ export default function PortfolioPage() {
         </Card>
       </section>
 
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <CardTitle>Institution Overview</CardTitle>
+              <CardDescription>
+                Account coverage, last synced state, and next action for each institution.
+              </CardDescription>
+            </div>
+            {overview ? (
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="info">{overview.summary.sourceCount} institutions</Badge>
+                <Badge variant="neutral">{overview.summary.accountCount} accounts</Badge>
+                {overview.summary.needsAttentionCount > 0 ? (
+                  <Badge variant="error">
+                    {overview.summary.needsAttentionCount} need attention
+                  </Badge>
+                ) : null}
+                {overview.summary.staleSourceCount > 0 ? (
+                  <Badge variant="warn">{overview.summary.staleSourceCount} stale</Badge>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!overview ? (
+            <p className="text-sm text-[var(--aurum-text-muted)]">Institution health is loading.</p>
+          ) : overview.sources.length === 0 ? (
+            <p className="text-sm text-[var(--aurum-text-muted)]">
+              No institutions connected yet. Add a manual institution or connect a read-only
+              provider source below.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {overview.sources.map((item) => (
+                <div
+                  key={item.source.id}
+                  className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-4 text-sm"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-[var(--aurum-text)]">
+                        {item.source.institutionName ?? item.source.displayName}
+                      </p>
+                      <p className="mt-1 text-xs text-[var(--aurum-text-muted)]">
+                        {item.accounts.length} account{item.accounts.length === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                    <Badge variant={getHealthBadgeVariant(item.health.status)}>
+                      {formatHealthStatus(item.health.status)}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-[var(--aurum-text-muted)] sm:grid-cols-2">
+                    <p>Last synced: {formatDateTime(item.health.lastSuccessfulSyncAt)}</p>
+                    <p>
+                      Latest snapshot: {item.latestSnapshot?.metadata.snapshotDate ?? 'Not created'}
+                    </p>
+                  </div>
+                  {item.health.recommendedAction ? (
+                    <p className="mt-3 text-xs text-[var(--aurum-text)]">
+                      {item.health.recommendedAction}
+                    </p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <Card id="snapshot-library" className="scroll-mt-24">
           <CardHeader>
@@ -563,8 +683,8 @@ export default function PortfolioPage() {
           <CardContent className="space-y-3">
             {snapshotInventory.length === 0 ? (
               <p className="text-sm text-[var(--aurum-text-muted)]">
-                No portfolio snapshots found yet. Connect a source or create one from the
-                manual workspace below.
+                No portfolio snapshots found yet. Connect a source or create one from the manual
+                workspace below.
               </p>
             ) : (
               snapshotInventory.slice(0, 6).map((snapshot) => (
@@ -588,7 +708,8 @@ export default function PortfolioPage() {
                   </p>
                   <p className="mt-1 text-xs text-[var(--aurum-text-muted)]">
                     Source:{' '}
-                    {snapshot.metadata.sourceLabel ?? formatSourceType(snapshot.metadata.sourceType)}
+                    {snapshot.metadata.sourceLabel ??
+                      formatSourceType(snapshot.metadata.sourceType)}
                   </p>
                 </div>
               ))
@@ -700,492 +821,497 @@ export default function PortfolioPage() {
             <Badge variant="neutral">Fallback asset maintenance</Badge>
           </div>
           <p className="text-sm text-[var(--aurum-text-muted)]">
-            Use manual sources for assets that should be represented in Aurum even when they are
-            not synced from a provider connection.
+            Use manual sources for assets that should be represented in Aurum even when they are not
+            synced from a provider connection.
           </p>
         </div>
 
-      <div className="space-y-6 rounded-[24px] border border-[var(--aurum-border)] bg-white p-4 sm:p-5">
-      <div className="rounded-[18px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-4 text-sm text-[var(--aurum-text)]">
-        <p className="font-medium">Manual asset flow</p>
-        <p className="mt-1 text-[var(--aurum-text-muted)]">
-          Start by creating a source, then maintain holdings and valuations, and create snapshots
-          when manual assets are ready to feed the broader product.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Manual Source</CardTitle>
-          <CardDescription>
-            Add a manually maintained source for assets that need valuation history outside a live
-            connection.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form onSubmit={onCreateSource} className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <input
-              className={inputClassName}
-              placeholder="Source name"
-              value={sourceForm.displayName}
-              onChange={(event) =>
-                setSourceForm((current) => ({
-                  ...current,
-                  displayName: event.target.value,
-                }))
-              }
-              required
-            />
-            <input
-              className={inputClassName}
-              placeholder="Issuer / institution"
-              value={sourceForm.institutionName}
-              onChange={(event) =>
-                setSourceForm((current) => ({
-                  ...current,
-                  institutionName: event.target.value,
-                }))
-              }
-            />
-            <input
-              className={inputClassName}
-              placeholder="Base currency"
-              value={sourceForm.baseCurrency}
-              onChange={(event) =>
-                setSourceForm((current) => ({
-                  ...current,
-                  baseCurrency: event.target.value.toUpperCase(),
-                }))
-              }
-              maxLength={10}
-            />
-            <Button type="submit" disabled={isSubmittingSource}>
-              {isSubmittingSource ? 'Creating...' : 'Create Manual Source'}
-            </Button>
-          </form>
-
-          {statusMessage ? (
-            <p className="rounded-[10px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-2 text-sm text-[var(--aurum-text)]">
-              {statusMessage}
+        <div className="space-y-6 rounded-[24px] border border-[var(--aurum-border)] bg-white p-4 sm:p-5">
+          <div className="rounded-[18px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-4 text-sm text-[var(--aurum-text)]">
+            <p className="font-medium">Manual asset flow</p>
+            <p className="mt-1 text-[var(--aurum-text-muted)]">
+              Start by creating a source, then maintain holdings and valuations, and create
+              snapshots when manual assets are ready to feed the broader product.
             </p>
-          ) : null}
-        </CardContent>
-      </Card>
+          </div>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Manual Sources</CardTitle>
-            <CardDescription>
-              {isLoadingSources
-                ? 'Loading sources...'
-                : `${sources.length} manual source(s) available.`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-              {sources.length === 0 ? (
-                <p className="text-sm text-[var(--aurum-text-muted)]">No manual sources yet.</p>
-              ) : (
-              sources.map((source) => (
-                <button
-                  key={source.id}
-                  type="button"
-                  onClick={() => setSelectedSourceId(source.id)}
-                  className={`w-full rounded-[12px] border px-3 py-3 text-left text-sm transition ${
-                    source.id === selectedSourceId
-                      ? 'border-[var(--aurum-accent)] bg-[var(--aurum-accent)]/10'
-                      : 'border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] hover:bg-[var(--aurum-surface)]'
-                  }`}
-                >
-                  <p className="font-medium text-[var(--aurum-text)]">{source.displayName}</p>
-                  <p className="text-xs text-[var(--aurum-text-muted)]">
-                    {source.institutionName ?? 'No issuer'} - {source.baseCurrency}
-                  </p>
-                  <p className="text-xs text-[var(--aurum-text-muted)]">
-                    Last sync: {formatDateTime(source.lastSuccessfulSyncAt)}
-                  </p>
-                </button>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Manual Holdings</CardTitle>
+              <CardTitle>Create Manual Source</CardTitle>
               <CardDescription>
-                Create manually maintained asset records that can later contribute to portfolio
-                snapshots.
+                Add a manually maintained source for assets that need valuation history outside a
+                live connection.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {!selectedSource ? (
-                <p className="text-sm text-[var(--aurum-text-muted)]">
-                  Select a manual source to manage holdings.
-                </p>
-              ) : (
-                <>
-                  <form
-                    onSubmit={onCreateAccount}
-                    className="grid grid-cols-1 gap-3 md:grid-cols-3"
-                  >
-                    <input
-                      className={inputClassName}
-                      placeholder="Account display name"
-                      value={accountForm.displayName}
-                      onChange={(event) =>
-                        setAccountForm((current) => ({
-                          ...current,
-                          displayName: event.target.value,
-                        }))
-                      }
-                      required
-                    />
-                    <input
-                      className={inputClassName}
-                      placeholder="Account type"
-                      value={accountForm.accountType}
-                      onChange={(event) =>
-                        setAccountForm((current) => ({
-                          ...current,
-                          accountType: event.target.value,
-                        }))
-                      }
-                      required
-                    />
-                    <select
-                      className={inputClassName}
-                      value={accountForm.assetType}
-                      onChange={(event) =>
-                        setAccountForm((current) => ({
-                          ...current,
-                          assetType: event.target.value as PortfolioAssetCategory,
-                        }))
-                      }
-                    >
-                      {assetTypeOptions.map((assetType) => (
-                        <option key={assetType} value={assetType}>
-                          {assetType}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      className={inputClassName}
-                      placeholder="Asset subtype"
-                      value={accountForm.assetSubType}
-                      onChange={(event) =>
-                        setAccountForm((current) => ({
-                          ...current,
-                          assetSubType: event.target.value,
-                        }))
-                      }
-                    />
-                    <input
-                      className={inputClassName}
-                      placeholder="Institution / issuer"
-                      value={accountForm.institutionOrIssuer}
-                      onChange={(event) =>
-                        setAccountForm((current) => ({
-                          ...current,
-                          institutionOrIssuer: event.target.value,
-                        }))
-                      }
-                    />
-                    <div className="flex gap-3">
-                      <input
-                        className={inputClassName}
-                        placeholder="Currency"
-                        value={accountForm.currency}
-                        onChange={(event) =>
-                          setAccountForm((current) => ({
-                            ...current,
-                            currency: event.target.value.toUpperCase(),
-                          }))
-                        }
-                        maxLength={10}
-                      />
-                      <Button type="submit" disabled={isSubmittingAccount}>
-                        {isSubmittingAccount ? 'Creating...' : 'Add Holding'}
-                      </Button>
-                    </div>
-                  </form>
+              <form onSubmit={onCreateSource} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                <input
+                  className={inputClassName}
+                  placeholder="Source name"
+                  value={sourceForm.displayName}
+                  onChange={(event) =>
+                    setSourceForm((current) => ({
+                      ...current,
+                      displayName: event.target.value,
+                    }))
+                  }
+                  required
+                />
+                <input
+                  className={inputClassName}
+                  placeholder="Issuer / institution"
+                  value={sourceForm.institutionName}
+                  onChange={(event) =>
+                    setSourceForm((current) => ({
+                      ...current,
+                      institutionName: event.target.value,
+                    }))
+                  }
+                />
+                <input
+                  className={inputClassName}
+                  placeholder="Base currency"
+                  value={sourceForm.baseCurrency}
+                  onChange={(event) =>
+                    setSourceForm((current) => ({
+                      ...current,
+                      baseCurrency: event.target.value.toUpperCase(),
+                    }))
+                  }
+                  maxLength={10}
+                />
+                <Button type="submit" disabled={isSubmittingSource}>
+                  {isSubmittingSource ? 'Creating...' : 'Create Manual Source'}
+                </Button>
+              </form>
 
-                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                    {accounts.length === 0 ? (
-                      <p className="text-sm text-[var(--aurum-text-muted)]">
-                        No holdings under this source yet.
-                      </p>
-                    ) : (
-                      accounts.map((account) => (
-                        <button
-                          key={account.id}
-                          type="button"
-                          onClick={() => setSelectedAccountId(account.id)}
-                          className={`rounded-[12px] border px-3 py-3 text-left text-sm transition ${
-                            account.id === selectedAccountId
-                              ? 'border-[var(--aurum-accent)] bg-[var(--aurum-accent)]/10'
-                              : 'border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] hover:bg-[var(--aurum-surface)]'
-                          }`}
-                        >
-                          <p className="font-medium text-[var(--aurum-text)]">
-                            {account.displayName}
-                          </p>
-                          <p className="text-xs text-[var(--aurum-text-muted)]">
-                            {account.accountType} - {account.assetType ?? 'unspecified'} -{' '}
-                            {account.currency}
-                          </p>
-                          <p className="text-xs text-[var(--aurum-text-muted)]">
-                            {account.institutionOrIssuer ?? 'No issuer'}
-                          </p>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </>
-              )}
+              {statusMessage ? (
+                <p className="rounded-[10px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-2 text-sm text-[var(--aurum-text)]">
+                  {statusMessage}
+                </p>
+              ) : null}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Valuation History</CardTitle>
-              <CardDescription>
-                Append valuation history for the selected manual holding so it can later roll into
-                a portfolio snapshot.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!selectedAccount ? (
-                <p className="text-sm text-[var(--aurum-text-muted)]">
-                  Select a holding to append valuations.
-                </p>
-              ) : (
-                <>
-                  <form onSubmit={onAddValuation} className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <section className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_1fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle>Manual Sources</CardTitle>
+                <CardDescription>
+                  {isLoadingSources
+                    ? 'Loading sources...'
+                    : `${sources.length} manual source(s) available.`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {sources.length === 0 ? (
+                  <p className="text-sm text-[var(--aurum-text-muted)]">No manual sources yet.</p>
+                ) : (
+                  sources.map((source) => (
+                    <button
+                      key={source.id}
+                      type="button"
+                      onClick={() => setSelectedSourceId(source.id)}
+                      className={`w-full rounded-[12px] border px-3 py-3 text-left text-sm transition ${
+                        source.id === selectedSourceId
+                          ? 'border-[var(--aurum-accent)] bg-[var(--aurum-accent)]/10'
+                          : 'border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] hover:bg-[var(--aurum-surface)]'
+                      }`}
+                    >
+                      <p className="font-medium text-[var(--aurum-text)]">{source.displayName}</p>
+                      <p className="text-xs text-[var(--aurum-text-muted)]">
+                        {source.institutionName ?? 'No issuer'} - {source.baseCurrency}
+                      </p>
+                      <p className="text-xs text-[var(--aurum-text-muted)]">
+                        Last sync: {formatDateTime(source.lastSuccessfulSyncAt)}
+                      </p>
+                    </button>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Manual Holdings</CardTitle>
+                  <CardDescription>
+                    Create manually maintained asset records that can later contribute to portfolio
+                    snapshots.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!selectedSource ? (
+                    <p className="text-sm text-[var(--aurum-text-muted)]">
+                      Select a manual source to manage holdings.
+                    </p>
+                  ) : (
+                    <>
+                      <form
+                        onSubmit={onCreateAccount}
+                        className="grid grid-cols-1 gap-3 md:grid-cols-3"
+                      >
+                        <input
+                          className={inputClassName}
+                          placeholder="Account display name"
+                          value={accountForm.displayName}
+                          onChange={(event) =>
+                            setAccountForm((current) => ({
+                              ...current,
+                              displayName: event.target.value,
+                            }))
+                          }
+                          required
+                        />
+                        <input
+                          className={inputClassName}
+                          placeholder="Account type"
+                          value={accountForm.accountType}
+                          onChange={(event) =>
+                            setAccountForm((current) => ({
+                              ...current,
+                              accountType: event.target.value,
+                            }))
+                          }
+                          required
+                        />
+                        <select
+                          className={inputClassName}
+                          value={accountForm.assetType}
+                          onChange={(event) =>
+                            setAccountForm((current) => ({
+                              ...current,
+                              assetType: event.target.value as PortfolioAssetCategory,
+                            }))
+                          }
+                        >
+                          {assetTypeOptions.map((assetType) => (
+                            <option key={assetType} value={assetType}>
+                              {assetType}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          className={inputClassName}
+                          placeholder="Asset subtype"
+                          value={accountForm.assetSubType}
+                          onChange={(event) =>
+                            setAccountForm((current) => ({
+                              ...current,
+                              assetSubType: event.target.value,
+                            }))
+                          }
+                        />
+                        <input
+                          className={inputClassName}
+                          placeholder="Institution / issuer"
+                          value={accountForm.institutionOrIssuer}
+                          onChange={(event) =>
+                            setAccountForm((current) => ({
+                              ...current,
+                              institutionOrIssuer: event.target.value,
+                            }))
+                          }
+                        />
+                        <div className="flex gap-3">
+                          <input
+                            className={inputClassName}
+                            placeholder="Currency"
+                            value={accountForm.currency}
+                            onChange={(event) =>
+                              setAccountForm((current) => ({
+                                ...current,
+                                currency: event.target.value.toUpperCase(),
+                              }))
+                            }
+                            maxLength={10}
+                          />
+                          <Button type="submit" disabled={isSubmittingAccount}>
+                            {isSubmittingAccount ? 'Creating...' : 'Add Holding'}
+                          </Button>
+                        </div>
+                      </form>
+
+                      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                        {accounts.length === 0 ? (
+                          <p className="text-sm text-[var(--aurum-text-muted)]">
+                            No holdings under this source yet.
+                          </p>
+                        ) : (
+                          accounts.map((account) => (
+                            <button
+                              key={account.id}
+                              type="button"
+                              onClick={() => setSelectedAccountId(account.id)}
+                              className={`rounded-[12px] border px-3 py-3 text-left text-sm transition ${
+                                account.id === selectedAccountId
+                                  ? 'border-[var(--aurum-accent)] bg-[var(--aurum-accent)]/10'
+                                  : 'border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] hover:bg-[var(--aurum-surface)]'
+                              }`}
+                            >
+                              <p className="font-medium text-[var(--aurum-text)]">
+                                {account.displayName}
+                              </p>
+                              <p className="text-xs text-[var(--aurum-text-muted)]">
+                                {account.accountType} - {account.assetType ?? 'unspecified'} -{' '}
+                                {account.currency}
+                              </p>
+                              <p className="text-xs text-[var(--aurum-text-muted)]">
+                                {account.institutionOrIssuer ?? 'No issuer'}
+                              </p>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Valuation History</CardTitle>
+                  <CardDescription>
+                    Append valuation history for the selected manual holding so it can later roll
+                    into a portfolio snapshot.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!selectedAccount ? (
+                    <p className="text-sm text-[var(--aurum-text-muted)]">
+                      Select a holding to append valuations.
+                    </p>
+                  ) : (
+                    <>
+                      <form
+                        onSubmit={onAddValuation}
+                        className="grid grid-cols-1 gap-3 md:grid-cols-3"
+                      >
+                        <input
+                          className={inputClassName}
+                          type="date"
+                          value={valuationForm.valuationDate}
+                          onChange={(event) =>
+                            setValuationForm((current) => ({
+                              ...current,
+                              valuationDate: event.target.value,
+                            }))
+                          }
+                          required
+                        />
+                        <input
+                          className={inputClassName}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="Market value"
+                          value={valuationForm.marketValue}
+                          onChange={(event) =>
+                            setValuationForm((current) => ({
+                              ...current,
+                              marketValue: event.target.value,
+                            }))
+                          }
+                          required
+                        />
+                        <input
+                          className={inputClassName}
+                          type="number"
+                          min="0"
+                          step="0.0001"
+                          placeholder="Quantity (optional)"
+                          value={valuationForm.quantity}
+                          onChange={(event) =>
+                            setValuationForm((current) => ({
+                              ...current,
+                              quantity: event.target.value,
+                            }))
+                          }
+                        />
+                        <input
+                          className={inputClassName}
+                          type="number"
+                          min="0"
+                          step="0.0001"
+                          placeholder="Unit price (optional)"
+                          value={valuationForm.unitPrice}
+                          onChange={(event) =>
+                            setValuationForm((current) => ({
+                              ...current,
+                              unitPrice: event.target.value,
+                            }))
+                          }
+                        />
+                        <input
+                          className={inputClassName}
+                          placeholder="Symbol (optional)"
+                          value={valuationForm.symbol}
+                          onChange={(event) =>
+                            setValuationForm((current) => ({
+                              ...current,
+                              symbol: event.target.value.toUpperCase(),
+                            }))
+                          }
+                        />
+                        <input
+                          className={inputClassName}
+                          placeholder="Asset name (optional)"
+                          value={valuationForm.assetName}
+                          onChange={(event) =>
+                            setValuationForm((current) => ({
+                              ...current,
+                              assetName: event.target.value,
+                            }))
+                          }
+                        />
+                        <div className="md:col-span-2">
+                          <textarea
+                            className={textAreaClassName}
+                            placeholder="Notes"
+                            value={valuationForm.note}
+                            onChange={(event) =>
+                              setValuationForm((current) => ({
+                                ...current,
+                                note: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="flex items-start justify-end">
+                          <Button type="submit" disabled={isSubmittingValuation}>
+                            {isSubmittingValuation ? 'Saving...' : 'Append Valuation'}
+                          </Button>
+                        </div>
+                      </form>
+
+                      <div className="space-y-2">
+                        {valuations.length === 0 ? (
+                          <p className="text-sm text-[var(--aurum-text-muted)]">
+                            No valuations recorded yet.
+                          </p>
+                        ) : (
+                          valuations.map((valuation) => (
+                            <div
+                              key={valuation.id}
+                              className="rounded-[12px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3 text-sm"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="font-medium text-[var(--aurum-text)]">
+                                  {valuation.assetName ?? selectedAccount.displayName}
+                                </p>
+                                <p className="text-[var(--aurum-text)]">
+                                  {formatMoney(valuation.marketValue, valuation.currency)}
+                                </p>
+                              </div>
+                              <p className="text-xs text-[var(--aurum-text-muted)]">
+                                {valuation.valuationDate}
+                                {valuation.symbol ? ` - ${valuation.symbol}` : ''}
+                                {valuation.quantity !== undefined
+                                  ? ` - qty ${valuation.quantity}`
+                                  : ''}
+                                {valuation.unitPrice !== undefined
+                                  ? ` - unit ${valuation.unitPrice}`
+                                  : ''}
+                              </p>
+                              {valuation.note ? (
+                                <p className="mt-1 text-xs text-[var(--aurum-text-muted)]">
+                                  {valuation.note}
+                                </p>
+                              ) : null}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Create Snapshot</CardTitle>
+                  <CardDescription>
+                    Create a portfolio snapshot from the latest manual valuations when you want
+                    manual assets reflected across Home and AI.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-col gap-3 md:flex-row">
                     <input
                       className={inputClassName}
                       type="date"
-                      value={valuationForm.valuationDate}
-                      onChange={(event) =>
-                        setValuationForm((current) => ({
-                          ...current,
-                          valuationDate: event.target.value,
-                        }))
-                      }
-                      required
+                      value={materializeSnapshotDate}
+                      onChange={(event) => setMaterializeSnapshotDate(event.target.value)}
+                      placeholder="Optional snapshot date override"
                     />
-                    <input
-                      className={inputClassName}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Market value"
-                      value={valuationForm.marketValue}
-                      onChange={(event) =>
-                        setValuationForm((current) => ({
-                          ...current,
-                          marketValue: event.target.value,
-                        }))
-                      }
-                      required
-                    />
-                    <input
-                      className={inputClassName}
-                      type="number"
-                      min="0"
-                      step="0.0001"
-                      placeholder="Quantity (optional)"
-                      value={valuationForm.quantity}
-                      onChange={(event) =>
-                        setValuationForm((current) => ({
-                          ...current,
-                          quantity: event.target.value,
-                        }))
-                      }
-                    />
-                    <input
-                      className={inputClassName}
-                      type="number"
-                      min="0"
-                      step="0.0001"
-                      placeholder="Unit price (optional)"
-                      value={valuationForm.unitPrice}
-                      onChange={(event) =>
-                        setValuationForm((current) => ({
-                          ...current,
-                          unitPrice: event.target.value,
-                        }))
-                      }
-                    />
-                    <input
-                      className={inputClassName}
-                      placeholder="Symbol (optional)"
-                      value={valuationForm.symbol}
-                      onChange={(event) =>
-                        setValuationForm((current) => ({
-                          ...current,
-                          symbol: event.target.value.toUpperCase(),
-                        }))
-                      }
-                    />
-                    <input
-                      className={inputClassName}
-                      placeholder="Asset name (optional)"
-                      value={valuationForm.assetName}
-                      onChange={(event) =>
-                        setValuationForm((current) => ({
-                          ...current,
-                          assetName: event.target.value,
-                        }))
-                      }
-                    />
-                    <div className="md:col-span-2">
-                      <textarea
-                        className={textAreaClassName}
-                        placeholder="Notes"
-                        value={valuationForm.note}
-                        onChange={(event) =>
-                          setValuationForm((current) => ({
-                            ...current,
-                            note: event.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="flex items-start justify-end">
-                      <Button type="submit" disabled={isSubmittingValuation}>
-                        {isSubmittingValuation ? 'Saving...' : 'Append Valuation'}
-                      </Button>
-                    </div>
-                  </form>
+                    <Button onClick={() => void onMaterializeSnapshot()} disabled={isMaterializing}>
+                      {isMaterializing ? 'Creating...' : 'Create Snapshot'}
+                    </Button>
+                  </div>
 
-                  <div className="space-y-2">
-                    {valuations.length === 0 ? (
-                      <p className="text-sm text-[var(--aurum-text-muted)]">
-                        No valuations recorded yet.
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-[var(--aurum-text)]">
+                        Snapshots for Selected Source
                       </p>
-                    ) : (
-                      valuations.map((valuation) => (
-                        <div
-                          key={valuation.id}
-                          className="rounded-[12px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3 text-sm"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
+                      {sourceSnapshots.length === 0 ? (
+                        <p className="text-sm text-[var(--aurum-text-muted)]">
+                          No snapshots created for this source yet.
+                        </p>
+                      ) : (
+                        [...sourceSnapshots].sort(compareSnapshots).map((snapshot) => (
+                          <div
+                            key={snapshot.id}
+                            className="rounded-[12px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3 text-sm"
+                          >
                             <p className="font-medium text-[var(--aurum-text)]">
-                              {valuation.assetName ?? selectedAccount.displayName}
+                              {snapshot.metadata.portfolioName ?? 'Untitled Snapshot'}
                             </p>
-                            <p className="text-[var(--aurum-text)]">
-                              {formatMoney(valuation.marketValue, valuation.currency)}
+                            <p className="text-xs text-[var(--aurum-text-muted)]">
+                              {snapshot.id} - {snapshot.metadata.snapshotDate}
+                            </p>
+                            <p className="text-xs text-[var(--aurum-text-muted)]">
+                              {snapshot.positions.length} positions -{' '}
+                              {formatMoney(
+                                snapshot.totalValue,
+                                snapshot.metadata.valuationCurrency ?? 'USD',
+                              )}
                             </p>
                           </div>
-                          <p className="text-xs text-[var(--aurum-text-muted)]">
-                            {valuation.valuationDate}
-                            {valuation.symbol ? ` - ${valuation.symbol}` : ''}
-                            {valuation.quantity !== undefined ? ` - qty ${valuation.quantity}` : ''}
-                            {valuation.unitPrice !== undefined
-                              ? ` - unit ${valuation.unitPrice}`
-                              : ''}
-                          </p>
-                          {valuation.note ? (
-                            <p className="mt-1 text-xs text-[var(--aurum-text-muted)]">
-                              {valuation.note}
+                        ))
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-[var(--aurum-text)]">
+                        Existing Snapshot Inventory
+                      </p>
+                      {snapshotInventory.length === 0 ? (
+                        <p className="text-sm text-[var(--aurum-text-muted)]">
+                          No portfolio snapshots found yet.
+                        </p>
+                      ) : (
+                        snapshotInventory.slice(0, 6).map((snapshot) => (
+                          <div
+                            key={snapshot.id}
+                            className="rounded-[12px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3 text-sm"
+                          >
+                            <p className="font-medium text-[var(--aurum-text)]">
+                              {snapshot.metadata.portfolioName ?? 'Untitled Snapshot'}
                             </p>
-                          ) : null}
-                        </div>
-                      ))
-                    )}
+                            <p className="text-xs text-[var(--aurum-text-muted)]">
+                              {snapshot.id} - {snapshot.metadata.snapshotDate}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Create Snapshot</CardTitle>
-              <CardDescription>
-                Create a portfolio snapshot from the latest manual valuations when you want manual
-                assets reflected across Home and AI.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col gap-3 md:flex-row">
-                <input
-                  className={inputClassName}
-                  type="date"
-                  value={materializeSnapshotDate}
-                  onChange={(event) => setMaterializeSnapshotDate(event.target.value)}
-                  placeholder="Optional snapshot date override"
-                />
-                <Button onClick={() => void onMaterializeSnapshot()} disabled={isMaterializing}>
-                  {isMaterializing ? 'Creating...' : 'Create Snapshot'}
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-[var(--aurum-text)]">
-                    Snapshots for Selected Source
-                  </p>
-                  {sourceSnapshots.length === 0 ? (
-                    <p className="text-sm text-[var(--aurum-text-muted)]">
-                      No snapshots created for this source yet.
-                    </p>
-                  ) : (
-                    [...sourceSnapshots].sort(compareSnapshots).map((snapshot) => (
-                      <div
-                        key={snapshot.id}
-                        className="rounded-[12px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3 text-sm"
-                      >
-                        <p className="font-medium text-[var(--aurum-text)]">
-                          {snapshot.metadata.portfolioName ?? 'Untitled Snapshot'}
-                        </p>
-                        <p className="text-xs text-[var(--aurum-text-muted)]">
-                          {snapshot.id} - {snapshot.metadata.snapshotDate}
-                        </p>
-                        <p className="text-xs text-[var(--aurum-text-muted)]">
-                          {snapshot.positions.length} positions -{' '}
-                          {formatMoney(
-                            snapshot.totalValue,
-                            snapshot.metadata.valuationCurrency ?? 'USD',
-                          )}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-[var(--aurum-text)]">
-                    Existing Snapshot Inventory
-                  </p>
-                  {snapshotInventory.length === 0 ? (
-                    <p className="text-sm text-[var(--aurum-text-muted)]">
-                      No portfolio snapshots found yet.
-                    </p>
-                  ) : (
-                    snapshotInventory.slice(0, 6).map((snapshot) => (
-                      <div
-                        key={snapshot.id}
-                        className="rounded-[12px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3 text-sm"
-                      >
-                        <p className="font-medium text-[var(--aurum-text)]">
-                          {snapshot.metadata.portfolioName ?? 'Untitled Snapshot'}
-                        </p>
-                        <p className="text-xs text-[var(--aurum-text-muted)]">
-                          {snapshot.id} - {snapshot.metadata.snapshotDate}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
         </div>
-      </section>
-      </div>
       </section>
     </PageContainer>
   );
