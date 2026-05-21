@@ -10,11 +10,13 @@ import type {
   ConnectedSource,
   ConnectedSourceAccount,
   ConnectedSyncRun,
+  ManualInstitutionCreationResult,
   ManualStaticSnapshotMaterializationResult,
   ManualStaticValuation,
   PortfolioAssetCategory,
   PortfolioSnapshot,
 } from '@aurum/core';
+import { findManualInstitutionPreset } from '@aurum/core';
 import { createHash } from 'node:crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ManualStaticSourceAdapter } from '../../../../packages/core/src/portfolio/manual-static';
@@ -37,6 +39,7 @@ import { CreateConnectedSourceAccountDto } from './dto/create-connected-source-a
 import { CreateConnectedSourceDto } from './dto/create-connected-source.dto';
 import { CreateManualStaticValuationDto } from './dto/create-manual-static-valuation.dto';
 import { ConnectCoinbaseCryptoDto } from './dto/connect-coinbase-crypto.dto';
+import { CreateManualInstitutionDto } from './dto/create-manual-institution.dto';
 import { ExchangePlaidPublicTokenDto } from './dto/exchange-plaid-public-token.dto';
 import { ListConnectedSourcesQueryDto } from './dto/list-connected-sources-query.dto';
 import { MaterializeManualStaticSnapshotDto } from './dto/materialize-manual-static-snapshot.dto';
@@ -192,6 +195,13 @@ function mapSyncRunRecord(record: ConnectedSyncRunRecord): ConnectedSyncRun {
   };
 }
 
+function hasMetadataInstitutionKey(
+  record: ConnectedSourceRecord,
+  institutionKey: string,
+): boolean {
+  return mapMetadata(record.metadata)?.institutionKey === institutionKey;
+}
+
 function mapValuationRecord(
   record: ManualStaticValuationRecord,
 ): ManualStaticValuation {
@@ -311,6 +321,98 @@ export class ConnectedFinanceService {
     });
 
     return mapSourceRecord(created);
+  }
+
+  async createManualInstitution(
+    userId: string,
+    dto: CreateManualInstitutionDto,
+  ): Promise<ManualInstitutionCreationResult> {
+    const preset = findManualInstitutionPreset(dto.institutionKey);
+    if (!preset) {
+      throw new BadRequestException('Manual institution preset not found.');
+    }
+
+    const existingManualSources =
+      await this.prisma.connectedSourceRecord.findMany({
+        where: {
+          userId,
+          kind: 'MANUAL_STATIC',
+        },
+      });
+    const duplicate = existingManualSources.find((source) =>
+      hasMetadataInstitutionKey(source, preset.institutionKey),
+    );
+    if (duplicate) {
+      throw new BadRequestException(
+        `${preset.displayName} already exists as a manual institution.`,
+      );
+    }
+
+    const overridesByAccountKey = new Map(
+      (dto.accountOverrides ?? []).map((override) => [
+        override.accountKey,
+        override,
+      ]),
+    );
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const source = await tx.connectedSourceRecord.create({
+        data: {
+          userId,
+          kind: preset.defaultSourceKind,
+          displayName: dto.displayName?.trim() || preset.displayName,
+          status: 'ACTIVE',
+          institutionName: preset.displayName,
+          baseCurrency:
+            dto.baseCurrency?.trim().toUpperCase() || preset.baseCurrency,
+          metadata: {
+            institutionKey: preset.institutionKey,
+            presetDisplayName: preset.displayName,
+            presetVersion: 'manual-institution-presets@1.0.0',
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      const accounts = await Promise.all(
+        preset.accounts.map((account) => {
+          const override = overridesByAccountKey.get(account.accountKey);
+          const accountMetadata = {
+            ...(account.metadata ?? {}),
+            ...(override?.metadata ?? {}),
+            institutionKey: preset.institutionKey,
+            accountKey: account.accountKey,
+            presetVersion: 'manual-institution-presets@1.0.0',
+          };
+
+          return tx.connectedSourceAccountRecord.create({
+            data: {
+              sourceId: source.id,
+              displayName: override?.displayName?.trim() || account.displayName,
+              accountType: override?.accountType?.trim() || account.accountType,
+              currency:
+                override?.currency?.trim().toUpperCase() ||
+                account.currency ||
+                source.baseCurrency,
+              assetType: toPrismaAssetType(
+                override?.assetType ?? account.assetType,
+              ),
+              assetSubType:
+                override?.assetSubType?.trim() || account.assetSubType,
+              institutionOrIssuer: preset.displayName,
+              isActive: true,
+              metadata: accountMetadata as Prisma.InputJsonValue,
+            },
+          });
+        }),
+      );
+
+      return { source, accounts };
+    });
+
+    return {
+      source: mapSourceRecord(result.source),
+      accounts: result.accounts.map(mapSourceAccountRecord),
+    };
   }
 
   async getSourceById(

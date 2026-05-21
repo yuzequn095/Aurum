@@ -105,7 +105,7 @@ describe('ConnectedFinanceService', () => {
   } as const;
 
   function createPrismaMock() {
-    return {
+    const prisma = {
       connectedProviderUserRecord: {
         findFirst: jest.fn(),
         create: jest.fn(),
@@ -140,6 +140,13 @@ describe('ConnectedFinanceService', () => {
       portfolioSnapshotRecord: {
         findMany: jest.fn(),
       },
+    };
+
+    return {
+      $transaction: jest.fn((callback: (tx: typeof prisma) => unknown) =>
+        Promise.resolve(callback(prisma)),
+      ),
+      ...prisma,
     };
   }
 
@@ -256,6 +263,182 @@ describe('ConnectedFinanceService', () => {
       userId: 'user_1',
       kind: 'MANUAL_STATIC',
       displayName: 'Manual Holdings',
+    });
+  });
+
+  it('creates Fidelity as a manual institution with preset accounts', async () => {
+    const prisma = createPrismaMock();
+    const snapshotService = createSnapshotServiceMock();
+    const fidelitySourceRecord = {
+      ...manualSourceRecord,
+      id: 'source_fidelity',
+      displayName: 'Fidelity',
+      institutionName: 'Fidelity',
+      metadata: {
+        institutionKey: 'fidelity',
+        presetDisplayName: 'Fidelity',
+      },
+    };
+    const fidelityAccounts = [
+      {
+        ...manualAccountRecord,
+        id: 'account_fidelity_cash',
+        sourceId: 'source_fidelity',
+        displayName: 'Cash',
+        accountType: 'Cash',
+        assetType: 'CASH',
+        assetSubType: 'cash',
+        institutionOrIssuer: 'Fidelity',
+        metadata: {
+          institutionKey: 'fidelity',
+          accountKey: 'cash',
+        },
+      },
+      {
+        ...manualAccountRecord,
+        id: 'account_fidelity_shares',
+        sourceId: 'source_fidelity',
+        displayName: 'Shares',
+        accountType: 'Shares',
+        assetType: 'EQUITY',
+        assetSubType: 'brokerage_shares',
+        institutionOrIssuer: 'Fidelity',
+        metadata: {
+          institutionKey: 'fidelity',
+          accountKey: 'shares',
+        },
+      },
+      {
+        ...manualAccountRecord,
+        id: 'account_fidelity_401k',
+        sourceId: 'source_fidelity',
+        displayName: '401K',
+        accountType: '401K',
+        assetType: 'FUND',
+        assetSubType: 'retirement_401k',
+        institutionOrIssuer: 'Fidelity',
+        metadata: {
+          institutionKey: 'fidelity',
+          accountKey: '401k',
+        },
+      },
+    ];
+
+    prisma.connectedSourceRecord.findMany.mockResolvedValue([]);
+    prisma.connectedSourceRecord.create.mockResolvedValue(fidelitySourceRecord);
+    fidelityAccounts.forEach((account) => {
+      prisma.connectedSourceAccountRecord.create.mockResolvedValueOnce(account);
+    });
+
+    const { service } = createService(prisma, snapshotService);
+
+    const result = await service.createManualInstitution('user_1', {
+      institutionKey: 'fidelity',
+    });
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(result.source).toMatchObject({
+      kind: 'MANUAL_STATIC',
+      displayName: 'Fidelity',
+      metadata: {
+        institutionKey: 'fidelity',
+      },
+    });
+    expect(result.accounts.map((account) => account.displayName)).toEqual([
+      'Cash',
+      'Shares',
+      '401K',
+    ]);
+    expect(result.accounts.map((account) => account.assetType)).toEqual([
+      'cash',
+      'equity',
+      'fund',
+    ]);
+  });
+
+  it('rejects duplicate Fidelity manual institution creation clearly', async () => {
+    const prisma = createPrismaMock();
+    const snapshotService = createSnapshotServiceMock();
+    prisma.connectedSourceRecord.findMany.mockResolvedValue([
+      {
+        ...manualSourceRecord,
+        displayName: 'Fidelity',
+        institutionName: 'Fidelity',
+        metadata: {
+          institutionKey: 'fidelity',
+        },
+      },
+    ]);
+
+    const { service } = createService(prisma, snapshotService);
+
+    await expect(
+      service.createManualInstitution('user_1', {
+        institutionKey: 'fidelity',
+      }),
+    ).rejects.toThrow('Fidelity already exists as a manual institution.');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('created preset accounts work with manual valuation path', async () => {
+    const prisma = createPrismaMock();
+    const snapshotService = createSnapshotServiceMock();
+    prisma.connectedSourceAccountRecord.findFirst.mockResolvedValue({
+      ...manualAccountRecord,
+      id: 'account_fidelity_shares',
+      sourceId: 'source_fidelity',
+      displayName: 'Shares',
+      accountType: 'Shares',
+      assetType: 'EQUITY',
+      assetSubType: 'brokerage_shares',
+      source: {
+        ...manualSourceRecord,
+        id: 'source_fidelity',
+        displayName: 'Fidelity',
+        institutionName: 'Fidelity',
+        metadata: {
+          institutionKey: 'fidelity',
+        },
+      },
+    });
+    prisma.manualStaticValuationRecord.create.mockResolvedValue({
+      id: 'valuation_fidelity_shares',
+      userId: 'user_1',
+      sourceId: 'source_fidelity',
+      sourceAccountId: 'account_fidelity_shares',
+      valuationDate: new Date('2026-03-20T00:00:00.000Z'),
+      currency: 'USD',
+      marketValue: 12000,
+      quantity: 20,
+      unitPrice: 600,
+      symbol: 'VOO',
+      assetName: 'Vanguard S&P 500 ETF',
+      note: null,
+      metadata: null,
+      createdAt: new Date('2026-03-20T10:00:00.000Z'),
+      updatedAt: new Date('2026-03-20T10:00:00.000Z'),
+    });
+
+    const { service } = createService(prisma, snapshotService);
+
+    const result = await service.createManualStaticValuation(
+      'user_1',
+      'account_fidelity_shares',
+      {
+        valuationDate: '2026-03-20',
+        marketValue: 12000,
+        quantity: 20,
+        unitPrice: 600,
+        symbol: 'VOO',
+        assetName: 'Vanguard S&P 500 ETF',
+      },
+    );
+
+    expect(result).toMatchObject({
+      id: 'valuation_fidelity_shares',
+      sourceId: 'source_fidelity',
+      sourceAccountId: 'account_fidelity_shares',
+      marketValue: 12000,
     });
   });
 

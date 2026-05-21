@@ -21,6 +21,7 @@ import type {
   ConnectedSource,
   ConnectedSourceAccount,
   ConnectedSyncRun,
+  ManualInstitutionCreationResult,
   ManualStaticSnapshotMaterializationResult,
   ManualStaticValuation,
   PortfolioSnapshot,
@@ -31,6 +32,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ConnectedFinanceService } from './connected-finance.service';
 import { CreateConnectedSourceAccountDto } from './dto/create-connected-source-account.dto';
 import { CreateConnectedSourceDto } from './dto/create-connected-source.dto';
+import { CreateManualInstitutionDto } from './dto/create-manual-institution.dto';
 import { CreateManualStaticValuationDto } from './dto/create-manual-static-valuation.dto';
 import { ConnectCoinbaseCryptoDto } from './dto/connect-coinbase-crypto.dto';
 import { ExchangePlaidPublicTokenDto } from './dto/exchange-plaid-public-token.dto';
@@ -58,6 +60,14 @@ export class ConnectedFinanceController {
     @Body() dto: CreateConnectedSourceDto,
   ): Promise<ConnectedSource> {
     return this.service.createSource(user.userId, dto);
+  }
+
+  @Post('manual-institutions')
+  async createManualInstitution(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateManualInstitutionDto,
+  ): Promise<ManualInstitutionCreationResult> {
+    return this.service.createManualInstitution(user.userId, dto);
   }
 
   @Post('bank/plaid/link-token')
