@@ -70,7 +70,7 @@ export class PortfolioSnapshotsController {
   async getDelta(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Query('compareTo') compareTo: 'previous' = 'previous',
+    @Query('compareTo') compareTo: string = 'previous',
   ): Promise<PortfolioSnapshotDelta> {
     const delta = await this.service.getSnapshotDelta(
       id,

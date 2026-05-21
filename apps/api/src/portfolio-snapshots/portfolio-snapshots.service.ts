@@ -17,7 +17,11 @@ import {
   PortfolioSnapshotSourceType,
   Prisma,
 } from '@prisma/client';
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { formatDateOnly, parseDateOnly } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
 import { LEGACY_SNAPSHOT_OWNER_USER_ID } from './legacy-snapshot-owner';
@@ -406,9 +410,13 @@ export class PortfolioSnapshotsService {
 
   async getSnapshotDelta(
     id: string,
-    compareTo: 'previous' = 'previous',
+    compareTo: string = 'previous',
     userId?: string,
   ): Promise<PortfolioSnapshotDelta | null> {
+    if (compareTo !== 'previous') {
+      throw new BadRequestException('compareTo must be "previous".');
+    }
+
     const scopedUserId = userId ?? LEGACY_SNAPSHOT_OWNER_USER_ID;
     const current = await this.prisma.portfolioSnapshotRecord.findFirst({
       where: { id, userId: scopedUserId },
@@ -422,10 +430,7 @@ export class PortfolioSnapshotsService {
       return null;
     }
 
-    const previous =
-      compareTo === 'previous'
-        ? await this.findPreviousSnapshot(scopedUserId, current)
-        : null;
+    const previous = await this.findPreviousSnapshot(scopedUserId, current);
 
     if (!previous) {
       return {
@@ -720,48 +725,26 @@ export class PortfolioSnapshotsService {
       ],
     };
 
-    const sourceScopedPrevious = current.sourceId
-      ? await this.prisma.portfolioSnapshotRecord.findFirst({
-          where: {
-            userId,
-            sourceId: current.sourceId,
-            ...beforeCurrent,
+    if (current.sourceId) {
+      return this.prisma.portfolioSnapshotRecord.findFirst({
+        where: {
+          userId,
+          sourceId: current.sourceId,
+          ...beforeCurrent,
+        },
+        orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
+        include: {
+          positions: {
+            orderBy: [{ marketValue: 'desc' }, { assetKey: 'asc' }],
           },
-          orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
-          include: {
-            positions: {
-              orderBy: [{ marketValue: 'desc' }, { assetKey: 'asc' }],
-            },
-          },
-        })
-      : null;
-    if (sourceScopedPrevious) {
-      return sourceScopedPrevious;
-    }
-
-    const consolidatedPrevious =
-      current.sourceId === null
-        ? await this.prisma.portfolioSnapshotRecord.findFirst({
-            where: {
-              userId,
-              sourceId: null,
-              ...beforeCurrent,
-            },
-            orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
-            include: {
-              positions: {
-                orderBy: [{ marketValue: 'desc' }, { assetKey: 'asc' }],
-              },
-            },
-          })
-        : null;
-    if (consolidatedPrevious) {
-      return consolidatedPrevious;
+        },
+      });
     }
 
     return this.prisma.portfolioSnapshotRecord.findFirst({
       where: {
         userId,
+        sourceId: null,
         ...beforeCurrent,
       },
       orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],

@@ -4,6 +4,12 @@ import { LEGACY_SNAPSHOT_OWNER_USER_ID } from './legacy-snapshot-owner';
 import { PortfolioSnapshotsService } from './portfolio-snapshots.service';
 
 describe('PortfolioSnapshotsService', () => {
+  type SnapshotFindFirstArgs = {
+    where?: {
+      sourceId?: string | null;
+    };
+  };
+
   const baseSnapshotRecord = {
     id: 'snapshot_current',
     userId: 'user_1',
@@ -201,7 +207,58 @@ describe('PortfolioSnapshotsService', () => {
     });
   });
 
-  it('computes added, removed, increased, decreased, and account-level deltas', async () => {
+  it('returns no-baseline delta when a source-level snapshot has no same-source previous snapshot', async () => {
+    const currentSnapshot = {
+      ...baseSnapshotRecord,
+      id: 'snapshot_fidelity_current',
+      sourceId: 'source_fidelity',
+      sourceLabel: 'Fidelity',
+    };
+    const olderConsolidatedSnapshot = {
+      ...baseSnapshotRecord,
+      id: 'snapshot_consolidated_previous',
+      sourceId: null,
+      totalValue: 1500,
+      snapshotDate: new Date('2026-03-19T00:00:00.000Z'),
+      createdAt: new Date('2026-03-19T10:00:00.000Z'),
+    };
+    const findFirst = jest
+      .fn<Promise<unknown>, [SnapshotFindFirstArgs]>()
+      .mockResolvedValueOnce(currentSnapshot)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(olderConsolidatedSnapshot);
+    const prisma = {
+      portfolioSnapshotRecord: {
+        findFirst,
+      },
+      connectedSourceAccountRecord: {
+        findMany: jest.fn(),
+      },
+    };
+    const service = new PortfolioSnapshotsService(
+      prisma as unknown as PrismaService,
+    );
+
+    const delta = await service.getSnapshotDelta(
+      'snapshot_fidelity_current',
+      'previous',
+      'user_1',
+    );
+
+    expect(findFirst).toHaveBeenCalledTimes(2);
+    expect(findFirst.mock.calls[1]?.[0].where?.sourceId).toBe(
+      'source_fidelity',
+    );
+    expect(prisma.connectedSourceAccountRecord.findMany).not.toHaveBeenCalled();
+    expect(delta).toMatchObject({
+      baseSnapshotId: 'snapshot_fidelity_current',
+      baselineStatus: 'no_baseline',
+      positionDeltas: [],
+      accountDeltas: [],
+    });
+  });
+
+  it('computes added, removed, increased, decreased, and account-level deltas for same-source previous snapshots', async () => {
     const previousSnapshot = {
       ...baseSnapshotRecord,
       id: 'snapshot_previous',
@@ -253,7 +310,7 @@ describe('PortfolioSnapshotsService', () => {
     const prisma = {
       portfolioSnapshotRecord: {
         findFirst: jest
-          .fn()
+          .fn<Promise<unknown>, [SnapshotFindFirstArgs]>()
           .mockResolvedValueOnce(currentSnapshot)
           .mockResolvedValueOnce(previousSnapshot),
       },
@@ -287,6 +344,10 @@ describe('PortfolioSnapshotsService', () => {
       cashValueDelta: -200,
       baselineStatus: 'available',
     });
+    expect(
+      prisma.portfolioSnapshotRecord.findFirst.mock.calls[1]?.[0].where
+        ?.sourceId,
+    ).toBe('source_1');
     expect(delta?.positionDeltas).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -334,7 +395,7 @@ describe('PortfolioSnapshotsService', () => {
     );
   });
 
-  it('prefers a previous consolidated snapshot for no-source snapshot deltas', async () => {
+  it('compares a consolidated snapshot only against a previous consolidated snapshot', async () => {
     const currentSnapshot = {
       ...baseSnapshotRecord,
       id: 'snapshot_consolidated_current',
@@ -350,11 +411,6 @@ describe('PortfolioSnapshotsService', () => {
       totalValue: 1500,
       snapshotDate: new Date('2026-03-19T00:00:00.000Z'),
       createdAt: new Date('2026-03-19T10:00:00.000Z'),
-    };
-    type SnapshotFindFirstArgs = {
-      where?: {
-        sourceId?: string | null;
-      };
     };
     const findFirst = jest
       .fn<Promise<unknown>, [SnapshotFindFirstArgs]>()
@@ -379,6 +435,7 @@ describe('PortfolioSnapshotsService', () => {
     );
 
     const secondFindFirstArgs = findFirst.mock.calls[1]?.[0];
+    expect(findFirst).toHaveBeenCalledTimes(2);
     expect(secondFindFirstArgs?.where?.sourceId).toBeNull();
     expect(delta).toMatchObject({
       baseSnapshotId: 'snapshot_consolidated_current',
@@ -386,6 +443,76 @@ describe('PortfolioSnapshotsService', () => {
       totalValueDelta: 500,
       baselineStatus: 'available',
     });
+  });
+
+  it('returns no-baseline delta when a consolidated snapshot has no previous consolidated snapshot', async () => {
+    const currentSnapshot = {
+      ...baseSnapshotRecord,
+      id: 'snapshot_consolidated_current',
+      sourceId: null,
+      totalValue: 2000,
+      snapshotDate: new Date('2026-03-20T00:00:00.000Z'),
+      createdAt: new Date('2026-03-20T10:03:00.000Z'),
+    };
+    const olderSourceSnapshot = {
+      ...baseSnapshotRecord,
+      id: 'snapshot_fidelity_previous',
+      sourceId: 'source_fidelity',
+      totalValue: 1500,
+      snapshotDate: new Date('2026-03-19T00:00:00.000Z'),
+      createdAt: new Date('2026-03-19T10:00:00.000Z'),
+    };
+    const findFirst = jest
+      .fn<Promise<unknown>, [SnapshotFindFirstArgs]>()
+      .mockResolvedValueOnce(currentSnapshot)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(olderSourceSnapshot);
+    const prisma = {
+      portfolioSnapshotRecord: {
+        findFirst,
+      },
+      connectedSourceAccountRecord: {
+        findMany: jest.fn(),
+      },
+    };
+    const service = new PortfolioSnapshotsService(
+      prisma as unknown as PrismaService,
+    );
+
+    const delta = await service.getSnapshotDelta(
+      'snapshot_consolidated_current',
+      'previous',
+      'user_1',
+    );
+
+    expect(findFirst).toHaveBeenCalledTimes(2);
+    expect(findFirst.mock.calls[1]?.[0].where?.sourceId).toBeNull();
+    expect(prisma.connectedSourceAccountRecord.findMany).not.toHaveBeenCalled();
+    expect(delta).toMatchObject({
+      baseSnapshotId: 'snapshot_consolidated_current',
+      baselineStatus: 'no_baseline',
+      positionDeltas: [],
+      accountDeltas: [],
+    });
+  });
+
+  it('rejects unsupported snapshot delta comparison modes', async () => {
+    const prisma = {
+      portfolioSnapshotRecord: {
+        findFirst: jest.fn(),
+      },
+      connectedSourceAccountRecord: {
+        findMany: jest.fn(),
+      },
+    };
+    const service = new PortfolioSnapshotsService(
+      prisma as unknown as PrismaService,
+    );
+
+    await expect(
+      service.getSnapshotDelta('snapshot_current', 'latest', 'user_1'),
+    ).rejects.toThrow('compareTo must be "previous".');
+    expect(prisma.portfolioSnapshotRecord.findFirst).not.toHaveBeenCalled();
   });
 
   it('returns snapshot lineage with account context', async () => {
