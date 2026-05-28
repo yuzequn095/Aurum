@@ -33,7 +33,7 @@ pnpm dev:app
 
 ## Seed Assumptions
 
-The seed creates manual institutions for Wells Fargo, SoFi, Webull, Tiger Brokers, Fidelity, Coinbase, and RSU under `demo@aurum.local`.
+The seed creates manual institutions for Wells Fargo, SoFi, Webull, Tiger Brokers, Fidelity, and Coinbase under `demo@aurum.local`; RSU is represented as a Fidelity sub-account.
 
 It adds previous/current manual valuation history, previous/current source-level snapshots for each seeded institution, and previous/current consolidated snapshots. The current consolidated snapshot includes cash, equity, ETF, fund, crypto, and employer equity/RSU exposure so Asset Overview, delta, lineage, and diagnostics can be validated without manual number entry.
 

@@ -56,7 +56,7 @@ describe('ConnectedFinanceService', () => {
     externalAccountId: null,
     displayName: 'Amazon RSU',
     officialName: null,
-    accountType: 'RSU',
+    accountType: 'Shares',
     currency: 'USD',
     assetType: 'EQUITY',
     assetSubType: 'company_rsu',
@@ -323,6 +323,21 @@ describe('ConnectedFinanceService', () => {
           accountKey: '401k',
         },
       },
+      {
+        ...manualAccountRecord,
+        id: 'account_fidelity_rsu',
+        sourceId: 'source_fidelity',
+        displayName: 'RSU',
+        accountType: 'Shares',
+        assetType: 'EQUITY',
+        assetSubType: 'employer_rsu',
+        institutionOrIssuer: 'Fidelity',
+        metadata: {
+          employerStockCandidate: true,
+          institutionKey: 'fidelity',
+          accountKey: 'rsu',
+        },
+      },
     ];
 
     prisma.connectedSourceRecord.findMany.mockResolvedValue([]);
@@ -349,11 +364,13 @@ describe('ConnectedFinanceService', () => {
       'Cash',
       'Shares',
       '401K',
+      'RSU',
     ]);
     expect(result.accounts.map((account) => account.assetType)).toEqual([
       'cash',
       'equity',
       'fund',
+      'equity',
     ]);
   });
 
@@ -514,8 +531,8 @@ describe('ConnectedFinanceService', () => {
       {
         ...manualSourceRecord,
         id: 'source_manual_setup',
-        displayName: 'RSU',
-        metadata: { institutionKey: 'rsu' },
+        displayName: 'Webull',
+        metadata: { institutionKey: 'webull' },
         accounts: [manualAccountRecord],
         syncRuns: [],
         snapshots: [],

@@ -6,7 +6,7 @@ Milestone 15 completes Connected Finance Expansion / Portfolio Depth while prese
 
 ## Completed Scope
 
-- Institution-aware manual presets for Wells Fargo, SoFi, Webull, Tiger Brokers, Fidelity, Coinbase, and RSU.
+- Institution-aware manual presets for Wells Fargo, SoFi, Webull, Tiger Brokers, Fidelity, and Coinbase, with RSU modeled as a Fidelity sub-account category.
 - `POST /v1/connected-finance/manual-institutions`.
 - `GET /v1/connected-finance/overview`.
 - `GET /v1/portfolio-snapshots/:id/lineage`.

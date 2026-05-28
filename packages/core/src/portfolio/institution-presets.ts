@@ -147,6 +147,17 @@ export const manualInstitutionPresets = [
         assetSubType: 'retirement_401k',
         currency: 'USD',
       },
+      {
+        accountKey: 'rsu',
+        displayName: 'RSU',
+        accountType: 'Shares',
+        assetType: 'equity',
+        assetSubType: 'employer_rsu',
+        currency: 'USD',
+        metadata: {
+          employerStockCandidate: true,
+        },
+      },
     ],
   },
   {
@@ -170,25 +181,6 @@ export const manualInstitutionPresets = [
         assetType: 'crypto',
         assetSubType: 'crypto_wallet',
         currency: 'USD',
-      },
-    ],
-  },
-  {
-    institutionKey: 'rsu',
-    displayName: 'RSU',
-    defaultSourceKind: 'MANUAL_STATIC',
-    baseCurrency: 'USD',
-    accounts: [
-      {
-        accountKey: 'rsu',
-        displayName: 'RSU',
-        accountType: 'RSU',
-        assetType: 'equity',
-        assetSubType: 'employer_rsu',
-        currency: 'USD',
-        metadata: {
-          employerStockCandidate: true,
-        },
       },
     ],
   },

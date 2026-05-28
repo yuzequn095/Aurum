@@ -380,7 +380,7 @@ After Milestone 14, Aurum is usable as a coherent day-to-day product surface for
 
 Milestone 15 = **Connected Finance Expansion / Portfolio Depth**.
 
-- Added institution-aware manual presets for Wells Fargo, SoFi, Webull, Tiger Brokers, Fidelity, Coinbase, and RSU using existing `ConnectedSourceRecord` and `ConnectedSourceAccountRecord` tables.
+- Added institution-aware manual presets for Wells Fargo, SoFi, Webull, Tiger Brokers, Fidelity, and Coinbase using existing `ConnectedSourceRecord` and `ConnectedSourceAccountRecord` tables, with RSU modeled as a Fidelity sub-account.
 - Added `POST /v1/connected-finance/manual-institutions` for read-only/manual institution creation with duplicate protection by `metadata.institutionKey`.
 - Added `GET /v1/connected-finance/overview` with institution health, last synced state, stale/attention status, account counts, latest source snapshot, and summary counts.
 - Added snapshot lineage and delta APIs: `GET /v1/portfolio-snapshots/:id/lineage` and `GET /v1/portfolio-snapshots/:id/delta?compareTo=previous`.

@@ -665,16 +665,16 @@ describe('PortfolioSnapshotsService', () => {
       source: null,
     };
     const source = {
-      id: 'source_rsu',
+      id: 'source_fidelity',
       userId: 'user_1',
       kind: 'MANUAL_STATIC',
       providerKey: null,
       providerConnectionId: null,
-      displayName: 'RSU',
+      displayName: 'Fidelity',
       status: 'ACTIVE',
-      institutionName: 'RSU',
+      institutionName: 'Fidelity',
       baseCurrency: 'USD',
-      metadata: { institutionKey: 'rsu' },
+      metadata: { institutionKey: 'fidelity' },
       lastSuccessfulSyncAt: staleDate,
       createdAt: staleDate,
       updatedAt: staleDate,
@@ -691,15 +691,15 @@ describe('PortfolioSnapshotsService', () => {
         findMany: jest.fn().mockResolvedValue([
           {
             id: 'account_rsu',
-            sourceId: 'source_rsu',
+            sourceId: 'source_fidelity',
             externalAccountId: null,
             displayName: 'RSU',
             officialName: null,
-            accountType: 'RSU',
+            accountType: 'Shares',
             currency: 'USD',
             assetType: 'EQUITY',
             assetSubType: 'employer_rsu',
-            institutionOrIssuer: 'RSU',
+            institutionOrIssuer: 'Fidelity',
             maskLast4: null,
             isActive: true,
             metadata: { employerStockCandidate: true },
@@ -717,7 +717,7 @@ describe('PortfolioSnapshotsService', () => {
             currency: 'USD',
             assetType: 'CASH',
             assetSubType: 'cash',
-            institutionOrIssuer: 'RSU',
+            institutionOrIssuer: 'Fidelity',
             maskLast4: null,
             isActive: true,
             metadata: null,
@@ -783,7 +783,11 @@ describe('PortfolioSnapshotsService', () => {
     );
     expect(diagnostics?.allocationByInstitution).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ label: 'RSU', value: 1600, weight: 0.8 }),
+        expect.objectContaining({
+          label: 'Fidelity',
+          value: 1600,
+          weight: 0.8,
+        }),
         expect.objectContaining({ label: 'Coinbase', value: 400, weight: 0.2 }),
       ]),
     );

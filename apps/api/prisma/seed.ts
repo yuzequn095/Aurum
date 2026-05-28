@@ -6,6 +6,7 @@ import {
   PortfolioAssetCategoryType,
   PortfolioSnapshotIngestionMode,
   PortfolioSnapshotSourceType,
+  Prisma,
   PrismaClient,
   TransactionType,
 } from '@prisma/client';
@@ -69,6 +70,14 @@ function getJsonString(value: unknown, key: string): string | undefined {
   return typeof candidate[key] === 'string' ? candidate[key] : undefined;
 }
 
+function getJsonObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, unknown>;
+}
+
 function getDemoValue(
   accountKey: string,
   institutionKey: string,
@@ -128,7 +137,7 @@ function getDemoValue(
       symbol: 'BTC',
       name: 'Bitcoin',
     },
-    'rsu:rsu': {
+    'fidelity:rsu': {
       previous: 54000,
       current: 61200,
       symbol: 'DEMO-RSU',
@@ -160,6 +169,9 @@ function getDemoAssetCategory(
 }
 
 async function seedDemoConnectedFinance(userId: string) {
+  const expectedInstitutionKeys = new Set(
+    manualInstitutionPresets.map((preset) => preset.institutionKey),
+  );
   const seededPositions: Array<{
     institutionKey: string;
     sourceId: string;
@@ -186,6 +198,13 @@ async function seedDemoConnectedFinance(userId: string) {
         getJsonString(source.metadata, 'institutionKey') ===
         preset.institutionKey,
     );
+    const sourceMetadata = {
+      ...getJsonObject(existingSource?.metadata),
+      institutionKey: preset.institutionKey,
+      seededFor: DEMO_EMAIL,
+      presetDisplayName: preset.displayName,
+      presetVersion: 'manual-institution-presets@1.0.0',
+    } satisfies Prisma.InputJsonObject;
     const source =
       existingSource ??
       (await prisma.connectedSourceRecord.create({
@@ -197,11 +216,7 @@ async function seedDemoConnectedFinance(userId: string) {
           institutionName: preset.displayName,
           baseCurrency: preset.baseCurrency,
           lastSuccessfulSyncAt: new Date(),
-          metadata: {
-            institutionKey: preset.institutionKey,
-            seededFor: DEMO_EMAIL,
-            presetVersion: 'manual-institution-presets@1.0.0',
-          },
+          metadata: sourceMetadata,
         },
       }));
 
@@ -214,6 +229,7 @@ async function seedDemoConnectedFinance(userId: string) {
           displayName: preset.displayName,
           institutionName: preset.displayName,
           lastSuccessfulSyncAt: new Date(),
+          metadata: sourceMetadata,
         },
       });
     }
@@ -345,6 +361,40 @@ async function seedDemoConnectedFinance(userId: string) {
   }
 
   await seedDemoSnapshots(userId, seededPositions);
+  await deleteObsoleteSeededManualSources(userId, expectedInstitutionKeys);
+}
+
+async function deleteObsoleteSeededManualSources(
+  userId: string,
+  expectedInstitutionKeys: Set<string>,
+) {
+  const existingSeededSources = await prisma.connectedSourceRecord.findMany({
+    where: {
+      userId,
+      kind: 'MANUAL_STATIC',
+    },
+    select: {
+      id: true,
+      metadata: true,
+    },
+  });
+
+  const obsoleteSources = existingSeededSources.filter((source) => {
+    const metadataSeededFor = getJsonString(source.metadata, 'seededFor');
+    const institutionKey = getJsonString(source.metadata, 'institutionKey');
+
+    return (
+      metadataSeededFor === DEMO_EMAIL &&
+      institutionKey !== undefined &&
+      !expectedInstitutionKeys.has(institutionKey)
+    );
+  });
+
+  for (const source of obsoleteSources) {
+    await prisma.connectedSourceRecord.delete({
+      where: { id: source.id },
+    });
+  }
 }
 
 function buildDemoValuationData(input: {

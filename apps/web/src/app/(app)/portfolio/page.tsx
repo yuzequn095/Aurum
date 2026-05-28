@@ -87,6 +87,10 @@ function formatAssetCategory(category: PortfolioAssetCategory | undefined): stri
     return 'Other';
   }
 
+  if (category === 'etf') {
+    return 'ETF';
+  }
+
   return category
     .split('_')
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
@@ -231,7 +235,7 @@ export default function PortfolioPage() {
   );
   const [accountForm, setAccountForm] = useState({
     displayName: '',
-    accountType: 'RSU',
+    accountType: 'Shares',
     currency: 'USD',
     assetType: 'equity' as PortfolioAssetCategory,
     assetSubType: '',
@@ -440,7 +444,7 @@ export default function PortfolioPage() {
       setSelectedAccountId(created.id);
       setAccountForm({
         displayName: '',
-        accountType: 'RSU',
+        accountType: 'Shares',
         currency: selectedSource?.baseCurrency ?? 'USD',
         assetType: 'equity',
         assetSubType: '',
@@ -1293,7 +1297,7 @@ export default function PortfolioPage() {
                         >
                           {assetTypeOptions.map((assetType) => (
                             <option key={assetType} value={assetType}>
-                              {assetType}
+                              {formatAssetCategory(assetType)}
                             </option>
                           ))}
                         </select>
@@ -1359,8 +1363,11 @@ export default function PortfolioPage() {
                                 {account.displayName}
                               </p>
                               <p className="text-xs text-[var(--aurum-text-muted)]">
-                                {account.accountType} - {account.assetType ?? 'unspecified'} -{' '}
-                                {account.currency}
+                                {account.accountType} -{' '}
+                                {account.assetType
+                                  ? formatAssetCategory(account.assetType)
+                                  : 'Unspecified'}{' '}
+                                - {account.currency}
                               </p>
                               <p className="text-xs text-[var(--aurum-text-muted)]">
                                 {account.institutionOrIssuer ?? 'No issuer'}

@@ -59,7 +59,7 @@ export function getProviderNotConfiguredGuidance(provider: ConnectedFinanceProvi
   if (provider === 'SNAPTRADE') {
     return {
       title: 'SnapTrade is not configured yet',
-      body: 'This environment does not have brokerage provider credentials configured. You can use manual institutions for Webull, Tiger Brokers, Fidelity, and RSU for now.',
+      body: 'This environment does not have brokerage provider credentials configured. You can use manual institutions for Webull, Tiger Brokers, and Fidelity for now, including a Fidelity RSU sub-account.',
     };
   }
 
