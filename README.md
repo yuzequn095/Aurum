@@ -380,13 +380,16 @@ After Milestone 14, Aurum is usable as a coherent day-to-day product surface for
 
 Milestone 15 = **Connected Finance Expansion / Portfolio Depth**.
 
-- Added institution-aware manual presets for Wells Fargo, SoFi, Webull, Tiger Brokers, Fidelity, and Coinbase using existing `ConnectedSourceRecord` and `ConnectedSourceAccountRecord` tables, with RSU modeled as a Fidelity sub-account.
+- Added institution-aware manual presets for Wells Fargo, SoFi, Webull, Tiger Brokers, Fidelity, and Coinbase using existing `ConnectedSourceRecord` and `ConnectedSourceAccountRecord` tables.
+- Modeled RSU as a Fidelity sub-account category rather than a standalone institution or account type. Fidelity now includes Cash, Shares, 401K, and RSU.
 - Added `POST /v1/connected-finance/manual-institutions` for read-only/manual institution creation with duplicate protection by `metadata.institutionKey`.
 - Added `GET /v1/connected-finance/overview` with institution health, last synced state, stale/attention status, account counts, latest source snapshot, and summary counts.
 - Added snapshot lineage and delta APIs: `GET /v1/portfolio-snapshots/:id/lineage` and `GET /v1/portfolio-snapshots/:id/delta?compareTo=previous`.
 - Added deterministic diagnostics at `GET /v1/portfolio-snapshots/:id/diagnostics` covering allocation, institution/account exposure, concentration, data health, and flags.
 - Integrated overview, delta, and diagnostics into Portfolio, with a small Settings institution summary.
-- Extended local seed data for `demo@aurum.local` / `password123` with manual institutions, valuation history, source snapshots, and consolidated demo snapshots.
+- Updated Portfolio asset category display so ETF stays uppercase in user-facing allocation controls and summaries.
+- Extended local seed data for `demo@aurum.local` / `password123` with 6 manual institutions, 13 accounts, valuation history, source snapshots, and consolidated demo snapshots. The current consolidated demo snapshot covers cash, equity, ETF, fund, crypto, and employer RSU exposure.
+- Demo seed is idempotent and cleans up the older seeded standalone RSU source if present, preserving RSU under Fidelity going forward.
 
 ### What Milestone 15 Is Not
 
@@ -594,6 +597,8 @@ Local auth bootstrap:
 - `pnpm --filter api exec prisma db seed` now creates or refreshes a password-backed demo user for local development.
 - Demo login:
   `demo@aurum.local` / `password123`
+- The demo seed also creates Milestone 15 connected-finance data: Wells Fargo, SoFi, Webull, Tiger Brokers, Fidelity, and Coinbase manual institutions; Fidelity includes Cash, Shares, 401K, and RSU sub-accounts.
+- Seeded portfolio snapshots include previous/current source-level snapshots and previous/current consolidated snapshots so Institution Overview, Asset Overview, lineage, delta, and diagnostics can be validated without provider credentials.
 - To reset an existing local email/password identity:
   `pnpm --filter api run reset-password -- <email> <new-password>`
 - You can also create your own account from `/register`.
