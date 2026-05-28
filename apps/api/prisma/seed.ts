@@ -9,10 +9,8 @@ import {
   PrismaClient,
   TransactionType,
 } from '@prisma/client';
-import {
-  manualInstitutionPresets,
-  type PortfolioAssetCategory,
-} from '@aurum/core';
+import { manualInstitutionPresets } from '../../../packages/core/src/portfolio/institution-presets';
+import { type PortfolioAssetCategory } from '../../../packages/core/src/portfolio/types';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { hash } from 'bcryptjs';
 
@@ -133,7 +131,7 @@ function getDemoValue(
     'rsu:rsu': {
       previous: 54000,
       current: 61200,
-      symbol: 'ACME',
+      symbol: 'DEMO-RSU',
       name: 'Employer RSU',
     },
   };
@@ -149,8 +147,21 @@ function getDemoValue(
   };
 }
 
+function getDemoAssetCategory(
+  accountKey: string,
+  institutionKey: string,
+  fallback: PortfolioAssetCategory,
+): PortfolioAssetCategoryType {
+  if (institutionKey === 'fidelity' && accountKey === 'shares') {
+    return PortfolioAssetCategoryType.ETF;
+  }
+
+  return toPrismaAssetType(fallback);
+}
+
 async function seedDemoConnectedFinance(userId: string) {
   const seededPositions: Array<{
+    institutionKey: string;
     sourceId: string;
     sourceLabel: string;
     sourceAccountId: string;
@@ -219,11 +230,16 @@ async function seedDemoConnectedFinance(userId: string) {
           getJsonString(account.metadata, 'accountKey') ===
           accountPreset.accountKey,
       );
+      const accountAssetCategory = getDemoAssetCategory(
+        accountPreset.accountKey,
+        preset.institutionKey,
+        accountPreset.assetType,
+      );
       const accountData = {
         displayName: accountPreset.displayName,
         accountType: accountPreset.accountType,
         currency: accountPreset.currency,
-        assetType: toPrismaAssetType(accountPreset.assetType),
+        assetType: accountAssetCategory,
         assetSubType: accountPreset.assetSubType,
         institutionOrIssuer: preset.displayName,
         isActive: true,
@@ -275,26 +291,30 @@ async function seedDemoConnectedFinance(userId: string) {
 
         if (!existingValuation) {
           await prisma.manualStaticValuationRecord.create({
-            data: {
+            data: buildDemoValuationData({
               userId,
               sourceId: source.id,
               sourceAccountId: account.id,
               valuationDate,
               currency: accountPreset.currency,
-              marketValue: value.marketValue,
-              quantity:
-                accountPreset.assetType === 'cash'
-                  ? undefined
-                  : Math.max(1, Math.round(value.marketValue / 100)),
-              unitPrice: accountPreset.assetType === 'cash' ? undefined : 100,
-              symbol: value.symbol,
-              assetName: value.name,
-              note: 'Milestone 15 demo valuation',
-              metadata: {
-                seedKey: `milestone15:${preset.institutionKey}:${accountPreset.accountKey}:${current ? 'current' : 'previous'}`,
-                seededFor: DEMO_EMAIL,
-              },
-            },
+              value,
+              isCash: accountAssetCategory === PortfolioAssetCategoryType.CASH,
+              seedKey: `milestone15:${preset.institutionKey}:${accountPreset.accountKey}:${current ? 'current' : 'previous'}`,
+            }),
+          });
+        } else {
+          await prisma.manualStaticValuationRecord.update({
+            where: { id: existingValuation.id },
+            data: buildDemoValuationData({
+              userId,
+              sourceId: source.id,
+              sourceAccountId: account.id,
+              valuationDate,
+              currency: accountPreset.currency,
+              value,
+              isCash: accountAssetCategory === PortfolioAssetCategoryType.CASH,
+              seedKey: `milestone15:${preset.institutionKey}:${accountPreset.accountKey}:${current ? 'current' : 'previous'}`,
+            }),
           });
         }
       }
@@ -310,6 +330,7 @@ async function seedDemoConnectedFinance(userId: string) {
         true,
       );
       seededPositions.push({
+        institutionKey: preset.institutionKey,
         sourceId: source.id,
         sourceLabel: preset.displayName,
         sourceAccountId: account.id,
@@ -318,7 +339,7 @@ async function seedDemoConnectedFinance(userId: string) {
         name: currentValue.name,
         previousMarketValue: previousValue.marketValue,
         currentMarketValue: currentValue.marketValue,
-        category: toPrismaAssetType(accountPreset.assetType),
+        category: accountAssetCategory,
       });
     }
   }
@@ -326,9 +347,41 @@ async function seedDemoConnectedFinance(userId: string) {
   await seedDemoSnapshots(userId, seededPositions);
 }
 
+function buildDemoValuationData(input: {
+  userId: string;
+  sourceId: string;
+  sourceAccountId: string;
+  valuationDate: Date;
+  currency: string;
+  value: { marketValue: number; symbol?: string; name: string };
+  isCash: boolean;
+  seedKey: string;
+}) {
+  return {
+    userId: input.userId,
+    sourceId: input.sourceId,
+    sourceAccountId: input.sourceAccountId,
+    valuationDate: input.valuationDate,
+    currency: input.currency,
+    marketValue: input.value.marketValue,
+    quantity: input.isCash
+      ? undefined
+      : Math.max(1, Math.round(input.value.marketValue / 100)),
+    unitPrice: input.isCash ? undefined : 100,
+    symbol: input.value.symbol,
+    assetName: input.value.name,
+    note: 'Milestone 15 demo valuation',
+    metadata: {
+      seedKey: input.seedKey,
+      seededFor: DEMO_EMAIL,
+    },
+  };
+}
+
 async function seedDemoSnapshots(
   userId: string,
   positions: Array<{
+    institutionKey: string;
     sourceId: string;
     sourceLabel: string;
     sourceAccountId: string;
@@ -340,23 +393,53 @@ async function seedDemoSnapshots(
     category: PortfolioAssetCategoryType;
   }>,
 ) {
-  const positionsBySource = new Map<string, typeof positions>();
+  const expectedFingerprints = new Set<string>([
+    'milestone15:consolidated:previous',
+    'milestone15:consolidated:current',
+  ]);
+  const positionsBySource = new Map<
+    string,
+    {
+      institutionKey: string;
+      sourceLabel: string;
+      positions: typeof positions;
+    }
+  >();
   positions.forEach((position) => {
-    const existing = positionsBySource.get(position.sourceId) ?? [];
-    existing.push(position);
+    const existing = positionsBySource.get(position.sourceId) ?? {
+      institutionKey: position.institutionKey,
+      sourceLabel: position.sourceLabel,
+      positions: [],
+    };
+    existing.positions.push(position);
     positionsBySource.set(position.sourceId, existing);
   });
 
-  for (const [sourceId, sourcePositions] of positionsBySource.entries()) {
+  for (const [sourceId, sourceGroup] of positionsBySource.entries()) {
     await createDemoSnapshot({
       userId,
-      positions: sourcePositions,
+      positions: sourceGroup.positions,
+      snapshotDate: DEMO_SNAPSHOT_DATES.previous,
+      sourceId,
+      sourceLabel: sourceGroup.sourceLabel,
+      fingerprint: `milestone15:${sourceGroup.institutionKey}:previous`,
+      current: false,
+    });
+    expectedFingerprints.add(
+      `milestone15:${sourceGroup.institutionKey}:previous`,
+    );
+    await createDemoSnapshot({
+      userId,
+      positions: sourceGroup.positions,
       snapshotDate: DEMO_SNAPSHOT_DATES.current,
       sourceId,
-      sourceLabel: sourcePositions[0]?.sourceLabel ?? 'Manual Institution',
-      fingerprint: `milestone15:${sourceId}:current`,
+      sourceLabel: sourceGroup.sourceLabel,
+      fingerprint: `milestone15:${sourceGroup.institutionKey}:current`,
       current: true,
     });
+    expectedFingerprints.add(
+      `milestone15:${sourceGroup.institutionKey}:current`,
+    );
   }
 
   await createDemoSnapshot({
@@ -375,6 +458,42 @@ async function seedDemoSnapshots(
     fingerprint: 'milestone15:consolidated:current',
     current: true,
   });
+
+  await deleteObsoleteDemoSnapshots(userId, expectedFingerprints);
+}
+
+async function deleteObsoleteDemoSnapshots(
+  userId: string,
+  expectedFingerprints: Set<string>,
+) {
+  const existingDemoSnapshots = await prisma.portfolioSnapshotRecord.findMany({
+    where: {
+      userId,
+      sourceFingerprint: {
+        startsWith: 'milestone15:',
+      },
+    },
+    select: {
+      id: true,
+      sourceFingerprint: true,
+    },
+  });
+  const obsoleteSnapshots = existingDemoSnapshots.filter(
+    (snapshot) =>
+      snapshot.sourceFingerprint &&
+      !expectedFingerprints.has(snapshot.sourceFingerprint),
+  );
+
+  for (const snapshot of obsoleteSnapshots) {
+    await prisma.$transaction([
+      prisma.portfolioPositionRecord.deleteMany({
+        where: { snapshotId: snapshot.id },
+      }),
+      prisma.portfolioSnapshotRecord.delete({
+        where: { id: snapshot.id },
+      }),
+    ]);
+  }
 }
 
 async function createDemoSnapshot(input: {
@@ -401,9 +520,6 @@ async function createDemoSnapshot(input: {
     },
     select: { id: true },
   });
-  if (existing) {
-    return;
-  }
 
   const totalValue = input.positions.reduce(
     (sum, position) =>
@@ -424,41 +540,64 @@ async function createDemoSnapshot(input: {
       0,
     );
 
+  const positionsToCreate = input.positions.map((position) => {
+    const marketValue = input.current
+      ? position.currentMarketValue
+      : position.previousMarketValue;
+
+    return {
+      assetKey: position.assetKey,
+      symbol: position.symbol,
+      name: position.name,
+      quantity:
+        position.category === PortfolioAssetCategoryType.CASH
+          ? undefined
+          : Math.max(1, Math.round(marketValue / 100)),
+      marketValue,
+      portfolioWeight: totalValue > 0 ? marketValue / totalValue : 0,
+      category: position.category,
+      sourceAccountId: position.sourceAccountId,
+      notes: 'Milestone 15 demo position',
+    };
+  });
+  const snapshotData = {
+    userId: input.userId,
+    sourceId: input.sourceId ?? null,
+    ingestionMode: PortfolioSnapshotIngestionMode.MANUAL_STATIC,
+    normalizationVersion: 'manual-static-source-adapter@1.0.0',
+    sourceFingerprint: input.fingerprint,
+    portfolioName: input.sourceLabel,
+    sourceType: PortfolioSnapshotSourceType.MANUAL,
+    sourceLabel: input.sourceLabel,
+    snapshotDate: input.snapshotDate,
+    valuationCurrency: 'USD',
+    totalValue,
+    cashValue,
+  };
+
+  if (existing) {
+    await prisma.$transaction([
+      prisma.portfolioPositionRecord.deleteMany({
+        where: { snapshotId: existing.id },
+      }),
+      prisma.portfolioSnapshotRecord.update({
+        where: { id: existing.id },
+        data: {
+          ...snapshotData,
+          positions: {
+            create: positionsToCreate,
+          },
+        },
+      }),
+    ]);
+    return;
+  }
+
   await prisma.portfolioSnapshotRecord.create({
     data: {
-      userId: input.userId,
-      sourceId: input.sourceId,
-      ingestionMode: PortfolioSnapshotIngestionMode.MANUAL_STATIC,
-      normalizationVersion: 'manual-static-source-adapter@1.0.0',
-      sourceFingerprint: input.fingerprint,
-      portfolioName: input.sourceLabel,
-      sourceType: PortfolioSnapshotSourceType.MANUAL,
-      sourceLabel: input.sourceLabel,
-      snapshotDate: input.snapshotDate,
-      valuationCurrency: 'USD',
-      totalValue,
-      cashValue,
+      ...snapshotData,
       positions: {
-        create: input.positions.map((position) => {
-          const marketValue = input.current
-            ? position.currentMarketValue
-            : position.previousMarketValue;
-
-          return {
-            assetKey: position.assetKey,
-            symbol: position.symbol,
-            name: position.name,
-            quantity:
-              position.category === PortfolioAssetCategoryType.CASH
-                ? undefined
-                : Math.max(1, Math.round(marketValue / 100)),
-            marketValue,
-            portfolioWeight: totalValue > 0 ? marketValue / totalValue : 0,
-            category: position.category,
-            sourceAccountId: position.sourceAccountId,
-            notes: 'Milestone 15 demo position',
-          };
-        }),
+        create: positionsToCreate,
       },
     },
   });

@@ -46,15 +46,23 @@ export type ConnectedFinanceErrorCode = (typeof connectedFinanceErrorCodes)[numb
 export interface ConnectedFinanceProviderErrorDetails {
   statusCode?: number;
   code: ConnectedFinanceErrorCode;
-  provider: Extract<ConnectedFinanceProviderKey, 'PLAID' | 'COINBASE'>;
+  provider: ConnectedFinanceProviderKey;
   message: string;
   userMessage?: string;
   missingConfig?: string[];
 }
 
-export function getProviderNotConfiguredGuidance(
-  provider: Extract<ConnectedFinanceProviderKey, 'PLAID' | 'COINBASE'>,
-): { title: string; body: string } {
+export function getProviderNotConfiguredGuidance(provider: ConnectedFinanceProviderKey): {
+  title: string;
+  body: string;
+} {
+  if (provider === 'SNAPTRADE') {
+    return {
+      title: 'SnapTrade is not configured yet',
+      body: 'This environment does not have brokerage provider credentials configured. You can use manual institutions for Webull, Tiger Brokers, Fidelity, and RSU for now.',
+    };
+  }
+
   const providerLabel = provider === 'PLAID' ? 'Plaid' : 'Coinbase';
 
   return {
@@ -64,7 +72,7 @@ export function getProviderNotConfiguredGuidance(
 }
 
 export function parseProviderNotConfiguredDetails(details: unknown): {
-  provider: Extract<ConnectedFinanceProviderKey, 'PLAID' | 'COINBASE'>;
+  provider: ConnectedFinanceProviderKey;
   title: string;
   body: string;
 } | null {
@@ -75,15 +83,16 @@ export function parseProviderNotConfiguredDetails(details: unknown): {
   const candidate = details as Partial<ConnectedFinanceProviderErrorDetails>;
   if (
     candidate.code !== 'PROVIDER_NOT_CONFIGURED' ||
-    (candidate.provider !== 'PLAID' && candidate.provider !== 'COINBASE')
+    !connectedFinanceProviderKeys.includes(candidate.provider as ConnectedFinanceProviderKey)
   ) {
     return null;
   }
 
-  const guidance = getProviderNotConfiguredGuidance(candidate.provider);
+  const provider = candidate.provider as ConnectedFinanceProviderKey;
+  const guidance = getProviderNotConfiguredGuidance(provider);
 
   return {
-    provider: candidate.provider,
+    provider,
     title: guidance.title,
     body: candidate.userMessage ?? guidance.body,
   };

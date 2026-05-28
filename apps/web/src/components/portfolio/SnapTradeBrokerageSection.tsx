@@ -1,7 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { ConnectedSource, ConnectedSourceAccount, PortfolioSnapshot } from '@aurum/core';
+import {
+  parseProviderNotConfiguredDetails,
+  type ConnectedSource,
+  type ConnectedSourceAccount,
+  type PortfolioSnapshot,
+} from '@aurum/core';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import {
@@ -12,6 +17,7 @@ import {
   listConnectedSources,
   syncConnectedBrokerageSource,
 } from '@/lib/api/connected-finance';
+import { ApiError } from '@/lib/api';
 
 function formatMoney(value: number, currency = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
@@ -50,6 +56,10 @@ export function SnapTradeBrokerageSection({ onSnapshotsChanged }: SnapTradeBroke
   const [accounts, setAccounts] = useState<ConnectedSourceAccount[]>([]);
   const [sourceSnapshots, setSourceSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [statusMessage, setStatusMessage] = useState('');
+  const [providerNotice, setProviderNotice] = useState<{
+    title: string;
+    body: string;
+  } | null>(null);
   const [isLoadingSources, setIsLoadingSources] = useState(false);
   const [isCreatingPortal, setIsCreatingPortal] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -108,6 +118,7 @@ export function SnapTradeBrokerageSection({ onSnapshotsChanged }: SnapTradeBroke
   const onCreateConnectionPortal = async () => {
     setIsCreatingPortal(true);
     setStatusMessage('');
+    setProviderNotice(null);
 
     try {
       const result = await createSnapTradeConnectionPortalUrl();
@@ -116,6 +127,12 @@ export function SnapTradeBrokerageSection({ onSnapshotsChanged }: SnapTradeBroke
         'SnapTrade portal opened. Complete the connection, then return here to import accounts.',
       );
     } catch (error) {
+      const notice =
+        error instanceof ApiError ? parseProviderNotConfiguredDetails(error.details) : null;
+      if (notice) {
+        setProviderNotice(notice);
+        return;
+      }
       setStatusMessage(
         error instanceof Error
           ? error.message
@@ -129,6 +146,7 @@ export function SnapTradeBrokerageSection({ onSnapshotsChanged }: SnapTradeBroke
   const onImportAccounts = async () => {
     setIsImporting(true);
     setStatusMessage('');
+    setProviderNotice(null);
 
     try {
       const result = await importSnapTradeAccounts();
@@ -137,6 +155,12 @@ export function SnapTradeBrokerageSection({ onSnapshotsChanged }: SnapTradeBroke
       setSelectedSourceId(firstSourceId);
       setStatusMessage(`Imported ${result.sources.length} brokerage connection(s).`);
     } catch (error) {
+      const notice =
+        error instanceof ApiError ? parseProviderNotConfiguredDetails(error.details) : null;
+      if (notice) {
+        setProviderNotice(notice);
+        return;
+      }
       setStatusMessage(
         error instanceof Error ? error.message : 'Failed to import SnapTrade accounts.',
       );
@@ -153,6 +177,7 @@ export function SnapTradeBrokerageSection({ onSnapshotsChanged }: SnapTradeBroke
 
     setIsSyncing(true);
     setStatusMessage('');
+    setProviderNotice(null);
 
     try {
       await syncConnectedBrokerageSource(selectedSourceId);
@@ -163,6 +188,12 @@ export function SnapTradeBrokerageSection({ onSnapshotsChanged }: SnapTradeBroke
       ]);
       setStatusMessage('Brokerage snapshot created and saved to your portfolio history.');
     } catch (error) {
+      const notice =
+        error instanceof ApiError ? parseProviderNotConfiguredDetails(error.details) : null;
+      if (notice) {
+        setProviderNotice(notice);
+        return;
+      }
       setStatusMessage(
         error instanceof Error ? error.message : 'Failed to sync brokerage connection.',
       );
@@ -183,13 +214,16 @@ export function SnapTradeBrokerageSection({ onSnapshotsChanged }: SnapTradeBroke
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row">
-            <Button onClick={() => void onCreateConnectionPortal()} disabled={isCreatingPortal}>
+            <Button
+              onClick={() => void onCreateConnectionPortal()}
+              disabled={isCreatingPortal || Boolean(providerNotice)}
+            >
               {isCreatingPortal ? 'Opening Portal...' : 'Connect Brokerage'}
             </Button>
             <Button
               variant="secondary"
               onClick={() => void onImportAccounts()}
-              disabled={isImporting}
+              disabled={isImporting || Boolean(providerNotice)}
             >
               {isImporting ? 'Importing...' : 'Import Accounts'}
             </Button>
@@ -199,6 +233,13 @@ export function SnapTradeBrokerageSection({ onSnapshotsChanged }: SnapTradeBroke
             <p className="rounded-[10px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-2 text-sm text-[var(--aurum-text)]">
               {statusMessage}
             </p>
+          ) : null}
+
+          {providerNotice ? (
+            <div className="rounded-[10px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3 text-sm">
+              <p className="font-medium text-[var(--aurum-text)]">{providerNotice.title}</p>
+              <p className="mt-1 text-[var(--aurum-text-muted)]">{providerNotice.body}</p>
+            </div>
           ) : null}
         </CardContent>
       </Card>

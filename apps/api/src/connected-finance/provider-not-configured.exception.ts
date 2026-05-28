@@ -10,7 +10,7 @@ import { getProviderNotConfiguredGuidance } from '@aurum/core';
 
 export class ProviderNotConfiguredException extends ServiceUnavailableException {
   constructor(
-    provider: Extract<ConnectedFinanceProviderKey, 'PLAID' | 'COINBASE'>,
+    provider: ConnectedFinanceProviderKey,
     missingConfig: string[],
     options?: HttpExceptionOptions,
   ) {

@@ -15,6 +15,7 @@ Milestone 15 completes Connected Finance Expansion / Portfolio Depth while prese
 - Portfolio UI sections for institution health, snapshot delta, and diagnostics.
 - Settings institution summary.
 - Demo seed data for `demo@aurum.local` / `password123`.
+- Follow-up hardening for comprehensive seeded demo coverage, consolidated snapshot preference in Portfolio, SnapTrade provider-not-configured fallback, and strict source-scoped snapshot delta baselines.
 
 ## Intentionally Out of Scope
 
@@ -32,6 +33,8 @@ Milestone 15 completes Connected Finance Expansion / Portfolio Depth while prese
 - Stable `institutionKey` and `accountKey` values live in metadata.
 - `PortfolioSnapshot` remains canonical for downstream portfolio analysis.
 - Diagnostics are deterministic and explainable.
+- Current Portfolio Posture and Asset Overview prefer the latest consolidated `PortfolioSnapshot`; source-level snapshots remain visible in Snapshot Library.
+- Snapshot delta compares only within the same scope: source-level snapshots compare to the same source, and consolidated snapshots compare to consolidated snapshots.
 
 ## Validation Commands
 
@@ -70,6 +73,7 @@ Demo login:
 - Password: `password123`
 
 The seed creates mock/manual financial data only. It does not include real provider credentials.
+It creates previous/current source-level snapshots for each seeded manual institution plus previous/current consolidated snapshots covering cash, equity, ETF, fund, crypto, and employer equity.
 
 ## Milestone 16 Candidates
 

@@ -161,7 +161,31 @@ function getAssetAllocation(snapshot: PortfolioSnapshot | null) {
 function compareSnapshots(left: PortfolioSnapshot, right: PortfolioSnapshot): number {
   const leftDate = left.metadata.snapshotDate ?? '';
   const rightDate = right.metadata.snapshotDate ?? '';
-  return rightDate.localeCompare(leftDate);
+  const dateComparison = rightDate.localeCompare(leftDate);
+  if (dateComparison !== 0) {
+    return dateComparison;
+  }
+
+  return (right.createdAt ?? '').localeCompare(left.createdAt ?? '');
+}
+
+function isConsolidatedSnapshot(snapshot: PortfolioSnapshot): boolean {
+  return !snapshot.metadata.sourceId;
+}
+
+function getSnapshotScopeLabel(snapshot: PortfolioSnapshot | null): string {
+  if (!snapshot) {
+    return 'Snapshot unavailable';
+  }
+  if (isConsolidatedSnapshot(snapshot)) {
+    return 'Consolidated portfolio';
+  }
+
+  return (
+    snapshot.metadata.sourceLabel ??
+    snapshot.metadata.portfolioName ??
+    formatSourceType(snapshot.metadata.sourceType)
+  );
 }
 
 function scrollToSection(anchor: string) {
@@ -228,7 +252,13 @@ export default function PortfolioPage() {
   const selectedAccount = accounts.find((account) => account.id === selectedAccountId);
   const snapshotInventory = [...allSnapshots].sort(compareSnapshots);
   const latestSnapshot = snapshotInventory[0] ?? null;
-  const assetAllocation = getAssetAllocation(latestSnapshot);
+  const preferredPortfolioSnapshot =
+    snapshotInventory.find(isConsolidatedSnapshot) ?? latestSnapshot;
+  const preferredSnapshotScopeLabel = getSnapshotScopeLabel(preferredPortfolioSnapshot);
+  const isPreferredSnapshotConsolidated = preferredPortfolioSnapshot
+    ? isConsolidatedSnapshot(preferredPortfolioSnapshot)
+    : false;
+  const assetAllocation = getAssetAllocation(preferredPortfolioSnapshot);
 
   const loadSources = async () => {
     setIsLoadingSources(true);
@@ -323,21 +353,21 @@ export default function PortfolioPage() {
   }, [selectedAccountId]);
 
   useEffect(() => {
-    if (!latestSnapshot?.id) {
+    if (!preferredPortfolioSnapshot?.id) {
       setSnapshotDelta(null);
       setDiagnostics(null);
       return;
     }
 
     void Promise.all([
-      getPortfolioSnapshotDelta(latestSnapshot.id)
+      getPortfolioSnapshotDelta(preferredPortfolioSnapshot.id)
         .then(setSnapshotDelta)
         .catch(() => setSnapshotDelta(null)),
-      getPortfolioSnapshotDiagnostics(latestSnapshot.id)
+      getPortfolioSnapshotDiagnostics(preferredPortfolioSnapshot.id)
         .then(setDiagnostics)
         .catch(() => setDiagnostics(null)),
     ]);
-  }, [latestSnapshot?.id]);
+  }, [preferredPortfolioSnapshot?.id]);
 
   const onCreateSource = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -539,12 +569,12 @@ export default function PortfolioPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--aurum-text-muted)]">
                 Current Portfolio Posture
               </p>
-              {latestSnapshot ? (
+              {preferredPortfolioSnapshot ? (
                 <div className="mt-4 space-y-3">
                   <p className="text-3xl font-semibold text-[var(--aurum-text)]">
                     {formatMoney(
-                      latestSnapshot.totalValue,
-                      latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                      preferredPortfolioSnapshot.totalValue,
+                      preferredPortfolioSnapshot.metadata.valuationCurrency ?? 'USD',
                     )}
                   </p>
                   <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
@@ -553,7 +583,7 @@ export default function PortfolioPage() {
                         Snapshot
                       </p>
                       <p className="mt-1 font-medium text-[var(--aurum-text)]">
-                        {latestSnapshot.metadata.portfolioName ?? 'Latest portfolio snapshot'}
+                        {preferredPortfolioSnapshot.metadata.portfolioName ?? 'Portfolio snapshot'}
                       </p>
                     </div>
                     <div className="rounded-[16px] border border-[var(--aurum-border)] bg-white/80 px-4 py-3">
@@ -561,7 +591,7 @@ export default function PortfolioPage() {
                         Positions
                       </p>
                       <p className="mt-1 font-medium text-[var(--aurum-text)]">
-                        {latestSnapshot.positions.length}
+                        {preferredPortfolioSnapshot.positions.length}
                       </p>
                     </div>
                     <div className="rounded-[16px] border border-[var(--aurum-border)] bg-white/80 px-4 py-3">
@@ -569,18 +599,27 @@ export default function PortfolioPage() {
                         Cash
                       </p>
                       <p className="mt-1 font-medium text-[var(--aurum-text)]">
-                        {latestSnapshot.cashValue == null
+                        {preferredPortfolioSnapshot.cashValue == null
                           ? 'Not tracked'
                           : formatMoney(
-                              latestSnapshot.cashValue,
-                              latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                              preferredPortfolioSnapshot.cashValue,
+                              preferredPortfolioSnapshot.metadata.valuationCurrency ?? 'USD',
                             )}
                       </p>
                     </div>
                   </div>
                   <p className="text-sm text-[var(--aurum-text-muted)]">
-                    Latest snapshot date: {latestSnapshot.metadata.snapshotDate ?? 'Unavailable'}
+                    Based on snapshot:{' '}
+                    {preferredPortfolioSnapshot.metadata.portfolioName ?? 'Portfolio snapshot'}.
+                    Scope: {preferredSnapshotScopeLabel}. Snapshot date:{' '}
+                    {preferredPortfolioSnapshot.metadata.snapshotDate ?? 'Unavailable'}.
                   </p>
+                  {!isPreferredSnapshotConsolidated ? (
+                    <p className="rounded-[12px] border border-[var(--aurum-border)] bg-white/80 px-3 py-2 text-xs text-[var(--aurum-text-muted)]">
+                      This view is based on a single-institution snapshot because no consolidated
+                      snapshot exists yet.
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <p className="mt-4 text-sm leading-7 text-[var(--aurum-text-muted)]">
@@ -596,19 +635,21 @@ export default function PortfolioPage() {
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader className="space-y-1">
-            <CardDescription>Latest Snapshot</CardDescription>
+            <CardDescription>Current Posture Snapshot</CardDescription>
             <CardTitle className="text-xl">
-              {latestSnapshot
+              {preferredPortfolioSnapshot
                 ? formatMoney(
-                    latestSnapshot.totalValue,
-                    latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                    preferredPortfolioSnapshot.totalValue,
+                    preferredPortfolioSnapshot.metadata.valuationCurrency ?? 'USD',
                   )
                 : 'Not available'}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 text-sm text-[var(--aurum-text-muted)]">
-            {latestSnapshot
-              ? (latestSnapshot.metadata.snapshotDate ?? 'Snapshot date unavailable')
+            {preferredPortfolioSnapshot
+              ? `${preferredSnapshotScopeLabel} | ${
+                  preferredPortfolioSnapshot.metadata.snapshotDate ?? 'Snapshot date unavailable'
+                }`
               : 'Create or sync a first snapshot to activate the portfolio layer.'}
           </CardContent>
         </Card>
@@ -774,12 +815,27 @@ export default function PortfolioPage() {
             <CardHeader>
               <CardTitle>Asset Overview</CardTitle>
               <CardDescription>
-                Allocation is calculated from the latest real snapshot. No chart is shown until
-                Aurum has actual position data to summarize.
+                Allocation is calculated from the preferred portfolio snapshot. Consolidated
+                snapshots are used first when available.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-[var(--aurum-text)]">
-              {!latestSnapshot ? (
+              {preferredPortfolioSnapshot ? (
+                <div className="rounded-[12px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-3 py-3 text-xs text-[var(--aurum-text-muted)]">
+                  <p>
+                    Based on snapshot:{' '}
+                    {preferredPortfolioSnapshot.metadata.portfolioName ?? 'Portfolio snapshot'}
+                  </p>
+                  <p>Scope: {preferredSnapshotScopeLabel}</p>
+                  {!isPreferredSnapshotConsolidated ? (
+                    <p className="mt-2 text-[var(--aurum-text)]">
+                      This view is based on a single-institution snapshot because no consolidated
+                      snapshot exists yet.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              {!preferredPortfolioSnapshot ? (
                 <p className="text-sm text-[var(--aurum-text-muted)]">
                   Create or sync a snapshot to see asset mix, liquidity, and position coverage.
                 </p>
@@ -798,7 +854,7 @@ export default function PortfolioPage() {
                       <p className="text-sm text-[var(--aurum-text)]">
                         {formatMoney(
                           item.value,
-                          latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                          preferredPortfolioSnapshot.metadata.valuationCurrency ?? 'USD',
                         )}
                       </p>
                     </div>
@@ -809,7 +865,7 @@ export default function PortfolioPage() {
                       />
                     </div>
                     <p className="mt-2 text-xs text-[var(--aurum-text-muted)]">
-                      {item.percent.toFixed(1)}% of latest snapshot value
+                      {item.percent.toFixed(1)}% of selected snapshot value
                     </p>
                   </div>
                 ))
@@ -821,12 +877,12 @@ export default function PortfolioPage() {
             <CardHeader>
               <CardTitle>Diagnostics</CardTitle>
               <CardDescription>
-                Deterministic allocation, concentration, and data health signals from the latest
+                Deterministic allocation, concentration, and data health signals from the preferred
                 snapshot.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              {!latestSnapshot ? (
+              {!preferredPortfolioSnapshot ? (
                 <p className="text-[var(--aurum-text-muted)]">
                   Create a snapshot to calculate diagnostics.
                 </p>
@@ -882,7 +938,7 @@ export default function PortfolioPage() {
                           {holding.sourceAccountName ?? 'Unknown account'} |{' '}
                           {formatMoney(
                             holding.marketValue,
-                            latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                            preferredPortfolioSnapshot.metadata.valuationCurrency ?? 'USD',
                           )}
                         </p>
                       </div>
@@ -916,7 +972,7 @@ export default function PortfolioPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              {!latestSnapshot ? (
+              {!preferredPortfolioSnapshot ? (
                 <p className="text-[var(--aurum-text-muted)]">
                   Create a snapshot to compare portfolio changes.
                 </p>
@@ -936,7 +992,7 @@ export default function PortfolioPage() {
                       <p className="mt-1 font-semibold text-[var(--aurum-text)]">
                         {formatMoney(
                           snapshotDelta.totalValueDelta,
-                          latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                          preferredPortfolioSnapshot.metadata.valuationCurrency ?? 'USD',
                         )}
                       </p>
                     </div>
@@ -947,7 +1003,7 @@ export default function PortfolioPage() {
                       <p className="mt-1 font-semibold text-[var(--aurum-text)]">
                         {formatMoney(
                           snapshotDelta.cashValueDelta,
-                          latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                          preferredPortfolioSnapshot.metadata.valuationCurrency ?? 'USD',
                         )}
                       </p>
                     </div>
@@ -978,7 +1034,7 @@ export default function PortfolioPage() {
                           {item.sourceAccountName ?? 'Unknown account'} |{' '}
                           {formatMoney(
                             item.marketValueDelta,
-                            latestSnapshot.metadata.valuationCurrency ?? 'USD',
+                            preferredPortfolioSnapshot.metadata.valuationCurrency ?? 'USD',
                           )}
                         </p>
                       </div>
