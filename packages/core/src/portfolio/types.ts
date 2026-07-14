@@ -275,3 +275,30 @@ export interface PortfolioDiagnostics {
   };
   flags: PortfolioDiagnosticsFlag[];
 }
+
+export type PortfolioAttentionSeverity = 'info' | 'warning' | 'critical';
+
+export type PortfolioAttentionCategory =
+  | 'data_health'
+  | 'concentration'
+  | 'allocation'
+  | 'change'
+  | 'setup'
+  | 'market_brief';
+
+export interface PortfolioAttentionAction {
+  label: string;
+  href: string;
+}
+
+/** A deterministic, computed prompt for an in-app product action. */
+export interface PortfolioAttentionItem {
+  id: string;
+  title: string;
+  description: string;
+  severity: PortfolioAttentionSeverity;
+  category: PortfolioAttentionCategory;
+  snapshotId?: string;
+  sourceIds?: string[];
+  action?: PortfolioAttentionAction;
+}

@@ -9,6 +9,7 @@ import {
   type PortfolioSnapshot,
 } from '@aurum/core';
 import { PageContainer } from '@/components/layout/PageContainer';
+import { PortfolioAttentionItems } from '@/components/attention/PortfolioAttentionItems';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -1265,6 +1266,11 @@ export default function AiInsightsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <PortfolioAttentionItems
+        title="Portfolio prompts for your AI workspace"
+        description="Review deterministic portfolio context or open manual Market Brief generation when a recent state deserves a closer look."
+      />
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.08fr_0.92fr]">
         <Card>

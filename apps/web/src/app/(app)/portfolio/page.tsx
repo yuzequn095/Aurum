@@ -20,6 +20,7 @@ import { CoinbaseCryptoSection } from '@/components/portfolio/CoinbaseCryptoSect
 import { ChangeExplanationPanel } from '@/components/portfolio/ChangeExplanationPanel';
 import { PlaidSandboxBankSection } from '@/components/portfolio/PlaidSandboxBankSection';
 import { PortfolioHistorySection } from '@/components/portfolio/PortfolioHistorySection';
+import { PortfolioAttentionItems } from '@/components/attention/PortfolioAttentionItems';
 import { SnapTradeBrokerageSection } from '@/components/portfolio/SnapTradeBrokerageSection';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Badge } from '@/components/ui/Badge';
@@ -752,6 +753,11 @@ export default function PortfolioPage() {
           </CardContent>
         </Card>
       </section>
+
+      <PortfolioAttentionItems
+        title="Portfolio Attention"
+        description="Current product actions derived from source freshness, snapshot changes, allocation, and concentration diagnostics."
+      />
 
       <Card>
         <CardHeader>

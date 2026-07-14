@@ -4,6 +4,7 @@ import { AIReportsModule } from '../ai-reports/ai-reports.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { EntitlementsModule } from '../entitlements/entitlements.module';
 import { FinancialHealthScoresModule } from '../financial-health-scores/financial-health-scores.module';
+import { ConnectedFinanceModule } from '../connected-finance/connected-finance.module';
 import { PortfolioSnapshotsModule } from '../portfolio-snapshots/portfolio-snapshots.module';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
@@ -19,12 +20,14 @@ import { MarketContextService } from './daily-market-brief/market-context.servic
 import { MonthlyFinancialReviewService } from './monthly-financial-review/monthly-financial-review.service';
 import { OpenAiCompatibleChatClient } from './quick-chat/openai-compatible-chat.client';
 import { QuickChatService } from './quick-chat/quick-chat.service';
+import { PortfolioAttentionService } from './portfolio-attention.service';
 
 @Module({
   imports: [
     AnalyticsModule,
     ConfigModule,
     EntitlementsModule,
+    ConnectedFinanceModule,
     PortfolioSnapshotsModule,
     AIReportsModule,
     FinancialHealthScoresModule,
@@ -41,6 +44,7 @@ import { QuickChatService } from './quick-chat/quick-chat.service';
     DailyMarketBriefService,
     DailyMarketBriefPreferencesService,
     MonthlyFinancialReviewService,
+    PortfolioAttentionService,
     {
       provide: INSIGHT_ENGINE,
       inject: [

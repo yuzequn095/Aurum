@@ -15,6 +15,7 @@ import { MonthlyFinancialReviewService } from './monthly-financial-review/monthl
 import { QuickChatRequestDto } from './quick-chat/dto/quick-chat.dto';
 import { QuickChatService } from './quick-chat/quick-chat.service';
 import type { QuickChatResponseView } from './quick-chat/quick-chat.types';
+import { PortfolioAttentionService } from './portfolio-attention.service';
 
 @Injectable()
 export class AiService {
@@ -24,8 +25,13 @@ export class AiService {
     private readonly monthlyFinancialReviewService: MonthlyFinancialReviewService,
     private readonly dailyMarketBriefService: DailyMarketBriefService,
     private readonly dailyMarketBriefPreferencesService: DailyMarketBriefPreferencesService,
+    private readonly portfolioAttentionService: PortfolioAttentionService,
     @Inject(INSIGHT_ENGINE) private readonly insightEngine: InsightEngine,
   ) {}
+
+  async getAttentionItems(userId: string) {
+    return this.portfolioAttentionService.getAttentionItems(userId);
+  }
 
   async runQuickChat(
     userId: string,

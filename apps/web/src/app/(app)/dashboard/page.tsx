@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useMemo, useState } from 'react';
 import { CashflowChannelFlow } from '@/components/dashboard/CashflowChannelFlow';
+import { PortfolioAttentionItems } from '@/components/attention/PortfolioAttentionItems';
 import { HomeAiBriefCard } from '@/components/home/HomeAiBriefCard';
 import { HomeHero } from '@/components/home/HomeHero';
 import { HomeMonthlyFocusCard } from '@/components/home/HomeMonthlyFocusCard';
@@ -149,6 +150,12 @@ export default function DashboardPage() {
       />
 
       <HomeSummaryGrid items={summaryItems} loading={loading || homeOverview.loading} />
+
+      <PortfolioAttentionItems
+        title='What may need your attention'
+        description='Computed from portfolio freshness, changes, and diagnostic state. No background action is taken.'
+        limit={4}
+      />
 
       <section className='grid grid-cols-1 gap-6 xl:grid-cols-[1.12fr_0.88fr]'>
         <HomePortfolioPulseCard snapshot={latestSnapshot} loading={homeOverview.loading} />

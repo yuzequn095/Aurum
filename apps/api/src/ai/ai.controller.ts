@@ -23,6 +23,11 @@ import type { QuickChatResponseView } from './quick-chat/quick-chat.types';
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
+  @Get('attention-items')
+  async getAttentionItems(@CurrentUser() user: AuthenticatedUser) {
+    return this.aiService.getAttentionItems(user.userId);
+  }
+
   @Post('quick-chat')
   async quickChat(
     @CurrentUser() user: AuthenticatedUser,
