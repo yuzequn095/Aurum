@@ -161,7 +161,7 @@ export class MarketContextService {
       scope: input.scope,
       operatingMode: 'internal_market_template_v1',
       dataFreshnessNote:
-        'Using the internal Daily Market Brief context builder with portfolio-grounded signals. External market data expansion can layer in later.',
+        'Using the internal Market Brief context builder with portfolio-grounded signals. External market data is not available in this mode.',
       topHoldings,
       watchlistSymbols,
       signals,

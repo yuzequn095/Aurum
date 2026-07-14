@@ -3,12 +3,14 @@ import type {
   FinancialHealthScoreArtifact,
   PortfolioSnapshot,
 } from '@aurum/core';
+import type { PortfolioAIContext } from '../../portfolio-snapshots/portfolio-ai-context.service';
 import type { QuickChatCompletionMessage } from './openai-compatible-chat.client';
 
 export interface QuickChatResolvedContext {
   snapshot?: PortfolioSnapshot;
   report?: AIReportArtifact;
   score?: FinancialHealthScoreArtifact;
+  portfolioContext?: PortfolioAIContext;
 }
 
 function formatMoney(value: number | undefined, currency = 'USD'): string {
@@ -57,6 +59,42 @@ function buildContextBlock(context: QuickChatResolvedContext): string {
     lines.push('Snapshot: none linked.');
   }
 
+  if (context.portfolioContext) {
+    const portfolioContext = context.portfolioContext;
+    const explanation = portfolioContext.changeExplanation;
+    lines.push(
+      `Portfolio data health: ${portfolioContext.diagnostics?.dataHealth.status ?? 'not available'}; history scope ${portfolioContext.historyScope}; history points ${portfolioContext.historySummary.pointCount}.`,
+    );
+    if (explanation?.baselineStatus === 'available') {
+      lines.push(`Recent state change: ${explanation.summary}`);
+      const topDrivers = explanation.drivers
+        .filter(
+          (driver) =>
+            driver.dimension !== 'total' &&
+            driver.dimension !== 'cash' &&
+            driver.delta !== 0,
+        )
+        .slice(0, 5)
+        .map(
+          (driver) =>
+            `${driver.label} (${driver.dimension}, delta ${formatMoney(driver.delta, context.snapshot?.metadata.valuationCurrency)})`,
+        );
+      if (topDrivers.length > 0) {
+        lines.push(`Recent state-change drivers: ${topDrivers.join('; ')}.`);
+      }
+      lines.push(
+        'Causality boundary: these are snapshot state deltas; do not infer transactions, contributions, or market causes.',
+      );
+    } else {
+      lines.push('Recent state change: no same-scope baseline is available.');
+    }
+    if (portfolioContext.dataLimitations.length > 0) {
+      lines.push(
+        `Portfolio data limitations: ${portfolioContext.dataLimitations.join(' | ')}.`,
+      );
+    }
+  }
+
   if (context.score) {
     const score = context.score;
     lines.push(
@@ -88,6 +126,7 @@ export function buildQuickChatPromptMessages(input: {
     'You are Aurum Quick Chat, a concise wealth assistant.',
     'Use the provided snapshot/report/score context when available.',
     'Treat PortfolioSnapshot as the canonical upstream truth.',
+    'Use structured diagnostics and change drivers when supplied, but never infer transaction or market causality from snapshot deltas.',
     'Do not claim hidden portfolio data beyond the supplied context.',
     'If context is missing, say so plainly and answer within those limits.',
     'Keep responses practical and reasonably short unless the user asks for depth.',
@@ -142,6 +181,10 @@ export function buildQuickChatFallbackReply(input: {
     parts.push(
       `Your linked saved report is "${input.context.report.title}", and its latest summary is ${trimLine(input.context.report.contentMarkdown, 220)}.`,
     );
+  }
+
+  if (input.context.portfolioContext?.changeExplanation) {
+    parts.push(input.context.portfolioContext.changeExplanation.summary);
   }
 
   parts.push(

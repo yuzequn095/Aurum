@@ -222,11 +222,20 @@ describe('PortfolioSnapshotsService', () => {
       sourceId: null,
       totalValue: 2000,
     };
+    let capturedFindManyArgs:
+      | {
+          where: { sourceId: string | null; userId: string };
+          take: number;
+        }
+      | undefined;
     const prisma = {
       portfolioSnapshotRecord: {
         findMany: jest
           .fn()
-          .mockResolvedValue([currentSnapshot, previousSnapshot]),
+          .mockImplementation((args: typeof capturedFindManyArgs) => {
+            capturedFindManyArgs = args;
+            return Promise.resolve([currentSnapshot, previousSnapshot]);
+          }),
       },
       connectedSourceAccountRecord: {
         findFirst: jest.fn(),
@@ -241,12 +250,11 @@ describe('PortfolioSnapshotsService', () => {
       'user_1',
     );
 
-    expect(prisma.portfolioSnapshotRecord.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ sourceId: null, userId: 'user_1' }),
-        take: 24,
-      }),
-    );
+    expect(capturedFindManyArgs?.where).toMatchObject({
+      sourceId: null,
+      userId: 'user_1',
+    });
+    expect(capturedFindManyArgs?.take).toBe(24);
     expect(
       prisma.connectedSourceAccountRecord.findFirst,
     ).not.toHaveBeenCalled();
@@ -408,10 +416,10 @@ describe('PortfolioSnapshotsService', () => {
       baselineStatus: 'no_baseline',
       causalityStatus: 'insufficient_data_for_causality',
       drivers: [],
-      notes: expect.arrayContaining([
-        expect.objectContaining({ code: 'no_baseline' }),
-      ]),
     });
+    expect(explanation?.notes.map((note) => note.code)).toContain(
+      'no_baseline',
+    );
     expect(explanation?.summary).toContain('same scope');
   });
 

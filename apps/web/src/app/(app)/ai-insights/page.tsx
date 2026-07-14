@@ -90,7 +90,7 @@ function formatReportTypeLabel(reportType: AIReportArtifact['reportType']): stri
     case 'monthly_financial_review_v1':
       return 'Monthly Financial Review';
     case 'daily_market_brief_v1':
-      return 'Daily Market Brief';
+      return 'Market Brief';
     case 'portfolio_report_v1':
     default:
       return 'Portfolio Report';
@@ -634,7 +634,7 @@ export default function AiInsightsPage() {
       setDailyMarketBriefPreferencesStatusMessage(
         error instanceof Error
           ? error.message
-          : 'Failed to load Daily Market Brief delivery preferences.',
+          : 'Failed to load Market Brief preferences.',
       );
     }
   };
@@ -839,7 +839,7 @@ export default function AiInsightsPage() {
     try {
       if (useSelectedSnapshotForDailyMarketBrief && (!selectedSnapshot || !selectedSnapshot.id)) {
         setDailyMarketBriefStatusMessage(
-          'Select a portfolio snapshot before using the Daily Market Brief snapshot override.',
+          'Select a portfolio snapshot before using the Market Brief snapshot override.',
         );
         return;
       }
@@ -856,10 +856,10 @@ export default function AiInsightsPage() {
         setSelectedSnapshotId(createdReport.sourceSnapshotId);
       }
       await loadReports(createdReport.id);
-      setDailyMarketBriefStatusMessage(`Daily Market Brief created: ${createdReport.id}`);
+      setDailyMarketBriefStatusMessage(`Market Brief created: ${createdReport.id}`);
     } catch (error) {
       setDailyMarketBriefStatusMessage(
-        error instanceof Error ? error.message : 'Failed to generate Daily Market Brief.',
+        error instanceof Error ? error.message : 'Failed to generate Market Brief.',
       );
     } finally {
       setIsGeneratingDailyMarketBrief(false);
@@ -890,7 +890,7 @@ export default function AiInsightsPage() {
   const onSaveDailyMarketBriefPreferences = async () => {
     if (!dailyMarketBriefPreferences) {
       setDailyMarketBriefPreferencesStatusMessage(
-        'Daily Market Brief preferences are still loading.',
+        'Market Brief preferences are still loading.',
       );
       return;
     }
@@ -920,12 +920,12 @@ export default function AiInsightsPage() {
       setUseSelectedSnapshotForDailyMarketBriefDelivery(
         Boolean(updatedPreferences.sourceSnapshotId),
       );
-      setDailyMarketBriefPreferencesStatusMessage('Daily Market Brief delivery preferences saved.');
+      setDailyMarketBriefPreferencesStatusMessage('Market Brief preferences saved.');
     } catch (error) {
       setDailyMarketBriefPreferencesStatusMessage(
         error instanceof Error
           ? error.message
-          : 'Failed to save Daily Market Brief delivery preferences.',
+          : 'Failed to save Market Brief preferences.',
       );
     } finally {
       setIsDailyMarketBriefPreferencesSaving(false);
@@ -1148,13 +1148,13 @@ export default function AiInsightsPage() {
           : `Creates a ${effectiveReviewMonthLabel} review using the latest relevant snapshot.`;
       case 'daily-market-brief':
         if (snapshots.length === 0) {
-          return 'Create or import a portfolio snapshot first so the Daily Market Brief can use portfolio-aware context.';
+          return 'Create or import a portfolio snapshot first so the Market Brief can use portfolio-aware context.';
         }
         return useSelectedSnapshotForDailyMarketBrief
           ? selectedSnapshot?.id
-            ? 'Creates a Daily Market Brief using the selected snapshot.'
-            : 'Select a portfolio snapshot before using the Daily Market Brief snapshot override.'
-          : 'Creates a Daily Market Brief using the latest available snapshot.';
+            ? 'Creates a Market Brief using the selected snapshot.'
+            : 'Select a portfolio snapshot before using the Market Brief snapshot override.'
+          : 'Creates a Market Brief using the latest preferred snapshot.';
       case 'financial-health-score':
         return selectedSnapshot?.id
           ? 'Generates and saves a snapshot-linked score.'
@@ -1772,7 +1772,7 @@ export default function AiInsightsPage() {
         <Card id="reports-daily-market-brief" className="scroll-mt-24">
           <CardHeader className="space-y-3">
             <div className="space-y-1">
-              <CardTitle>Daily Market Brief</CardTitle>
+              <CardTitle>Market Brief</CardTitle>
               <CardDescription>
                 Generate a concise market brief, optionally grounded in the selected portfolio
                 snapshot for a more relevant readout.
@@ -1789,7 +1789,7 @@ export default function AiInsightsPage() {
                   (useSelectedSnapshotForDailyMarketBrief && !selectedSnapshot?.id)
                 }
               >
-                {isGeneratingDailyMarketBrief ? 'Generating...' : 'Generate Daily Market Brief'}
+                {isGeneratingDailyMarketBrief ? 'Generating...' : 'Generate Market Brief'}
               </Button>
               <Badge variant="neutral">Saved to report history</Badge>
             </div>
@@ -1828,7 +1828,7 @@ export default function AiInsightsPage() {
                     Use selected snapshot override
                   </span>
                   <span className="block text-xs text-aurum-muted">
-                    Leave this off to anchor the brief to the latest available snapshot.
+                    Leave this off to anchor the brief to the preferred consolidated snapshot.
                   </span>
                 </span>
               </label>
@@ -1848,7 +1848,7 @@ export default function AiInsightsPage() {
                 <p className="text-aurum-text">
                   {useSelectedSnapshotForDailyMarketBrief
                     ? (selectedSnapshot?.metadata.portfolioName ?? 'Select a portfolio snapshot')
-                    : 'Latest available snapshot'}
+                    : 'Preferred consolidated snapshot'}
                 </p>
               </div>
             </div>
@@ -1858,10 +1858,10 @@ export default function AiInsightsPage() {
         <Card>
           <CardHeader className="space-y-3">
             <div className="space-y-1">
-              <CardTitle>Daily Market Brief Delivery</CardTitle>
+              <CardTitle>Market Brief Preferences</CardTitle>
               <CardDescription>
                 Store preferred cadence, time, and scope. Scheduled generation remains a reserved
-                capability, so these preferences are supportive rather than automatic delivery.
+                capability coming later, so manual Market Brief generation remains available now.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1881,7 +1881,7 @@ export default function AiInsightsPage() {
           <CardContent className="space-y-4">
             {!dailyMarketBriefPreferences ? (
               <p className="text-sm text-aurum-muted">
-                Loading Daily Market Brief delivery preferences...
+                Loading Market Brief preferences...
               </p>
             ) : (
               <>
@@ -2056,7 +2056,7 @@ export default function AiInsightsPage() {
           <CardHeader>
             <CardTitle>Report History</CardTitle>
             <CardDescription>
-              Saved Monthly Financial Reviews and Daily Market Briefs loaded for this account.
+              Saved Monthly Financial Reviews and Market Briefs loaded for this account.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -2067,7 +2067,7 @@ export default function AiInsightsPage() {
               <p className="text-sm text-aurum-muted">Loading report history...</p>
             ) : reports.length === 0 ? (
               <p className="text-sm text-aurum-muted">
-                No reports yet. Generate a Monthly Financial Review or Daily Market Brief to create
+                No reports yet. Generate a Monthly Financial Review or Market Brief to create
                 the first saved report.
               </p>
             ) : (

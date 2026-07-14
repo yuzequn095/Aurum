@@ -10,6 +10,8 @@ describe('DailyMarketBriefService', () => {
   type CreateDailyMarketBriefReportArgs = {
     userId: string;
     sourceSnapshotId: string;
+    title: string;
+    contentMarkdown: string;
     metadata?: Record<string, unknown>;
   };
 
@@ -23,10 +25,45 @@ describe('DailyMarketBriefService', () => {
   const aiReportsService = {
     createDailyMarketBriefReport: jest.fn(),
   };
+  const portfolioAIContextService = {
+    assembleForSnapshot: jest.fn(),
+    selectPreferredSnapshot: jest.fn(
+      (snapshots: Array<{ metadata: { sourceId?: string } }>) =>
+        snapshots.find((snapshot) => !snapshot.metadata.sourceId) ??
+        snapshots[0] ??
+        null,
+    ),
+  };
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2026-03-24T15:30:00.000Z'));
     jest.clearAllMocks();
+    portfolioAIContextService.assembleForSnapshot.mockImplementation(
+      (_userId: string, snapshot: { id: string }) =>
+        Promise.resolve({
+          version: 'portfolio-ai-context-v1',
+          snapshot,
+          diagnostics: null,
+          changeExplanation: {
+            version: 'portfolio-change-explanation-v1',
+            snapshotId: snapshot.id,
+            baselineSnapshotId: 'snapshot_baseline',
+            baselineStatus: 'available',
+            stateDeltaStatus: 'deterministic_state_delta',
+            causalityStatus: 'insufficient_data_for_causality',
+            summary: 'Observed state change.',
+            totalValueDelta: 5000,
+            cashValueDelta: 1000,
+            drivers: [],
+            dataLimitations: ['External market data is unavailable.'],
+            notes: [],
+          },
+          historyScope: 'consolidated',
+          historySummary: { scope: 'consolidated', pointCount: 2 },
+          baselineSnapshotId: 'snapshot_baseline',
+          dataLimitations: ['External market data is unavailable.'],
+        }),
+    );
   });
 
   afterEach(() => {
@@ -91,6 +128,7 @@ describe('DailyMarketBriefService', () => {
       portfolioSnapshotsService as never,
       marketContextService as never,
       aiReportsService as never,
+      portfolioAIContextService as never,
     );
 
     await service.createDailyMarketBrief('user_1', {});
@@ -122,7 +160,13 @@ describe('DailyMarketBriefService', () => {
       briefDate: '2026-03-24',
       reportScope: 'portfolio_aware',
       snapshotSelectionStrategy: 'latest_available_snapshot',
+      portfolioAIContextVersion: 'portfolio-ai-context-v1',
+      externalMarketDataAvailable: false,
     });
+    expect(createDailyBriefCall.title).toContain('Market Brief');
+    expect(createDailyBriefCall.contentMarkdown).toContain(
+      '## Recent Portfolio State Change',
+    );
   });
 
   it('supports an explicit snapshot override and market overview scope', async () => {
@@ -166,6 +210,7 @@ describe('DailyMarketBriefService', () => {
       portfolioSnapshotsService as never,
       marketContextService as never,
       aiReportsService as never,
+      portfolioAIContextService as never,
     );
 
     await service.createDailyMarketBrief('user_1', {
@@ -199,6 +244,7 @@ describe('DailyMarketBriefService', () => {
       portfolioSnapshotsService as never,
       marketContextService as never,
       aiReportsService as never,
+      portfolioAIContextService as never,
     );
 
     await expect(

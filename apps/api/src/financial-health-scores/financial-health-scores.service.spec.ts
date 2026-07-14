@@ -44,10 +44,42 @@ describe('FinancialHealthScoresService', () => {
   const portfolioSnapshotsService = {
     getSnapshotById: jest.fn(),
   };
+  const portfolioAIContextService = {
+    assembleForSnapshot: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
     capturedCreateArgs = undefined;
+    portfolioAIContextService.assembleForSnapshot.mockImplementation(
+      (_userId: string, snapshot: { id: string }) =>
+        Promise.resolve({
+          version: 'portfolio-ai-context-v1',
+          snapshot,
+          diagnostics: {
+            concentration: {
+              topHoldingWeight: 0.9,
+              topInstitutionWeight: 0.9,
+              employerStockWeight: 0,
+            },
+            dataHealth: { status: 'stale' },
+            flags: [
+              {
+                code: 'stale_data',
+                label: 'Stale data',
+                detail: 'One source is stale.',
+              },
+            ],
+          },
+          changeExplanation: {
+            version: 'portfolio-change-explanation-v1',
+            baselineStatus: 'no_baseline',
+          },
+          historyScope: 'consolidated',
+          historySummary: { scope: 'consolidated', pointCount: 1 },
+          dataLimitations: ['No same-scope baseline is available.'],
+        }),
+    );
   });
 
   it('scopes list-by-snapshot reads through the owning snapshot user', async () => {
@@ -57,6 +89,7 @@ describe('FinancialHealthScoresService', () => {
       prisma as never,
       entitlementsService as never,
       portfolioSnapshotsService as never,
+      portfolioAIContextService as never,
     );
 
     await service.listScoreArtifactsBySourceSnapshotId('snapshot_1', 'user_1');
@@ -84,6 +117,7 @@ describe('FinancialHealthScoresService', () => {
       prisma as never,
       entitlementsService as never,
       portfolioSnapshotsService as never,
+      portfolioAIContextService as never,
     );
 
     await expect(
@@ -123,6 +157,7 @@ describe('FinancialHealthScoresService', () => {
       prisma as never,
       entitlementsService as never,
       portfolioSnapshotsService as never,
+      portfolioAIContextService as never,
     );
 
     const created = await service.createScoreArtifactFromSnapshot({
@@ -139,12 +174,23 @@ describe('FinancialHealthScoresService', () => {
       'user_1',
       'ai.analysis.financial_health_score',
     );
-    expect(capturedCreateArgs).toMatchObject({
+    const createArgs = capturedCreateArgs as {
       data: {
-        sourceSnapshotId: 'snapshot_1',
-        scoringVersion: '1.0.0',
-      },
+        sourceSnapshotId: string;
+        scoringVersion: string;
+        metadata: Record<string, unknown>;
+        insight: { summary: string; concerns: string[] };
+      };
+    };
+    expect(createArgs.data.sourceSnapshotId).toBe('snapshot_1');
+    expect(createArgs.data.scoringVersion).toBe('1.0.0');
+    expect(createArgs.data.metadata).toMatchObject({
+      portfolioAIContextVersion: 'portfolio-ai-context-v1',
+      changeExplanationVersion: 'portfolio-change-explanation-v1',
+      historyScope: 'consolidated',
     });
+    expect(createArgs.data.insight.summary).toContain('data health stale');
+    expect(createArgs.data.insight.concerns).toContain('One source is stale.');
     expect(created).toMatchObject({
       id: 'score_1',
       sourceSnapshotId: 'snapshot_1',

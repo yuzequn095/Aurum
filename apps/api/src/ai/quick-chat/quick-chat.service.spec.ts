@@ -20,6 +20,9 @@ describe('QuickChatService', () => {
   const chatClient = {
     completeChat: jest.fn(),
   };
+  const portfolioAIContextService = {
+    assembleForSnapshot: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -30,6 +33,32 @@ describe('QuickChatService', () => {
 
       return undefined;
     });
+    portfolioAIContextService.assembleForSnapshot.mockImplementation(
+      (_userId: string, snapshot: { id: string }) =>
+        Promise.resolve({
+          version: 'portfolio-ai-context-v1',
+          snapshot,
+          diagnostics: null,
+          changeExplanation: {
+            version: 'portfolio-change-explanation-v1',
+            snapshotId: snapshot.id,
+            baselineSnapshotId: 'snapshot_baseline',
+            baselineStatus: 'available',
+            stateDeltaStatus: 'deterministic_state_delta',
+            causalityStatus: 'insufficient_data_for_causality',
+            summary: 'Recent snapshot value increased by 5,000.',
+            totalValueDelta: 5000,
+            cashValueDelta: 500,
+            drivers: [],
+            dataLimitations: [],
+            notes: [],
+          },
+          historyScope: 'consolidated',
+          historySummary: { scope: 'consolidated', pointCount: 2 },
+          baselineSnapshotId: 'snapshot_baseline',
+          dataLimitations: [],
+        }),
+    );
   });
 
   it('runs quick chat ephemerally with fallback mode and owned context', async () => {
@@ -72,6 +101,7 @@ describe('QuickChatService', () => {
       aiReportsService as never,
       financialHealthScoresService as never,
       chatClient as never,
+      portfolioAIContextService as never,
     );
 
     const response = await service.runQuickChat('user_1', {
@@ -98,6 +128,9 @@ describe('QuickChatService', () => {
       },
     });
     expect(response.reply.content).toContain('Household Portfolio');
+    expect(response.reply.content).toContain(
+      'Recent snapshot value increased by 5,000',
+    );
   });
 
   it('returns llm mode when the configured provider succeeds', async () => {
@@ -118,6 +151,7 @@ describe('QuickChatService', () => {
       aiReportsService as never,
       financialHealthScoresService as never,
       chatClient as never,
+      portfolioAIContextService as never,
     );
 
     const response = await service.runQuickChat('user_1', {
@@ -166,6 +200,7 @@ describe('QuickChatService', () => {
       aiReportsService as never,
       financialHealthScoresService as never,
       chatClient as never,
+      portfolioAIContextService as never,
     );
 
     const response = await service.runQuickChat('user_1', {
@@ -188,6 +223,7 @@ describe('QuickChatService', () => {
       aiReportsService as never,
       financialHealthScoresService as never,
       chatClient as never,
+      portfolioAIContextService as never,
     );
 
     await expect(
@@ -214,6 +250,7 @@ describe('QuickChatService', () => {
       aiReportsService as never,
       financialHealthScoresService as never,
       chatClient as never,
+      portfolioAIContextService as never,
     );
 
     await expect(

@@ -13,6 +13,10 @@ import { ConfigService } from '@nestjs/config';
 import { AIReportsService } from '../../ai-reports/ai-reports.service';
 import { EntitlementsService } from '../../entitlements/entitlements.service';
 import { FinancialHealthScoresService } from '../../financial-health-scores/financial-health-scores.service';
+import {
+  PortfolioAIContextService,
+  type PortfolioAIContext,
+} from '../../portfolio-snapshots/portfolio-ai-context.service';
 import { PortfolioSnapshotsService } from '../../portfolio-snapshots/portfolio-snapshots.service';
 import { QuickChatRequestDto } from './dto/quick-chat.dto';
 import { OpenAiCompatibleChatClient } from './openai-compatible-chat.client';
@@ -62,6 +66,7 @@ export class QuickChatService {
     private readonly aiReportsService: AIReportsService,
     private readonly financialHealthScoresService: FinancialHealthScoresService,
     private readonly chatClient: OpenAiCompatibleChatClient,
+    private readonly portfolioAIContextService: PortfolioAIContextService,
   ) {}
 
   async runQuickChat(
@@ -136,6 +141,7 @@ export class QuickChatService {
     snapshot?: PortfolioSnapshot;
     report?: AIReportArtifact;
     score?: FinancialHealthScoreArtifact;
+    portfolioContext?: PortfolioAIContext;
   }> {
     const snapshot = dto.sourceSnapshotId
       ? await this.portfolioSnapshotsService.getSnapshotById(
@@ -197,10 +203,18 @@ export class QuickChatService {
       );
     }
 
+    const portfolioContext = snapshot
+      ? await this.portfolioAIContextService.assembleForSnapshot(
+          userId,
+          snapshot,
+        )
+      : undefined;
+
     return {
       snapshot: snapshot ?? undefined,
       report: report ?? undefined,
       score: score ?? undefined,
+      portfolioContext,
     };
   }
 }

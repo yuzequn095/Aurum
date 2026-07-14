@@ -7,6 +7,10 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { AIReportsService } from '../../ai-reports/ai-reports.service';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { FinancialHealthScoresService } from '../../financial-health-scores/financial-health-scores.service';
+import {
+  PortfolioAIContextService,
+  type PortfolioAIContext,
+} from '../../portfolio-snapshots/portfolio-ai-context.service';
 import { PortfolioSnapshotsService } from '../../portfolio-snapshots/portfolio-snapshots.service';
 import type { InsightEngine } from '../insights/insight-engine.interface';
 import { INSIGHT_ENGINE } from '../insights/insight-engine.token';
@@ -28,7 +32,7 @@ type SelectedSnapshotContext = {
   strategy: SnapshotSelectionStrategy;
 };
 
-const MONTHLY_REVIEW_PROMPT_VERSION = '1.0.0';
+const MONTHLY_REVIEW_PROMPT_VERSION = '1.1.0';
 
 function formatMonthLabel(year: number, month: number): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -101,6 +105,7 @@ function buildMonthlyReviewContent(input: {
   categoryBreakdown: MonthlyReportContext['categoryBreakdown'];
   insights: Insight[];
   latestScore?: FinancialHealthScoreArtifact;
+  portfolioContext: PortfolioAIContext;
 }): string {
   const monthLabel = formatMonthLabel(input.reviewYear, input.reviewMonth);
   const portfolioName =
@@ -158,6 +163,48 @@ function buildMonthlyReviewContent(input: {
     }
   }
 
+  const changeExplanation = input.portfolioContext.changeExplanation;
+  lines.push(``, `## Portfolio Change Context`);
+  if (
+    !changeExplanation ||
+    changeExplanation.baselineStatus === 'no_baseline'
+  ) {
+    lines.push(
+      `- What changed: No earlier snapshot is available in the same ${input.portfolioContext.historyScope} scope.`,
+      `- Baseline availability: unavailable`,
+    );
+  } else {
+    lines.push(
+      `- What changed: ${changeExplanation.summary}`,
+      `- Total snapshot change: ${formatMoney(changeExplanation.totalValueDelta)}`,
+      `- Cash snapshot change: ${formatMoney(changeExplanation.cashValueDelta)}`,
+      `- Baseline snapshot: ${changeExplanation.baselineSnapshotId ?? 'Unavailable'}`,
+      `- Causality note: The values are deterministic state deltas; available data is insufficient to identify the cause.`,
+    );
+    const topDrivers = changeExplanation.drivers
+      .filter(
+        (driver) =>
+          driver.dimension !== 'total' &&
+          driver.dimension !== 'cash' &&
+          driver.delta !== 0,
+      )
+      .slice(0, 5);
+    if (topDrivers.length > 0) {
+      lines.push(`- Top state-change drivers:`);
+      for (const driver of topDrivers) {
+        lines.push(
+          `  - ${driver.label} (${driver.dimension}): ${formatMoney(driver.delta)}`,
+        );
+      }
+    }
+  }
+  if (input.portfolioContext.dataLimitations.length > 0) {
+    lines.push(`- Data quality caveats:`);
+    for (const limitation of input.portfolioContext.dataLimitations) {
+      lines.push(`  - ${limitation}`);
+    }
+  }
+
   lines.push(``, `## Existing Analysis Context`);
   if (!score || !scoreInsight) {
     lines.push(
@@ -193,6 +240,7 @@ export class MonthlyFinancialReviewService {
     private readonly financialHealthScoresService: FinancialHealthScoresService,
     private readonly aiReportsService: AIReportsService,
     @Inject(INSIGHT_ENGINE) private readonly insightEngine: InsightEngine,
+    private readonly portfolioAIContextService: PortfolioAIContextService,
   ) {}
 
   async createMonthlyFinancialReview(
@@ -206,22 +254,27 @@ export class MonthlyFinancialReviewService {
       reviewPeriod,
     );
     const sourceSnapshotId = requireSnapshotId(snapshotContext.snapshot);
-    const [summary, categoryBreakdown, scoreArtifacts] = await Promise.all([
-      this.analyticsService.getMonthlySummary(
-        userId,
-        reviewPeriod.year,
-        reviewPeriod.month,
-      ),
-      this.analyticsService.getCategoryBreakdown(
-        userId,
-        reviewPeriod.year,
-        reviewPeriod.month,
-      ),
-      this.financialHealthScoresService.listScoreArtifactsBySourceSnapshotId(
-        sourceSnapshotId,
-        userId,
-      ),
-    ]);
+    const [summary, categoryBreakdown, scoreArtifacts, portfolioContext] =
+      await Promise.all([
+        this.analyticsService.getMonthlySummary(
+          userId,
+          reviewPeriod.year,
+          reviewPeriod.month,
+        ),
+        this.analyticsService.getCategoryBreakdown(
+          userId,
+          reviewPeriod.year,
+          reviewPeriod.month,
+        ),
+        this.financialHealthScoresService.listScoreArtifactsBySourceSnapshotId(
+          sourceSnapshotId,
+          userId,
+        ),
+        this.portfolioAIContextService.assembleForSnapshot(
+          userId,
+          snapshotContext.snapshot,
+        ),
+      ]);
 
     const context: MonthlyReportContext = {
       summary,
@@ -247,6 +300,7 @@ export class MonthlyFinancialReviewService {
         categoryBreakdown,
         insights,
         latestScore,
+        portfolioContext,
       }),
       promptVersion: MONTHLY_REVIEW_PROMPT_VERSION,
       sourceRunId: `monthly-review:${reviewPeriod.year}-${String(reviewPeriod.month).padStart(2, '0')}:${sourceSnapshotId}`,
@@ -265,6 +319,11 @@ export class MonthlyFinancialReviewService {
         linkedFinancialHealthScoreCreatedAt: latestScore?.createdAt,
         linkedFinancialHealthScoreGrade: latestScore?.result.grade,
         linkedFinancialHealthScoreTotalScore: latestScore?.result.totalScore,
+        portfolioAIContextVersion: portfolioContext.version,
+        changeExplanationVersion: portfolioContext.changeExplanation?.version,
+        historyScope: portfolioContext.historyScope,
+        baselineSnapshotId: portfolioContext.baselineSnapshotId,
+        dataLimitations: portfolioContext.dataLimitations,
       },
     });
   }
@@ -323,9 +382,13 @@ export class MonthlyFinancialReviewService {
     }
 
     const monthEndDate = getMonthEndDate(reviewPeriod.year, reviewPeriod.month);
-    const snapshotOnOrBeforeMonthEnd = snapshots.find(
+    const snapshotsOnOrBeforeMonthEnd = snapshots.filter(
       (snapshot) => snapshot.metadata.snapshotDate <= monthEndDate,
     );
+    const snapshotOnOrBeforeMonthEnd =
+      this.portfolioAIContextService.selectPreferredSnapshot(
+        snapshotsOnOrBeforeMonthEnd,
+      );
 
     if (snapshotOnOrBeforeMonthEnd) {
       return {
@@ -335,7 +398,9 @@ export class MonthlyFinancialReviewService {
     }
 
     return {
-      snapshot: snapshots[0],
+      snapshot:
+        this.portfolioAIContextService.selectPreferredSnapshot(snapshots) ??
+        snapshots[0],
       strategy: 'latest_available_snapshot_fallback',
     };
   }

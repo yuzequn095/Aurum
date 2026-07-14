@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { EntitlementsService } from '../entitlements/entitlements.service';
+import { PortfolioAIContextService } from '../portfolio-snapshots/portfolio-ai-context.service';
 import { PortfolioSnapshotsService } from '../portfolio-snapshots/portfolio-snapshots.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateScoreArtifactFromSnapshotCommand } from './commands/create-score-artifact-from-snapshot.command';
@@ -33,6 +34,7 @@ export class FinancialHealthScoresService {
     private readonly prisma: PrismaService,
     private readonly entitlementsService: EntitlementsService,
     private readonly portfolioSnapshotsService: PortfolioSnapshotsService,
+    private readonly portfolioAIContextService: PortfolioAIContextService,
   ) {}
 
   async createScoreArtifact(
@@ -132,7 +134,35 @@ export class FinancialHealthScoresService {
 
     const scoreInput = portfolioSnapshotToFinancialHealthScoreInput(snapshot);
     const result = calculateFinancialHealthScore(scoreInput);
-    const insight = buildFinancialHealthInsight(result);
+    const portfolioContext =
+      await this.portfolioAIContextService.assembleForSnapshot(
+        command.userId,
+        snapshot,
+      );
+    const baseInsight = buildFinancialHealthInsight(result);
+    const diagnostics = portfolioContext.diagnostics;
+    const baselineAvailable =
+      portfolioContext.changeExplanation?.baselineStatus === 'available';
+    const contextSummary = diagnostics
+      ? `Portfolio context: largest holding ${(diagnostics.concentration.topHoldingWeight * 100).toFixed(1)}%; data health ${diagnostics.dataHealth.status}; same-scope baseline ${baselineAvailable ? 'available' : 'not available'}.`
+      : `Portfolio context: diagnostics unavailable; same-scope baseline ${baselineAvailable ? 'available' : 'not available'}.`;
+    const diagnosticConcerns =
+      diagnostics?.flags
+        .filter((flag) =>
+          [
+            'high_single_name_concentration',
+            'high_employer_stock_concentration',
+            'stale_data',
+            'missing_valuation',
+            'no_baseline_snapshot',
+          ].includes(flag.code),
+        )
+        .map((flag) => flag.detail ?? flag.label) ?? [];
+    const insight = {
+      ...baseInsight,
+      summary: `${baseInsight.summary} ${contextSummary}`,
+      concerns: [...new Set([...baseInsight.concerns, ...diagnosticConcerns])],
+    };
 
     const now = new Date().toISOString();
     const scoringVersion = command.scoringVersion?.trim() || '1.0.0';
@@ -141,6 +171,11 @@ export class FinancialHealthScoresService {
     const metadata: Record<string, unknown> = {
       sourceSnapshotId: command.sourceSnapshotId,
       snapshotDate: snapshot.metadata.snapshotDate,
+      portfolioAIContextVersion: portfolioContext.version,
+      changeExplanationVersion: portfolioContext.changeExplanation?.version,
+      historyScope: portfolioContext.historyScope,
+      baselineSnapshotId: portfolioContext.baselineSnapshotId,
+      dataLimitations: portfolioContext.dataLimitations,
     };
     if (portfolioName) {
       metadata.portfolioName = portfolioName;

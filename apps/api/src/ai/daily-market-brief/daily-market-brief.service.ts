@@ -1,6 +1,10 @@
 import type { AIReportArtifact, PortfolioSnapshot } from '@aurum/core';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { AIReportsService } from '../../ai-reports/ai-reports.service';
+import {
+  PortfolioAIContextService,
+  type PortfolioAIContext,
+} from '../../portfolio-snapshots/portfolio-ai-context.service';
 import { PortfolioSnapshotsService } from '../../portfolio-snapshots/portfolio-snapshots.service';
 import { MarketContextService } from './market-context.service';
 import type { CreateDailyMarketBriefDto } from './dto/create-daily-market-brief.dto';
@@ -38,7 +42,7 @@ function formatSessionLabel(
 function requireSnapshotId(snapshot: PortfolioSnapshot): string {
   if (!snapshot.id?.trim()) {
     throw new BadRequestException(
-      'Daily Market Brief requires a persisted portfolio snapshot id.',
+      'Market Brief requires a persisted portfolio snapshot id.',
     );
   }
 
@@ -49,11 +53,12 @@ function buildDailyMarketBriefContent(input: {
   snapshot: PortfolioSnapshot;
   selectionStrategy: SnapshotSelectionStrategy;
   marketContext: ReturnType<MarketContextService['assembleContext']>;
+  portfolioContext: PortfolioAIContext;
 }): string {
   const { marketContext } = input;
   const topHoldings = marketContext.topHoldings.slice(0, 5);
   const lines: string[] = [
-    `# Daily Market Brief`,
+    `# Market Brief`,
     ``,
     `## Brief Setup`,
     `- Brief date: ${marketContext.briefDate}`,
@@ -95,6 +100,42 @@ function buildDailyMarketBriefContent(input: {
     }
   }
 
+  lines.push(``, `## Recent Portfolio State Change`);
+  const changeExplanation = input.portfolioContext.changeExplanation;
+  if (
+    !changeExplanation ||
+    changeExplanation.baselineStatus === 'no_baseline'
+  ) {
+    lines.push(
+      `- No same-scope baseline is available, so recent change drivers cannot be calculated yet.`,
+    );
+  } else {
+    lines.push(
+      `- Total snapshot change: ${formatMoney(changeExplanation.totalValueDelta)}`,
+      `- Cash snapshot change: ${formatMoney(changeExplanation.cashValueDelta)}`,
+      `- Cause note: This is an observed state delta; transaction or market causality is not inferred.`,
+    );
+    const recentDrivers = changeExplanation.drivers
+      .filter(
+        (driver) =>
+          driver.dimension !== 'total' &&
+          driver.dimension !== 'cash' &&
+          driver.delta !== 0,
+      )
+      .slice(0, 5);
+    for (const driver of recentDrivers) {
+      lines.push(
+        `- ${driver.label} (${driver.dimension}): ${formatMoney(driver.delta)}`,
+      );
+    }
+  }
+  if (input.portfolioContext.dataLimitations.length > 0) {
+    lines.push(`- Context limitations:`);
+    for (const limitation of input.portfolioContext.dataLimitations) {
+      lines.push(`  - ${limitation}`);
+    }
+  }
+
   lines.push(``, `## Next Read`);
   if (marketContext.scope === 'market_overview') {
     lines.push(
@@ -115,6 +156,7 @@ export class DailyMarketBriefService {
     private readonly portfolioSnapshotsService: PortfolioSnapshotsService,
     private readonly marketContextService: MarketContextService,
     private readonly aiReportsService: AIReportsService,
+    private readonly portfolioAIContextService: PortfolioAIContextService,
   ) {}
 
   async createDailyMarketBrief(
@@ -124,14 +166,19 @@ export class DailyMarketBriefService {
     const scope: DailyMarketBriefScope = dto.reportScope ?? 'portfolio_aware';
     const snapshotContext = await this.resolveSnapshotContext(userId, dto);
     const sourceSnapshotId = requireSnapshotId(snapshotContext.snapshot);
+    const portfolioContext =
+      await this.portfolioAIContextService.assembleForSnapshot(
+        userId,
+        snapshotContext.snapshot,
+      );
     const marketContext = this.marketContextService.assembleContext({
       snapshot: snapshotContext.snapshot,
       scope,
     });
     const title =
       scope === 'market_overview'
-        ? `${marketContext.briefDate} Daily Market Brief`
-        : `${marketContext.briefDate} Daily Market Brief - ${snapshotContext.snapshot.metadata.portfolioName ?? 'Portfolio'}`;
+        ? `${marketContext.briefDate} Market Brief`
+        : `${marketContext.briefDate} Market Brief - ${snapshotContext.snapshot.metadata.portfolioName ?? 'Portfolio'}`;
 
     return this.aiReportsService.createDailyMarketBriefReport({
       userId,
@@ -141,8 +188,9 @@ export class DailyMarketBriefService {
         snapshot: snapshotContext.snapshot,
         selectionStrategy: snapshotContext.strategy,
         marketContext,
+        portfolioContext,
       }),
-      promptVersion: '1.0.0',
+      promptVersion: '1.1.0',
       sourceRunId: `daily-market-brief:${marketContext.briefDate}:${sourceSnapshotId}`,
       metadata: {
         sourceTaskType: 'daily_market_brief_v1',
@@ -160,6 +208,12 @@ export class DailyMarketBriefService {
         topHoldingSymbols: marketContext.topHoldings
           .map((holding) => holding.symbol)
           .filter((symbol): symbol is string => Boolean(symbol)),
+        portfolioAIContextVersion: portfolioContext.version,
+        changeExplanationVersion: portfolioContext.changeExplanation?.version,
+        historyScope: portfolioContext.historyScope,
+        baselineSnapshotId: portfolioContext.baselineSnapshotId,
+        dataLimitations: portfolioContext.dataLimitations,
+        externalMarketDataAvailable: false,
       },
     });
   }
@@ -192,12 +246,14 @@ export class DailyMarketBriefService {
       await this.portfolioSnapshotsService.listSnapshots(userId);
     if (snapshots.length === 0) {
       throw new BadRequestException(
-        'Daily Market Brief currently requires at least one portfolio snapshot.',
+        'Market Brief currently requires at least one portfolio snapshot.',
       );
     }
 
     return {
-      snapshot: snapshots[0],
+      snapshot:
+        this.portfolioAIContextService.selectPreferredSnapshot(snapshots) ??
+        snapshots[0],
       strategy: 'latest_available_snapshot',
     };
   }

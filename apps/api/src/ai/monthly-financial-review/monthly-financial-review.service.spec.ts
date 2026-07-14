@@ -19,10 +19,56 @@ describe('MonthlyFinancialReviewService', () => {
   const insightEngine = {
     generate: jest.fn(),
   };
+  const portfolioAIContextService = {
+    assembleForSnapshot: jest.fn(),
+    selectPreferredSnapshot: jest.fn(
+      (snapshots: Array<{ metadata: { sourceId?: string } }>) =>
+        snapshots.find((snapshot) => !snapshot.metadata.sourceId) ??
+        snapshots[0] ??
+        null,
+    ),
+  };
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2026-03-24T12:00:00.000Z'));
     jest.clearAllMocks();
+    portfolioAIContextService.assembleForSnapshot.mockImplementation(
+      (_userId: string, snapshot: { id: string }) =>
+        Promise.resolve({
+          version: 'portfolio-ai-context-v1',
+          snapshot,
+          diagnostics: null,
+          changeExplanation: {
+            version: 'portfolio-change-explanation-v1',
+            snapshotId: snapshot.id,
+            baselineSnapshotId: 'snapshot_baseline',
+            baselineStatus: 'available',
+            stateDeltaStatus: 'deterministic_state_delta',
+            causalityStatus: 'insufficient_data_for_causality',
+            summary:
+              'Total snapshot value increased; available data is insufficient to determine the cause.',
+            totalValueDelta: 10000,
+            cashValueDelta: 1000,
+            drivers: [
+              {
+                id: 'holding:AAPL',
+                dimension: 'holding',
+                label: 'AAPL',
+                description: 'AAPL snapshot value increased.',
+                category: 'possible_market_or_quantity_change',
+                delta: 9000,
+                causalityStatus: 'insufficient_data_for_causality',
+              },
+            ],
+            dataLimitations: ['Transaction causality is not available.'],
+            notes: [],
+          },
+          historyScope: 'consolidated',
+          historySummary: { scope: 'consolidated', pointCount: 2 },
+          baselineSnapshotId: 'snapshot_baseline',
+          dataLimitations: ['Transaction causality is not available.'],
+        }),
+    );
   });
 
   afterEach(() => {
@@ -128,6 +174,7 @@ describe('MonthlyFinancialReviewService', () => {
       financialHealthScoresService as never,
       aiReportsService as never,
       insightEngine as never,
+      portfolioAIContextService as never,
     );
 
     await service.createMonthlyFinancialReview('user_1', {});
@@ -148,6 +195,7 @@ describe('MonthlyFinancialReviewService', () => {
           userId: string;
           sourceSnapshotId: string;
           title: string;
+          contentMarkdown: string;
           metadata?: Record<string, unknown>;
         },
       ]
@@ -156,6 +204,7 @@ describe('MonthlyFinancialReviewService', () => {
       userId: string;
       sourceSnapshotId: string;
       title: string;
+      contentMarkdown: string;
       metadata?: Record<string, unknown>;
     };
 
@@ -169,7 +218,17 @@ describe('MonthlyFinancialReviewService', () => {
       reviewMonth: 2,
       snapshotSelectionStrategy: 'latest_snapshot_on_or_before_month_end',
       linkedFinancialHealthScoreId: 'score_1',
+      portfolioAIContextVersion: 'portfolio-ai-context-v1',
+      changeExplanationVersion: 'portfolio-change-explanation-v1',
+      historyScope: 'consolidated',
+      baselineSnapshotId: 'snapshot_baseline',
     });
+    expect(createMonthlyReviewCall.contentMarkdown).toContain(
+      '## Portfolio Change Context',
+    );
+    expect(createMonthlyReviewCall.contentMarkdown).toContain(
+      'available data is insufficient to determine the cause',
+    );
   });
 
   it('supports an explicit snapshot override and records that strategy in metadata', async () => {
@@ -229,6 +288,7 @@ describe('MonthlyFinancialReviewService', () => {
       financialHealthScoresService as never,
       aiReportsService as never,
       insightEngine as never,
+      portfolioAIContextService as never,
     );
 
     await service.createMonthlyFinancialReview('user_1', {
@@ -271,6 +331,7 @@ describe('MonthlyFinancialReviewService', () => {
       financialHealthScoresService as never,
       aiReportsService as never,
       insightEngine as never,
+      portfolioAIContextService as never,
     );
 
     await expect(
