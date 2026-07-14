@@ -9,14 +9,17 @@ import type {
   ConnectedFinanceOverview,
   ConnectedFinanceHealthStatus,
   ManualStaticValuation,
+  PortfolioChangeExplanation,
   PortfolioDiagnostics,
-  PortfolioSnapshotDelta,
+  PortfolioHistorySeries,
   PortfolioAssetCategory,
   PortfolioSnapshot,
 } from '@aurum/core';
 import { manualInstitutionPresets } from '@aurum/core';
 import { CoinbaseCryptoSection } from '@/components/portfolio/CoinbaseCryptoSection';
+import { ChangeExplanationPanel } from '@/components/portfolio/ChangeExplanationPanel';
 import { PlaidSandboxBankSection } from '@/components/portfolio/PlaidSandboxBankSection';
+import { PortfolioHistorySection } from '@/components/portfolio/PortfolioHistorySection';
 import { SnapTradeBrokerageSection } from '@/components/portfolio/SnapTradeBrokerageSection';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Badge } from '@/components/ui/Badge';
@@ -35,8 +38,9 @@ import {
   materializeManualStaticSnapshot,
 } from '@/lib/api/connected-finance';
 import {
-  getPortfolioSnapshotDelta,
+  getPortfolioSnapshotChangeExplanation,
   getPortfolioSnapshotDiagnostics,
+  getPortfolioSnapshotHistory,
   listPortfolioSnapshots,
 } from '@/lib/api/portfolio-snapshots';
 
@@ -216,8 +220,14 @@ export default function PortfolioPage() {
   const [sourceSnapshots, setSourceSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [allSnapshots, setAllSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [overview, setOverview] = useState<ConnectedFinanceOverview | null>(null);
-  const [snapshotDelta, setSnapshotDelta] = useState<PortfolioSnapshotDelta | null>(null);
+  const [portfolioHistory, setPortfolioHistory] = useState<PortfolioHistorySeries | null>(null);
+  const [changeExplanation, setChangeExplanation] = useState<PortfolioChangeExplanation | null>(
+    null,
+  );
   const [diagnostics, setDiagnostics] = useState<PortfolioDiagnostics | null>(null);
+  const [isLoadingPortfolioStory, setIsLoadingPortfolioStory] = useState(false);
+  const [portfolioHistoryError, setPortfolioHistoryError] = useState('');
+  const [changeExplanationError, setChangeExplanationError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [isLoadingSources, setIsLoadingSources] = useState(false);
   const [isCreatingPresetInstitution, setIsCreatingPresetInstitution] = useState(false);
@@ -358,20 +368,66 @@ export default function PortfolioPage() {
 
   useEffect(() => {
     if (!preferredPortfolioSnapshot?.id) {
-      setSnapshotDelta(null);
+      setPortfolioHistory(null);
+      setChangeExplanation(null);
       setDiagnostics(null);
+      setIsLoadingPortfolioStory(false);
       return;
     }
 
-    void Promise.all([
-      getPortfolioSnapshotDelta(preferredPortfolioSnapshot.id)
-        .then(setSnapshotDelta)
-        .catch(() => setSnapshotDelta(null)),
-      getPortfolioSnapshotDiagnostics(preferredPortfolioSnapshot.id)
-        .then(setDiagnostics)
-        .catch(() => setDiagnostics(null)),
-    ]);
-  }, [preferredPortfolioSnapshot?.id]);
+    let cancelled = false;
+    setIsLoadingPortfolioStory(true);
+    setPortfolioHistory(null);
+    setChangeExplanation(null);
+    setDiagnostics(null);
+    setPortfolioHistoryError('');
+    setChangeExplanationError('');
+
+    const historyRequest = preferredPortfolioSnapshot.metadata.sourceId
+      ? getPortfolioSnapshotHistory({
+          scope: 'source',
+          sourceId: preferredPortfolioSnapshot.metadata.sourceId,
+        })
+      : getPortfolioSnapshotHistory({ scope: 'consolidated' });
+
+    void Promise.allSettled([
+      historyRequest,
+      getPortfolioSnapshotChangeExplanation(preferredPortfolioSnapshot.id),
+      getPortfolioSnapshotDiagnostics(preferredPortfolioSnapshot.id),
+    ]).then(([historyResult, explanationResult, diagnosticsResult]) => {
+      if (cancelled) return;
+
+      if (historyResult.status === 'fulfilled') {
+        setPortfolioHistory(historyResult.value);
+      } else {
+        setPortfolioHistoryError(
+          historyResult.reason instanceof Error
+            ? historyResult.reason.message
+            : 'Failed to load portfolio history.',
+        );
+      }
+      if (explanationResult.status === 'fulfilled') {
+        setChangeExplanation(explanationResult.value);
+      } else {
+        setChangeExplanationError(
+          explanationResult.reason instanceof Error
+            ? explanationResult.reason.message
+            : 'Failed to load change explanation.',
+        );
+      }
+      if (diagnosticsResult.status === 'fulfilled') {
+        setDiagnostics(diagnosticsResult.value);
+      }
+      setIsLoadingPortfolioStory(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    preferredPortfolioSnapshot?.id,
+    preferredPortfolioSnapshot?.metadata.sourceId,
+  ]);
 
   const onCreateSource = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -768,6 +824,13 @@ export default function PortfolioPage() {
         </CardContent>
       </Card>
 
+      <PortfolioHistorySection
+        snapshot={preferredPortfolioSnapshot}
+        history={portfolioHistory}
+        isLoading={isLoadingPortfolioStory}
+        error={portfolioHistoryError}
+      />
+
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <Card id="snapshot-library" className="scroll-mt-24">
           <CardHeader>
@@ -968,86 +1031,12 @@ export default function PortfolioPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>What Changed</CardTitle>
-              <CardDescription>
-                Delta from the previous snapshot, using market value as the comparison anchor.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              {!preferredPortfolioSnapshot ? (
-                <p className="text-[var(--aurum-text-muted)]">
-                  Create a snapshot to compare portfolio changes.
-                </p>
-              ) : !snapshotDelta ? (
-                <p className="text-[var(--aurum-text-muted)]">Snapshot delta is loading.</p>
-              ) : snapshotDelta.baselineStatus === 'no_baseline' ? (
-                <p className="text-[var(--aurum-text-muted)]">
-                  No earlier snapshot is available for comparison yet.
-                </p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-3">
-                      <p className="text-xs uppercase tracking-wide text-[var(--aurum-text-muted)]">
-                        Total Change
-                      </p>
-                      <p className="mt-1 font-semibold text-[var(--aurum-text)]">
-                        {formatMoney(
-                          snapshotDelta.totalValueDelta,
-                          preferredPortfolioSnapshot.metadata.valuationCurrency ?? 'USD',
-                        )}
-                      </p>
-                    </div>
-                    <div className="rounded-[16px] border border-[var(--aurum-border)] bg-[var(--aurum-surface-alt)] px-4 py-3">
-                      <p className="text-xs uppercase tracking-wide text-[var(--aurum-text-muted)]">
-                        Cash Change
-                      </p>
-                      <p className="mt-1 font-semibold text-[var(--aurum-text)]">
-                        {formatMoney(
-                          snapshotDelta.cashValueDelta,
-                          preferredPortfolioSnapshot.metadata.valuationCurrency ?? 'USD',
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {snapshotDelta.positionDeltas.slice(0, 5).map((item) => (
-                      <div
-                        key={`${item.sourceAccountId ?? 'unknown'}-${item.assetKey}`}
-                        className="rounded-[12px] border border-[var(--aurum-border)] bg-white px-3 py-3"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="font-medium text-[var(--aurum-text)]">
-                            {item.symbol ?? item.name ?? item.assetKey}
-                          </p>
-                          <Badge
-                            variant={
-                              item.changeType === 'added' || item.changeType === 'increased'
-                                ? 'good'
-                                : item.changeType === 'removed' || item.changeType === 'decreased'
-                                  ? 'warn'
-                                  : 'neutral'
-                            }
-                          >
-                            {formatSourceType(item.changeType)}
-                          </Badge>
-                        </div>
-                        <p className="mt-1 text-xs text-[var(--aurum-text-muted)]">
-                          {item.sourceAccountName ?? 'Unknown account'} |{' '}
-                          {formatMoney(
-                            item.marketValueDelta,
-                            preferredPortfolioSnapshot.metadata.valuationCurrency ?? 'USD',
-                          )}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          <ChangeExplanationPanel
+            snapshot={preferredPortfolioSnapshot}
+            explanation={changeExplanation}
+            isLoading={isLoadingPortfolioStory}
+            error={changeExplanationError}
+          />
 
           <Card>
             <CardHeader>
