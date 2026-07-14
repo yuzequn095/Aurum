@@ -207,6 +207,171 @@ describe('PortfolioSnapshotsService', () => {
     });
   });
 
+  it('builds consolidated history without mixing in source snapshots', async () => {
+    const previousSnapshot = {
+      ...baseSnapshotRecord,
+      id: 'snapshot_consolidated_previous',
+      sourceId: null,
+      totalValue: 1500,
+      snapshotDate: new Date('2026-03-19T00:00:00.000Z'),
+      createdAt: new Date('2026-03-19T10:00:00.000Z'),
+    };
+    const currentSnapshot = {
+      ...baseSnapshotRecord,
+      id: 'snapshot_consolidated_current',
+      sourceId: null,
+      totalValue: 2000,
+    };
+    const prisma = {
+      portfolioSnapshotRecord: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([currentSnapshot, previousSnapshot]),
+      },
+      connectedSourceAccountRecord: {
+        findFirst: jest.fn(),
+      },
+    };
+    const service = new PortfolioSnapshotsService(
+      prisma as unknown as PrismaService,
+    );
+
+    const history = await service.getPortfolioHistory(
+      { scope: 'consolidated' },
+      'user_1',
+    );
+
+    expect(prisma.portfolioSnapshotRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ sourceId: null, userId: 'user_1' }),
+        take: 24,
+      }),
+    );
+    expect(
+      prisma.connectedSourceAccountRecord.findFirst,
+    ).not.toHaveBeenCalled();
+    expect(history).toMatchObject({
+      scope: 'consolidated',
+      points: [
+        {
+          snapshotId: 'snapshot_consolidated_current',
+          chronologicalIndex: 1,
+          value: 2000,
+          deltaFromPrevious: 500,
+          percentDeltaFromPrevious: 500 / 1500,
+        },
+        {
+          snapshotId: 'snapshot_consolidated_previous',
+          chronologicalIndex: 0,
+          value: 1500,
+        },
+      ],
+      summary: {
+        pointCount: 2,
+        latestValue: 2000,
+        previousValue: 1500,
+        deltaFromPrevious: 500,
+      },
+    });
+  });
+
+  it('keeps account history within the account source and calculates scoped values', async () => {
+    const currentSnapshot = {
+      ...baseSnapshotRecord,
+      positions: [baseSnapshotRecord.positions[0]],
+    };
+    const previousSnapshot = {
+      ...baseSnapshotRecord,
+      id: 'snapshot_previous',
+      snapshotDate: new Date('2026-03-19T00:00:00.000Z'),
+      createdAt: new Date('2026-03-19T10:00:00.000Z'),
+      positions: [{ ...baseSnapshotRecord.positions[0], marketValue: 1000 }],
+    };
+    const prisma = {
+      portfolioSnapshotRecord: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([currentSnapshot, previousSnapshot]),
+      },
+      connectedSourceAccountRecord: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'account_shares',
+          sourceId: 'source_1',
+          displayName: 'Shares',
+        }),
+      },
+    };
+    const service = new PortfolioSnapshotsService(
+      prisma as unknown as PrismaService,
+    );
+
+    const history = await service.getPortfolioHistory(
+      { scope: 'account', sourceAccountId: 'account_shares' },
+      'user_1',
+    );
+
+    expect(prisma.portfolioSnapshotRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: 'user_1',
+          sourceId: 'source_1',
+          positions: { some: { sourceAccountId: 'account_shares' } },
+        },
+      }),
+    );
+    expect(history).toMatchObject({
+      scope: 'account',
+      sourceId: 'source_1',
+      sourceAccountId: 'account_shares',
+      sourceAccountLabel: 'Shares',
+      points: [
+        expect.objectContaining({ value: 1500, deltaFromPrevious: 500 }),
+        expect.objectContaining({ value: 1000 }),
+      ],
+    });
+  });
+
+  it('uses consolidated snapshots for asset-category history unless a source is explicit', async () => {
+    const prisma = {
+      portfolioSnapshotRecord: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            ...baseSnapshotRecord,
+            sourceId: null,
+            positions: [baseSnapshotRecord.positions[1]],
+          },
+        ]),
+      },
+      connectedSourceAccountRecord: {
+        findFirst: jest.fn(),
+      },
+    };
+    const service = new PortfolioSnapshotsService(
+      prisma as unknown as PrismaService,
+    );
+
+    const history = await service.getPortfolioHistory(
+      { scope: 'asset_category', assetCategory: 'cash', limit: 500 },
+      'user_1',
+    );
+
+    expect(prisma.portfolioSnapshotRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: 'user_1',
+          sourceId: null,
+          positions: { some: { category: 'CASH' } },
+        },
+        take: 120,
+      }),
+    );
+    expect(history).toMatchObject({
+      scope: 'asset_category',
+      assetCategory: 'cash',
+      points: [expect.objectContaining({ value: 500 })],
+    });
+  });
+
   it('returns no-baseline delta when a source-level snapshot has no same-source previous snapshot', async () => {
     const currentSnapshot = {
       ...baseSnapshotRecord,

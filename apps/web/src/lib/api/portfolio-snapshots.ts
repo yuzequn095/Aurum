@@ -3,6 +3,9 @@ import type {
   PortfolioSnapshotDelta,
   PortfolioDiagnostics,
   PortfolioSnapshotLineage,
+  PortfolioAssetCategory,
+  PortfolioHistoryScope,
+  PortfolioHistorySeries,
 } from '@aurum/core';
 import { apiGet, apiPost } from '@/lib/api';
 
@@ -34,4 +37,24 @@ export async function getPortfolioSnapshotDelta(
 
 export async function getPortfolioSnapshotDiagnostics(id: string): Promise<PortfolioDiagnostics> {
   return apiGet<PortfolioDiagnostics>(`/v1/portfolio-snapshots/${id}/diagnostics`);
+}
+
+export interface PortfolioHistoryQuery {
+  scope?: PortfolioHistoryScope;
+  sourceId?: string;
+  sourceAccountId?: string;
+  assetCategory?: PortfolioAssetCategory;
+  limit?: number;
+}
+
+export async function getPortfolioSnapshotHistory(
+  query: PortfolioHistoryQuery = {},
+): Promise<PortfolioHistorySeries> {
+  const qs = new URLSearchParams({ scope: query.scope ?? 'consolidated' });
+  if (query.sourceId) qs.set('sourceId', query.sourceId);
+  if (query.sourceAccountId) qs.set('sourceAccountId', query.sourceAccountId);
+  if (query.assetCategory) qs.set('assetCategory', query.assetCategory);
+  if (query.limit !== undefined) qs.set('limit', String(query.limit));
+
+  return apiGet<PortfolioHistorySeries>(`/v1/portfolio-snapshots/history?${qs.toString()}`);
 }

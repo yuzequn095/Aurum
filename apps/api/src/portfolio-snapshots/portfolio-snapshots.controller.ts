@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -14,6 +15,9 @@ import type {
   PortfolioSnapshotDelta,
   PortfolioDiagnostics,
   PortfolioSnapshotLineage,
+  PortfolioAssetCategory,
+  PortfolioHistoryScope,
+  PortfolioHistorySeries,
 } from '@aurum/core';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -38,6 +42,46 @@ export class PortfolioSnapshotsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<PortfolioSnapshot[]> {
     return this.service.listSnapshots(user.userId);
+  }
+
+  @Get('history')
+  async getHistory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('scope') scope: PortfolioHistoryScope = 'consolidated',
+    @Query('sourceId') sourceId?: string,
+    @Query('sourceAccountId') sourceAccountId?: string,
+    @Query('assetCategory') assetCategory?: PortfolioAssetCategory,
+    @Query('limit') limitValue?: string,
+  ): Promise<PortfolioHistorySeries> {
+    const supportedScopes: PortfolioHistoryScope[] = [
+      'consolidated',
+      'source',
+      'account',
+      'asset_category',
+    ];
+    const supportedCategories: PortfolioAssetCategory[] = [
+      'cash',
+      'equity',
+      'etf',
+      'crypto',
+      'fund',
+      'other',
+    ];
+    if (!supportedScopes.includes(scope)) {
+      throw new BadRequestException('Unsupported portfolio history scope.');
+    }
+    if (assetCategory && !supportedCategories.includes(assetCategory)) {
+      throw new BadRequestException('Unsupported portfolio asset category.');
+    }
+    const limit = limitValue === undefined ? undefined : Number(limitValue);
+    if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
+      throw new BadRequestException('limit must be a positive integer.');
+    }
+
+    return this.service.getPortfolioHistory(
+      { scope, sourceId, sourceAccountId, assetCategory, limit },
+      user.userId,
+    );
   }
 
   @Get(':id')

@@ -47,6 +47,51 @@ export interface PortfolioSnapshot {
   updatedAt?: string;
 }
 
+export type PortfolioHistoryScope = 'consolidated' | 'source' | 'account' | 'asset_category';
+
+export interface PortfolioHistoryPoint {
+  snapshotId: string;
+  snapshotDate: string;
+  createdAt: string;
+  /** Zero-based position when points are read from oldest to newest. */
+  chronologicalIndex: number;
+  totalValue: number;
+  cashValue?: number;
+  sourceId?: string;
+  sourceLabel?: string;
+  sourceAccountId?: string;
+  assetCategory?: PortfolioAssetCategory;
+  /** Value represented by the selected history scope. */
+  value: number;
+  deltaFromPrevious?: number;
+  percentDeltaFromPrevious?: number;
+}
+
+export interface PortfolioHistorySummary {
+  scope: PortfolioHistoryScope;
+  pointCount: number;
+  latestSnapshotId?: string;
+  latestSnapshotDate?: string;
+  oldestSnapshotDate?: string;
+  latestValue?: number;
+  previousValue?: number;
+  deltaFromPrevious?: number;
+  percentDeltaFromPrevious?: number;
+}
+
+export interface PortfolioHistorySeries {
+  scope: PortfolioHistoryScope;
+  sourceId?: string;
+  sourceLabel?: string;
+  sourceAccountId?: string;
+  sourceAccountLabel?: string;
+  assetCategory?: PortfolioAssetCategory;
+  valuationCurrency?: string;
+  /** Points are returned newest first. Use chronologicalIndex for chart order. */
+  points: PortfolioHistoryPoint[];
+  summary: PortfolioHistorySummary;
+}
+
 export interface PortfolioPositionWithAccountContext extends PortfolioPositionSnapshot {
   sourceAccount?: ConnectedSourceAccount;
   sourceName?: string;

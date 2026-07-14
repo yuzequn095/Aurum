@@ -7,6 +7,8 @@ import type {
   PortfolioDiagnostics,
   PortfolioDiagnosticsAllocationItem,
   PortfolioDiagnosticsFlag,
+  PortfolioHistoryScope,
+  PortfolioHistorySeries,
   PortfolioSnapshotDelta,
   PortfolioSnapshotLineage,
   PortfolioSnapshot,
@@ -54,6 +56,17 @@ const PORTFOLIO_DIAGNOSTIC_THRESHOLDS = {
   staleSourceDays: 7,
   employerStockConcentration: 0.25,
 };
+
+const PORTFOLIO_HISTORY_DEFAULT_LIMIT = 24;
+const PORTFOLIO_HISTORY_MAX_LIMIT = 120;
+
+export interface PortfolioHistoryQuery {
+  scope: PortfolioHistoryScope;
+  sourceId?: string;
+  sourceAccountId?: string;
+  assetCategory?: PortfolioAssetCategory;
+  limit?: number;
+}
 
 function toPrismaSourceType(
   sourceType: PortfolioDataSourceType | undefined,
@@ -666,6 +679,143 @@ export class PortfolioSnapshotsService {
         flags,
       },
       flags,
+    };
+  }
+
+  async getPortfolioHistory(
+    query: PortfolioHistoryQuery,
+    userId?: string,
+  ): Promise<PortfolioHistorySeries> {
+    const scopedUserId = userId ?? LEGACY_SNAPSHOT_OWNER_USER_ID;
+    const limit = Math.min(
+      PORTFOLIO_HISTORY_MAX_LIMIT,
+      Math.max(1, query.limit ?? PORTFOLIO_HISTORY_DEFAULT_LIMIT),
+    );
+    const sourceId = sanitizeOptionalString(query.sourceId);
+    const sourceAccountId = sanitizeOptionalString(query.sourceAccountId);
+
+    if (query.scope === 'source' && !sourceId) {
+      throw new BadRequestException('sourceId is required for source history.');
+    }
+    if (query.scope === 'account' && !sourceAccountId) {
+      throw new BadRequestException(
+        'sourceAccountId is required for account history.',
+      );
+    }
+    if (query.scope === 'asset_category' && !query.assetCategory) {
+      throw new BadRequestException(
+        'assetCategory is required for asset_category history.',
+      );
+    }
+
+    let account: SourceAccountRecord | null = null;
+    if (query.scope === 'account' && sourceAccountId) {
+      account = await this.prisma.connectedSourceAccountRecord.findFirst({
+        where: {
+          id: sourceAccountId,
+          source: { userId: scopedUserId },
+        },
+      });
+      if (!account) {
+        throw new BadRequestException('Source account was not found.');
+      }
+    }
+
+    const historySourceId =
+      query.scope === 'consolidated'
+        ? null
+        : query.scope === 'account'
+          ? account?.sourceId
+          : query.scope === 'asset_category'
+            ? (sourceId ?? null)
+            : sourceId;
+    const positionFilter: Prisma.PortfolioPositionRecordWhereInput | undefined =
+      query.scope === 'account'
+        ? { sourceAccountId }
+        : query.scope === 'asset_category'
+          ? { category: toPrismaCategory(query.assetCategory) }
+          : undefined;
+    const records = await this.prisma.portfolioSnapshotRecord.findMany({
+      where: {
+        userId: scopedUserId,
+        sourceId: historySourceId,
+        ...(positionFilter ? { positions: { some: positionFilter } } : {}),
+      },
+      orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+      include: {
+        positions: {
+          ...(positionFilter ? { where: positionFilter } : {}),
+          orderBy: [{ marketValue: 'desc' }, { assetKey: 'asc' }],
+        },
+      },
+    });
+
+    const points = records.map((record, index) => {
+      const value =
+        query.scope === 'consolidated' || query.scope === 'source'
+          ? Number(record.totalValue)
+          : record.positions.reduce(
+              (sum, position) => sum + Number(position.marketValue),
+              0,
+            );
+      const previousRecord = records[index + 1];
+      const previousValue = previousRecord
+        ? query.scope === 'consolidated' || query.scope === 'source'
+          ? Number(previousRecord.totalValue)
+          : previousRecord.positions.reduce(
+              (sum, position) => sum + Number(position.marketValue),
+              0,
+            )
+        : undefined;
+      const deltaFromPrevious =
+        previousValue === undefined ? undefined : value - previousValue;
+
+      return {
+        snapshotId: record.id,
+        snapshotDate: formatDateOnly(record.snapshotDate),
+        createdAt: record.createdAt.toISOString(),
+        chronologicalIndex: records.length - index - 1,
+        totalValue: Number(record.totalValue),
+        cashValue: decimalToNumber(record.cashValue),
+        sourceId: record.sourceId ?? undefined,
+        sourceLabel: record.sourceLabel ?? undefined,
+        sourceAccountId:
+          query.scope === 'account' ? sourceAccountId : undefined,
+        assetCategory:
+          query.scope === 'asset_category' ? query.assetCategory : undefined,
+        value,
+        deltaFromPrevious,
+        percentDeltaFromPrevious:
+          previousValue && deltaFromPrevious !== undefined
+            ? deltaFromPrevious / previousValue
+            : undefined,
+      };
+    });
+    const latest = points[0];
+    const previous = points[1];
+
+    return {
+      scope: query.scope,
+      sourceId: historySourceId ?? undefined,
+      sourceLabel: latest?.sourceLabel,
+      sourceAccountId: query.scope === 'account' ? sourceAccountId : undefined,
+      sourceAccountLabel: account?.displayName,
+      assetCategory:
+        query.scope === 'asset_category' ? query.assetCategory : undefined,
+      valuationCurrency: records[0]?.valuationCurrency ?? undefined,
+      points,
+      summary: {
+        scope: query.scope,
+        pointCount: points.length,
+        latestSnapshotId: latest?.snapshotId,
+        latestSnapshotDate: latest?.snapshotDate,
+        oldestSnapshotDate: points.at(-1)?.snapshotDate,
+        latestValue: latest?.value,
+        previousValue: previous?.value,
+        deltaFromPrevious: latest?.deltaFromPrevious,
+        percentDeltaFromPrevious: latest?.percentDeltaFromPrevious,
+      },
     };
   }
 
