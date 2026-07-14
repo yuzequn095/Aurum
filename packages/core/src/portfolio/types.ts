@@ -145,6 +145,73 @@ export interface PortfolioSnapshotDelta {
   baselineStatus: 'available' | 'no_baseline';
 }
 
+export type PortfolioChangeDriverDimension =
+  | 'total'
+  | 'cash'
+  | 'institution'
+  | 'account'
+  | 'asset_category'
+  | 'holding'
+  | 'employer_equity'
+  | 'data_health';
+
+export type PortfolioChangeCausalityStatus =
+  | 'deterministic_state_delta'
+  | 'insufficient_data_for_causality';
+
+export type PortfolioChangeCategory =
+  | 'known_state_change'
+  | 'manual_valuation_change'
+  | 'possible_market_or_quantity_change';
+
+export interface PortfolioChangeDriver {
+  id: string;
+  dimension: PortfolioChangeDriverDimension;
+  label: string;
+  description: string;
+  category: PortfolioChangeCategory;
+  previousValue?: number;
+  currentValue?: number;
+  delta: number;
+  percentDelta?: number;
+  changeType?: PortfolioSnapshotDeltaChangeType;
+  causalityStatus: PortfolioChangeCausalityStatus;
+  sourceId?: string;
+  sourceLabel?: string;
+  sourceAccountId?: string;
+  sourceAccountName?: string;
+  assetCategory?: PortfolioAssetCategory;
+  assetKey?: string;
+  symbol?: string;
+}
+
+export interface PortfolioChangeExplanationNote {
+  code:
+    | 'snapshot_state_only'
+    | 'not_realized_pnl'
+    | 'no_baseline'
+    | 'stale_data'
+    | 'incomplete_lineage';
+  message: string;
+}
+
+export type PortfolioChangeCausalityNote = PortfolioChangeExplanationNote;
+
+export interface PortfolioChangeExplanation {
+  version: 'portfolio-change-explanation-v1';
+  snapshotId: string;
+  baselineSnapshotId?: string;
+  baselineStatus: 'available' | 'no_baseline';
+  stateDeltaStatus: 'deterministic_state_delta';
+  causalityStatus: PortfolioChangeCausalityStatus;
+  summary: string;
+  totalValueDelta: number;
+  cashValueDelta: number;
+  drivers: PortfolioChangeDriver[];
+  dataLimitations: string[];
+  notes: PortfolioChangeExplanationNote[];
+}
+
 export type PortfolioDiagnosticsFlagSeverity = 'info' | 'warning';
 
 export interface PortfolioDiagnosticsAllocationItem {

@@ -3,6 +3,8 @@ import type {
   ConnectedSourceAccount,
   ConnectedSyncRun,
   PortfolioAssetCategory,
+  PortfolioChangeDriver,
+  PortfolioChangeExplanation,
   PortfolioDataSourceType,
   PortfolioDiagnostics,
   PortfolioDiagnosticsAllocationItem,
@@ -819,6 +821,234 @@ export class PortfolioSnapshotsService {
     };
   }
 
+  async getSnapshotChangeExplanation(
+    id: string,
+    compareTo: string = 'previous',
+    userId?: string,
+  ): Promise<PortfolioChangeExplanation | null> {
+    const scopedUserId = userId ?? LEGACY_SNAPSHOT_OWNER_USER_ID;
+    const delta = await this.getSnapshotDelta(id, compareTo, scopedUserId);
+    if (!delta) {
+      return null;
+    }
+
+    const [currentLineage, diagnostics] = await Promise.all([
+      this.getSnapshotLineage(id, scopedUserId),
+      this.getSnapshotDiagnostics(id, scopedUserId),
+    ]);
+    if (!currentLineage) {
+      return null;
+    }
+
+    const dataLimitations = [
+      'Snapshot records show observed state changes, not transaction or market causality.',
+      'Transaction reconciliation, tax lots, and realized P&L are not included.',
+    ];
+    const notes: PortfolioChangeExplanation['notes'] = [
+      {
+        code: 'snapshot_state_only',
+        message:
+          'Changes are deterministic snapshot-to-snapshot state deltas; the underlying cause is not inferred.',
+      },
+      {
+        code: 'not_realized_pnl',
+        message: 'This explanation is not realized or unrealized P&L.',
+      },
+    ];
+
+    if (diagnostics?.dataHealth.status === 'stale') {
+      dataLimitations.push(
+        'One or more linked sources are stale, so the latest state may be incomplete.',
+      );
+      notes.push({
+        code: 'stale_data',
+        message: 'One or more source snapshots are stale.',
+      });
+    }
+    if (
+      diagnostics &&
+      diagnostics.dataHealth.missingSourceAccountPositionCount > 0
+    ) {
+      dataLimitations.push(
+        'Some positions do not have account lineage, limiting account and institution attribution.',
+      );
+      notes.push({
+        code: 'incomplete_lineage',
+        message: 'Some positions are missing account context.',
+      });
+    }
+
+    if (delta.baselineStatus === 'no_baseline' || !delta.compareSnapshotId) {
+      dataLimitations.push(
+        'No earlier snapshot exists in the same scope, so change drivers cannot be calculated yet.',
+      );
+      notes.push({
+        code: 'no_baseline',
+        message:
+          'Create or sync another snapshot in the same scope to enable comparison.',
+      });
+
+      return {
+        version: 'portfolio-change-explanation-v1',
+        snapshotId: id,
+        baselineStatus: 'no_baseline',
+        stateDeltaStatus: 'deterministic_state_delta',
+        causalityStatus: 'insufficient_data_for_causality',
+        summary:
+          'No earlier snapshot is available in the same scope. The current state is available, but a change explanation cannot be calculated yet.',
+        totalValueDelta: 0,
+        cashValueDelta: 0,
+        drivers: [],
+        dataLimitations,
+        notes,
+      };
+    }
+
+    const previousLineage = await this.getSnapshotLineage(
+      delta.compareSnapshotId,
+      scopedUserId,
+    );
+    if (!previousLineage) {
+      return null;
+    }
+
+    const direction =
+      delta.totalValueDelta > 0
+        ? 'increased'
+        : delta.totalValueDelta < 0
+          ? 'decreased'
+          : 'was unchanged';
+    const isManualValuationChange =
+      currentLineage.snapshot.metadata.ingestionMode === 'MANUAL_STATIC' ||
+      currentLineage.snapshot.metadata.sourceType === 'manual';
+    const drivers: PortfolioChangeDriver[] = [
+      {
+        id: 'total',
+        dimension: 'total',
+        label: 'Total portfolio value',
+        description: `Total snapshot value ${direction} by ${this.formatAbsoluteValue(delta.totalValueDelta)}.`,
+        category: 'known_state_change',
+        previousValue: previousLineage.snapshot.totalValue,
+        currentValue: currentLineage.snapshot.totalValue,
+        delta: delta.totalValueDelta,
+        percentDelta: this.calculatePercentDelta(
+          delta.totalValueDelta,
+          previousLineage.snapshot.totalValue,
+        ),
+        causalityStatus: 'insufficient_data_for_causality',
+      },
+      {
+        id: 'cash',
+        dimension: 'cash',
+        label: 'Cash value',
+        description: `Cash snapshot value ${this.describeDirection(delta.cashValueDelta)} by ${this.formatAbsoluteValue(delta.cashValueDelta)}.`,
+        category: 'known_state_change',
+        previousValue: previousLineage.snapshot.cashValue ?? 0,
+        currentValue: currentLineage.snapshot.cashValue ?? 0,
+        delta: delta.cashValueDelta,
+        percentDelta: this.calculatePercentDelta(
+          delta.cashValueDelta,
+          previousLineage.snapshot.cashValue ?? 0,
+        ),
+        causalityStatus: 'insufficient_data_for_causality',
+        assetCategory: 'cash',
+      },
+    ];
+
+    const accountsById = {
+      ...previousLineage.accountsById,
+      ...currentLineage.accountsById,
+    };
+    const accountDrivers = delta.accountDeltas
+      .filter((item) => item.delta !== 0)
+      .slice(0, 5)
+      .map<PortfolioChangeDriver>((item) => {
+        const account = item.sourceAccountId
+          ? accountsById[item.sourceAccountId]
+          : undefined;
+        const isEmployerEquity = this.isEmployerEquityAccount(account);
+
+        return {
+          id: `${isEmployerEquity ? 'employer-equity' : 'account'}:${item.sourceAccountId ?? 'unknown'}`,
+          dimension: isEmployerEquity ? 'employer_equity' : 'account',
+          label: isEmployerEquity
+            ? `${item.sourceAccountName} employer equity`
+            : item.sourceAccountName,
+          description: `${item.sourceAccountName} snapshot value ${this.describeDirection(item.delta)} by ${this.formatAbsoluteValue(item.delta)}.`,
+          category: isManualValuationChange
+            ? 'manual_valuation_change'
+            : 'known_state_change',
+          previousValue: item.previousValue,
+          currentValue: item.currentValue,
+          delta: item.delta,
+          percentDelta: this.calculatePercentDelta(
+            item.delta,
+            item.previousValue,
+          ),
+          causalityStatus: 'insufficient_data_for_causality',
+          sourceId: account?.sourceId,
+          sourceAccountId: item.sourceAccountId,
+          sourceAccountName: item.sourceAccountName,
+        };
+      });
+    const holdingDrivers = delta.positionDeltas
+      .filter((item) => item.marketValueDelta !== 0)
+      .slice(0, 8)
+      .map<PortfolioChangeDriver>((item) => ({
+        id: `holding:${item.sourceAccountId ?? 'unknown'}:${item.assetKey}`,
+        dimension: 'holding',
+        label: item.symbol ?? item.name ?? item.assetKey,
+        description: `${item.symbol ?? item.name ?? item.assetKey} snapshot value ${this.describeDirection(item.marketValueDelta)} by ${this.formatAbsoluteValue(item.marketValueDelta)} (${item.changeType}).`,
+        category: isManualValuationChange
+          ? 'manual_valuation_change'
+          : 'possible_market_or_quantity_change',
+        previousValue: item.previousMarketValue,
+        currentValue: item.currentMarketValue,
+        delta: item.marketValueDelta,
+        percentDelta: this.calculatePercentDelta(
+          item.marketValueDelta,
+          item.previousMarketValue,
+        ),
+        changeType: item.changeType,
+        causalityStatus: 'insufficient_data_for_causality',
+        sourceAccountId: item.sourceAccountId,
+        sourceAccountName: item.sourceAccountName,
+        assetKey: item.assetKey,
+        symbol: item.symbol,
+      }));
+    const categoryDrivers = this.buildCategoryChangeDrivers(
+      currentLineage,
+      previousLineage,
+    );
+    const institutionDrivers = this.buildInstitutionChangeDrivers(
+      delta.accountDeltas,
+      currentLineage,
+      previousLineage,
+    );
+
+    drivers.push(
+      ...institutionDrivers,
+      ...accountDrivers,
+      ...categoryDrivers,
+      ...holdingDrivers,
+    );
+
+    return {
+      version: 'portfolio-change-explanation-v1',
+      snapshotId: id,
+      baselineSnapshotId: delta.compareSnapshotId,
+      baselineStatus: 'available',
+      stateDeltaStatus: 'deterministic_state_delta',
+      causalityStatus: 'insufficient_data_for_causality',
+      summary: `Total snapshot value ${direction} by ${this.formatAbsoluteValue(delta.totalValueDelta)} between ${previousLineage.snapshot.metadata.snapshotDate} and ${currentLineage.snapshot.metadata.snapshotDate}. This is an observed state change; available data is insufficient to determine the cause.`,
+      totalValueDelta: delta.totalValueDelta,
+      cashValueDelta: delta.cashValueDelta,
+      drivers,
+      dataLimitations,
+      notes,
+    };
+  }
+
   async listSnapshots(userId?: string): Promise<PortfolioSnapshot[]> {
     const records = await this.prisma.portfolioSnapshotRecord.findMany({
       where: {
@@ -960,6 +1190,157 @@ export class PortfolioSnapshotsService {
         };
       })
       .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta));
+  }
+
+  private buildCategoryChangeDrivers(
+    current: PortfolioSnapshotLineage,
+    previous: PortfolioSnapshotLineage,
+  ): PortfolioChangeDriver[] {
+    const categories: PortfolioAssetCategory[] = [
+      'cash',
+      'equity',
+      'etf',
+      'crypto',
+      'fund',
+      'other',
+    ];
+    const sumByCategory = (lineage: PortfolioSnapshotLineage) => {
+      const values = new Map<PortfolioAssetCategory, number>();
+      lineage.snapshot.positions.forEach((position) => {
+        const category = position.category ?? 'other';
+        values.set(
+          category,
+          (values.get(category) ?? 0) + position.marketValue,
+        );
+      });
+      return values;
+    };
+    const currentValues = sumByCategory(current);
+    const previousValues = sumByCategory(previous);
+
+    return categories
+      .map<PortfolioChangeDriver>((category) => {
+        const currentValue = currentValues.get(category) ?? 0;
+        const previousValue = previousValues.get(category) ?? 0;
+        const delta = currentValue - previousValue;
+
+        return {
+          id: `asset-category:${category}`,
+          dimension: 'asset_category',
+          label: `${category.replace('_', ' ')} allocation`,
+          description: `${category.replace('_', ' ')} snapshot value ${this.describeDirection(delta)} by ${this.formatAbsoluteValue(delta)}.`,
+          category:
+            current.snapshot.metadata.ingestionMode === 'MANUAL_STATIC' ||
+            current.snapshot.metadata.sourceType === 'manual'
+              ? 'manual_valuation_change'
+              : 'known_state_change',
+          previousValue,
+          currentValue,
+          delta,
+          percentDelta: this.calculatePercentDelta(delta, previousValue),
+          causalityStatus: 'insufficient_data_for_causality',
+          assetCategory: category,
+        };
+      })
+      .filter((driver) => driver.delta !== 0)
+      .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta))
+      .slice(0, 5);
+  }
+
+  private buildInstitutionChangeDrivers(
+    accountDeltas: PortfolioSnapshotDelta['accountDeltas'],
+    current: PortfolioSnapshotLineage,
+    previous: PortfolioSnapshotLineage,
+  ): PortfolioChangeDriver[] {
+    const accountsById = {
+      ...previous.accountsById,
+      ...current.accountsById,
+    };
+    const values = new Map<
+      string,
+      { previousValue: number; currentValue: number }
+    >();
+
+    accountDeltas.forEach((item) => {
+      if (!item.sourceAccountId) return;
+      const account = accountsById[item.sourceAccountId];
+      const source =
+        account?.sourceId === current.source?.id
+          ? current.source
+          : account?.sourceId === previous.source?.id
+            ? previous.source
+            : undefined;
+      const label =
+        account?.institutionOrIssuer ??
+        source?.institutionName ??
+        source?.displayName;
+      if (!label) return;
+      const existing = values.get(label) ?? {
+        previousValue: 0,
+        currentValue: 0,
+      };
+      values.set(label, {
+        previousValue: existing.previousValue + item.previousValue,
+        currentValue: existing.currentValue + item.currentValue,
+      });
+    });
+
+    return [...values.entries()]
+      .map<PortfolioChangeDriver>(([label, value]) => {
+        const delta = value.currentValue - value.previousValue;
+        return {
+          id: `institution:${label.toLowerCase().replace(/\s+/g, '-')}`,
+          dimension: 'institution',
+          label,
+          description: `${label} snapshot value ${this.describeDirection(delta)} by ${this.formatAbsoluteValue(delta)}.`,
+          category:
+            current.snapshot.metadata.ingestionMode === 'MANUAL_STATIC' ||
+            current.snapshot.metadata.sourceType === 'manual'
+              ? 'manual_valuation_change'
+              : 'known_state_change',
+          previousValue: value.previousValue,
+          currentValue: value.currentValue,
+          delta,
+          percentDelta: this.calculatePercentDelta(delta, value.previousValue),
+          causalityStatus: 'insufficient_data_for_causality',
+          sourceLabel: label,
+        };
+      })
+      .filter((driver) => driver.delta !== 0)
+      .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta))
+      .slice(0, 5);
+  }
+
+  private isEmployerEquityAccount(
+    account: ConnectedSourceAccount | undefined,
+  ): boolean {
+    if (!account) return false;
+    return (
+      account.metadata?.employerStockCandidate === true ||
+      account.assetSubType?.toLowerCase().includes('rsu') === true ||
+      account.accountType.toLowerCase().includes('rsu') ||
+      account.displayName.toLowerCase().includes('rsu')
+    );
+  }
+
+  private describeDirection(delta: number): string {
+    if (delta > 0) return 'increased';
+    if (delta < 0) return 'decreased';
+    return 'was unchanged';
+  }
+
+  private formatAbsoluteValue(value: number): string {
+    return Math.abs(value).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  private calculatePercentDelta(
+    delta: number,
+    previousValue: number | undefined,
+  ): number | undefined {
+    return previousValue ? delta / previousValue : undefined;
   }
 
   private sumPositionsByAccount(snapshot: SnapshotRecord): Map<string, number> {

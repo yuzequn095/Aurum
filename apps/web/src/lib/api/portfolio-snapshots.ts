@@ -4,6 +4,7 @@ import type {
   PortfolioDiagnostics,
   PortfolioSnapshotLineage,
   PortfolioAssetCategory,
+  PortfolioChangeExplanation,
   PortfolioHistoryScope,
   PortfolioHistorySeries,
 } from '@aurum/core';
@@ -37,6 +38,16 @@ export async function getPortfolioSnapshotDelta(
 
 export async function getPortfolioSnapshotDiagnostics(id: string): Promise<PortfolioDiagnostics> {
   return apiGet<PortfolioDiagnostics>(`/v1/portfolio-snapshots/${id}/diagnostics`);
+}
+
+export async function getPortfolioSnapshotChangeExplanation(
+  id: string,
+  compareTo = 'previous',
+): Promise<PortfolioChangeExplanation> {
+  const qs = new URLSearchParams({ compareTo });
+  return apiGet<PortfolioChangeExplanation>(
+    `/v1/portfolio-snapshots/${id}/change-explanation?${qs.toString()}`,
+  );
 }
 
 export interface PortfolioHistoryQuery {

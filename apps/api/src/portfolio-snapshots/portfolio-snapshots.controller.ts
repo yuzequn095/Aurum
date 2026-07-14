@@ -16,6 +16,7 @@ import type {
   PortfolioDiagnostics,
   PortfolioSnapshotLineage,
   PortfolioAssetCategory,
+  PortfolioChangeExplanation,
   PortfolioHistoryScope,
   PortfolioHistorySeries,
 } from '@aurum/core';
@@ -126,6 +127,24 @@ export class PortfolioSnapshotsController {
     }
 
     return delta;
+  }
+
+  @Get(':id/change-explanation')
+  async getChangeExplanation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Query('compareTo') compareTo: string = 'previous',
+  ): Promise<PortfolioChangeExplanation> {
+    const explanation = await this.service.getSnapshotChangeExplanation(
+      id,
+      compareTo,
+      user.userId,
+    );
+    if (!explanation) {
+      throw new NotFoundException('Portfolio snapshot not found');
+    }
+
+    return explanation;
   }
 
   @Get(':id/diagnostics')

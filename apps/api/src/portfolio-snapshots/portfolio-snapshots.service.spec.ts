@@ -372,6 +372,189 @@ describe('PortfolioSnapshotsService', () => {
     });
   });
 
+  it('returns an explainable empty change state when no baseline exists', async () => {
+    const service = new PortfolioSnapshotsService({} as PrismaService);
+    jest.spyOn(service, 'getSnapshotDelta').mockResolvedValue({
+      baseSnapshotId: 'snapshot_current',
+      totalValueDelta: 0,
+      cashValueDelta: 0,
+      positionDeltas: [],
+      accountDeltas: [],
+      baselineStatus: 'no_baseline',
+    });
+    jest.spyOn(service, 'getSnapshotLineage').mockResolvedValue({
+      snapshot: {
+        id: 'snapshot_current',
+        metadata: {
+          snapshotDate: '2026-03-20',
+          sourceId: 'source_1',
+        },
+        totalValue: 2000,
+        cashValue: 500,
+        positions: [],
+      },
+      accountsById: {},
+      positionsWithAccountContext: [],
+    });
+    jest.spyOn(service, 'getSnapshotDiagnostics').mockResolvedValue(null);
+
+    const explanation = await service.getSnapshotChangeExplanation(
+      'snapshot_current',
+      'previous',
+      'user_1',
+    );
+
+    expect(explanation).toMatchObject({
+      baselineStatus: 'no_baseline',
+      causalityStatus: 'insufficient_data_for_causality',
+      drivers: [],
+      notes: expect.arrayContaining([
+        expect.objectContaining({ code: 'no_baseline' }),
+      ]),
+    });
+    expect(explanation?.summary).toContain('same scope');
+  });
+
+  it('builds deterministic drivers and classifies RSU account changes as employer equity', async () => {
+    const service = new PortfolioSnapshotsService({} as PrismaService);
+    const rsuAccount = {
+      id: 'account_rsu',
+      sourceId: 'source_fidelity',
+      displayName: 'Fidelity RSU',
+      accountType: 'brokerage',
+      currency: 'USD',
+      assetSubType: 'employer_rsu',
+      institutionOrIssuer: 'Fidelity',
+      isActive: true,
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-20T00:00:00.000Z',
+    };
+    const previousSnapshot: PortfolioSnapshot = {
+      id: 'snapshot_previous',
+      metadata: {
+        snapshotDate: '2026-03-19',
+        sourceId: 'source_fidelity',
+        sourceLabel: 'Fidelity',
+      },
+      totalValue: 1500,
+      cashValue: 300,
+      positions: [
+        {
+          assetKey: 'symbol:ACME',
+          symbol: 'ACME',
+          marketValue: 1200,
+          category: 'equity',
+          sourceAccountId: 'account_rsu',
+        },
+        {
+          assetKey: 'cash:USD',
+          name: 'Cash',
+          marketValue: 300,
+          category: 'cash',
+          sourceAccountId: 'account_rsu',
+        },
+      ],
+    };
+    const currentSnapshot: PortfolioSnapshot = {
+      ...previousSnapshot,
+      id: 'snapshot_current',
+      metadata: { ...previousSnapshot.metadata, snapshotDate: '2026-03-20' },
+      totalValue: 2000,
+      cashValue: 250,
+      positions: [
+        {
+          ...previousSnapshot.positions[0],
+          marketValue: 1750,
+        },
+        {
+          ...previousSnapshot.positions[1],
+          marketValue: 250,
+        },
+      ],
+    };
+    jest.spyOn(service, 'getSnapshotDelta').mockResolvedValue({
+      baseSnapshotId: 'snapshot_current',
+      compareSnapshotId: 'snapshot_previous',
+      totalValueDelta: 500,
+      cashValueDelta: -50,
+      baselineStatus: 'available',
+      accountDeltas: [
+        {
+          sourceAccountId: 'account_rsu',
+          sourceAccountName: 'Fidelity RSU',
+          previousValue: 1500,
+          currentValue: 2000,
+          delta: 500,
+        },
+      ],
+      positionDeltas: [
+        {
+          assetKey: 'symbol:ACME',
+          symbol: 'ACME',
+          previousMarketValue: 1200,
+          currentMarketValue: 1750,
+          marketValueDelta: 550,
+          sourceAccountId: 'account_rsu',
+          sourceAccountName: 'Fidelity RSU',
+          changeType: 'increased',
+        },
+      ],
+    });
+    jest
+      .spyOn(service, 'getSnapshotLineage')
+      .mockResolvedValueOnce({
+        snapshot: currentSnapshot,
+        accountsById: { account_rsu: rsuAccount },
+        positionsWithAccountContext: [],
+      })
+      .mockResolvedValueOnce({
+        snapshot: previousSnapshot,
+        accountsById: { account_rsu: rsuAccount },
+        positionsWithAccountContext: [],
+      });
+    jest.spyOn(service, 'getSnapshotDiagnostics').mockResolvedValue(null);
+
+    const explanation = await service.getSnapshotChangeExplanation(
+      'snapshot_current',
+      'previous',
+      'user_1',
+    );
+
+    expect(explanation).toMatchObject({
+      baselineStatus: 'available',
+      stateDeltaStatus: 'deterministic_state_delta',
+      causalityStatus: 'insufficient_data_for_causality',
+    });
+    expect(explanation?.drivers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          dimension: 'employer_equity',
+          sourceAccountId: 'account_rsu',
+          delta: 500,
+        }),
+        expect.objectContaining({
+          dimension: 'institution',
+          label: 'Fidelity',
+          delta: 500,
+        }),
+        expect.objectContaining({
+          dimension: 'asset_category',
+          assetCategory: 'equity',
+          delta: 550,
+        }),
+        expect.objectContaining({
+          dimension: 'holding',
+          symbol: 'ACME',
+          changeType: 'increased',
+        }),
+      ]),
+    );
+    const wording = JSON.stringify(explanation).toLowerCase();
+    expect(wording).not.toContain('you bought');
+    expect(wording).not.toContain('you sold');
+    expect(wording).not.toContain('market caused');
+  });
+
   it('returns no-baseline delta when a source-level snapshot has no same-source previous snapshot', async () => {
     const currentSnapshot = {
       ...baseSnapshotRecord,
