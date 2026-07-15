@@ -1,11 +1,7 @@
 import type { AITaskDefinition } from '../task-definition';
 import type { PromptPack } from '../types';
-import {
-  buildJsonBlock,
-  buildPromptPackUserMessage,
-  formatUsd,
-  joinList,
-} from './task-helpers';
+import type { PortfolioAIContextInput } from '../portfolio-context';
+import { buildJsonBlock, buildPromptPackUserMessage, formatUsd, joinList } from './task-helpers';
 
 export interface DailyMarketBriefSignalInput {
   title: string;
@@ -24,7 +20,7 @@ export interface DailyMarketBriefInput {
   briefDate: string;
   generatedAt: string;
   marketSessionLabel: 'pre_market' | 'intraday' | 'post_market';
-  reportScope: 'portfolio_aware' | 'market_overview';
+  reportScope: 'portfolio_aware';
   operatingMode: string;
   dataFreshnessNote: string;
   portfolioName: string;
@@ -38,15 +34,16 @@ export interface DailyMarketBriefInput {
   watchlistSymbols: string[];
   topHoldings: DailyMarketBriefHoldingInput[];
   marketSignals: DailyMarketBriefSignalInput[];
+  portfolioContext?: PortfolioAIContextInput;
 }
 
 const TASK_TYPE = 'daily_market_brief_v1';
-const PROMPT_VERSION = '1.0.0';
-const TITLE = 'Daily Market Brief';
+const PROMPT_VERSION = '1.1.0';
+const TITLE = 'Portfolio Market Lens';
 const REQUIRED_HEADINGS = [
-  '# Daily Market Brief',
-  '## Market Setup',
-  '## What Matters Today',
+  '# Portfolio Market Lens',
+  '## Data Boundary',
+  '## Portfolio Exposures',
   '## Portfolio Lens',
   '## Watchlist',
   '## Next Read',
@@ -73,10 +70,11 @@ function buildUserMessage(input: DailyMarketBriefInput): string {
     },
     watchlistSymbols: input.watchlistSymbols,
     marketSignals: input.marketSignals,
+    structuredPortfolioContext: input.portfolioContext ?? null,
   };
 
   return buildPromptPackUserMessage([
-    'Prepare a Daily Market Brief in markdown for Aurum AI Insights.',
+    'Prepare a Portfolio Market Lens in markdown for Aurum AI Insights.',
     '',
     'Use the exact headings below and keep the brief compact, clear, and ready for in-product display.',
     ...REQUIRED_HEADINGS,
@@ -86,7 +84,7 @@ function buildUserMessage(input: DailyMarketBriefInput): string {
     '',
     'Requirements:',
     '- Treat this as a system-provided daily brief, not a chat reply.',
-    '- Reflect the supplied scope explicitly: portfolio-aware or market-overview.',
+    '- State clearly that this is a portfolio exposure lens, not a live market overview.',
     '- Anchor any portfolio remarks to the supplied snapshot context only.',
     `- Mention watchlist symbols when helpful: ${joinList(input.watchlistSymbols)}.`,
     '- End with a short next-read section that clarifies how to use the brief today.',
@@ -101,13 +99,13 @@ export const dailyMarketBriefV1TaskDefinition: AITaskDefinition<DailyMarketBrief
     return {
       taskType: TASK_TYPE,
       promptVersion: PROMPT_VERSION,
-      schemaVersion: '1.0.0',
+      schemaVersion: '1.1.0',
       title: TITLE,
       messages: [
         {
           role: 'system',
           content:
-            'You are Aurum, a concise market briefing assistant. Produce structured markdown briefs that surface the day setup, what matters, portfolio-aware implications, and a short watchlist without pretending to have live data beyond the supplied context.',
+            'You are Aurum, a concise portfolio exposure assistant. Produce a structured Portfolio Market Lens grounded in the supplied snapshot, and never imply access to live prices, news, rates, volatility, or market events.',
         },
         {
           role: 'user',
@@ -117,7 +115,7 @@ export const dailyMarketBriefV1TaskDefinition: AITaskDefinition<DailyMarketBrief
       expectedOutputFormat: 'markdown',
       instructions: [
         'Follow the required headings exactly and in order.',
-        'Use the supplied market signals and snapshot anchor only.',
+        'Use the supplied portfolio signals and snapshot anchor only.',
         'Be brief, decisive, and risk-aware.',
         'Do not imply live data access beyond the provided context block.',
       ],
@@ -131,6 +129,6 @@ export const dailyMarketBriefV1TaskDefinition: AITaskDefinition<DailyMarketBrief
     };
   },
   summarizeInput(input: DailyMarketBriefInput): string {
-    return `${input.briefDate} ${input.reportScope.replace('_', ' ')} brief for ${input.portfolioName} with ${input.marketSignals.length} market signals.`;
+    return `${input.briefDate} portfolio market lens for ${input.portfolioName} with ${input.marketSignals.length} portfolio signals.`;
   },
 };

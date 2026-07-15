@@ -87,7 +87,7 @@ export default function SettingsPage() {
                   AI Delivery
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--aurum-text-muted)]">
-                  Daily Market Brief preferences live with AI Insights so report context stays
+                  Portfolio Market Lens preferences live with AI Insights so report context stays
                   nearby.
                 </p>
                 <Link

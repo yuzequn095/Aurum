@@ -16,7 +16,7 @@ export interface DailyMarketBriefMarketContext {
   generatedAt: string;
   sessionLabel: 'pre_market' | 'intraday' | 'post_market';
   scope: DailyMarketBriefScope;
-  operatingMode: 'internal_market_template_v1';
+  operatingMode: 'internal_portfolio_lens_v1';
   dataFreshnessNote: string;
   topHoldings: Array<{
     name: string;
@@ -117,14 +117,14 @@ export class MarketContextService {
       signals.push({
         id: 'cash-optionality',
         title: 'Cash Optionality',
-        summary: `Cash represents ${formatPercent(cashWeightPercent)} of portfolio value, leaving room for staged deployment if markets pull back.`,
+        summary: `Cash represents ${formatPercent(cashWeightPercent)} of portfolio value in the selected snapshot.`,
         severity: 'good',
       });
     } else {
       signals.push({
         id: 'cash-discipline',
-        title: 'Cash Discipline',
-        summary: `Cash sits near ${formatPercent(cashWeightPercent)}, so new risk should be added deliberately rather than opportunistically.`,
+        title: 'Cash Weight',
+        summary: `Cash represents ${formatPercent(cashWeightPercent)} of portfolio value in the selected snapshot.`,
         severity: 'info',
       });
     }
@@ -133,14 +133,14 @@ export class MarketContextService {
       signals.push({
         id: 'top-three-weight',
         title: 'Leadership Breadth',
-        summary: `Top three holdings account for ${formatPercent(topThreeWeightPercent)} of value, so market leadership should be monitored closely.`,
+        summary: `Top three holdings account for ${formatPercent(topThreeWeightPercent)} of portfolio value and dominate the current exposure view.`,
         severity: 'warn',
       });
     } else {
       signals.push({
         id: 'top-three-diversification',
         title: 'Diversification Check',
-        summary: `Top three holdings account for ${formatPercent(topThreeWeightPercent)}, which gives the brief a broader participation lens.`,
+        summary: `Top three holdings account for ${formatPercent(topThreeWeightPercent)}, leaving the remaining exposure spread across other positions.`,
         severity: 'good',
       });
     }
@@ -149,7 +149,7 @@ export class MarketContextService {
       signals.push({
         id: 'watchlist-symbols',
         title: 'Watchlist Symbols',
-        summary: `Focus the market read on ${watchlistSymbols.join(', ')} because they dominate the current portfolio footprint.`,
+        summary: `${watchlistSymbols.join(', ')} are the leading symbols in the current portfolio snapshot.`,
         severity: 'info',
       });
     }
@@ -159,9 +159,9 @@ export class MarketContextService {
       generatedAt: now.toISOString(),
       sessionLabel: resolveSessionLabel(now),
       scope: input.scope,
-      operatingMode: 'internal_market_template_v1',
+      operatingMode: 'internal_portfolio_lens_v1',
       dataFreshnessNote:
-        'Using the internal Market Brief context builder with portfolio-grounded signals. External market data is not available in this mode.',
+        'Portfolio snapshot signals only. Live prices, indices, rates, volatility, news, and market events are not available.',
       topHoldings,
       watchlistSymbols,
       signals,

@@ -26,13 +26,8 @@ function mapCadenceToView(
 function mapScopeToView(
   scope: AIDailyMarketBriefScope,
 ): DailyMarketBriefPreferenceView['reportScope'] {
-  switch (scope) {
-    case AIDailyMarketBriefScope.MARKET_OVERVIEW:
-      return 'market_overview';
-    case AIDailyMarketBriefScope.PORTFOLIO_AWARE:
-    default:
-      return 'portfolio_aware';
-  }
+  void scope;
+  return 'portfolio_aware';
 }
 
 function mapDeliveryChannelToView(
@@ -64,13 +59,8 @@ function mapCadenceToPrisma(
 function mapScopeToPrisma(
   scope: DailyMarketBriefPreferenceView['reportScope'],
 ): AIDailyMarketBriefScope {
-  switch (scope) {
-    case 'market_overview':
-      return AIDailyMarketBriefScope.MARKET_OVERVIEW;
-    case 'portfolio_aware':
-    default:
-      return AIDailyMarketBriefScope.PORTFOLIO_AWARE;
-  }
+  void scope;
+  return AIDailyMarketBriefScope.PORTFOLIO_AWARE;
 }
 
 function mapDeliveryChannelToPrisma(

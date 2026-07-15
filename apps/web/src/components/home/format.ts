@@ -6,6 +6,7 @@ import type {
 } from '@aurum/core';
 import type { BadgeProps } from '@/components/ui/Badge';
 import { formatMoney } from '@/lib/format';
+import { isLegacyPortfolioMarketLensReport } from '@/lib/ai/report-display';
 
 export const monthNames = [
   'January',
@@ -171,7 +172,11 @@ export function getSnapshotHeadline(snapshot: PortfolioSnapshot | null): string 
 
 export function getReportPreview(report: AIReportArtifact | null): string {
   if (!report) {
-    return 'No executive brief has been generated yet. Use AI Insights when you want a persisted Monthly Financial Review or Daily Market Brief.';
+    return 'No executive brief has been generated yet. Use AI Insights when you want a persisted Monthly Financial Review or Portfolio Market Lens.';
+  }
+
+  if (isLegacyPortfolioMarketLensReport(report)) {
+    return 'Legacy saved lens created before the portfolio-only boundary was tightened. It contains no live market prices, indices, rates, volatility, or news.';
   }
 
   return stripMarkdownToPreview(report.contentMarkdown, 260);

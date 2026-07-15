@@ -1,11 +1,7 @@
 import type { AITaskDefinition } from '../task-definition';
 import type { PromptPack } from '../types';
-import {
-  buildJsonBlock,
-  buildPromptPackUserMessage,
-  formatUsd,
-  joinList,
-} from './task-helpers';
+import type { PortfolioAIContextInput } from '../portfolio-context';
+import { buildJsonBlock, buildPromptPackUserMessage, formatUsd, joinList } from './task-helpers';
 
 export interface PortfolioAnalysisPositionInput {
   symbol: string;
@@ -28,10 +24,11 @@ export interface PortfolioAnalysisInput {
     riskPreference?: string;
     concerns?: string[];
   };
+  portfolioContext?: PortfolioAIContextInput;
 }
 
 const TASK_TYPE = 'portfolio_analysis_v1';
-const PROMPT_VERSION = '1.0.0';
+const PROMPT_VERSION = '1.1.0';
 const TITLE = 'Portfolio Analysis';
 const REQUIRED_HEADINGS = [
   '# Portfolio Analysis',
@@ -57,6 +54,7 @@ function buildUserMessage(input: PortfolioAnalysisInput): string {
       cashValue: input.cashValue ?? null,
       positions: input.positions,
       investorProfile: input.investorProfile ?? null,
+      structuredPortfolioContext: input.portfolioContext ?? null,
     }),
     '',
     'Requirements:',
@@ -75,7 +73,7 @@ export const portfolioAnalysisV1TaskDefinition: AITaskDefinition<PortfolioAnalys
     return {
       taskType: TASK_TYPE,
       promptVersion: PROMPT_VERSION,
-      schemaVersion: '1.0.0',
+      schemaVersion: '1.1.0',
       title: TITLE,
       messages: [
         {

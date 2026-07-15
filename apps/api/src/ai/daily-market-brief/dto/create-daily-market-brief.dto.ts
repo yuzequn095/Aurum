@@ -7,9 +7,6 @@ export class CreateDailyMarketBriefDto {
   sourceSnapshotId?: string;
 
   @IsOptional()
-  @IsIn([
-    'portfolio_aware',
-    'market_overview',
-  ] satisfies DailyMarketBriefScope[])
+  @IsIn(['portfolio_aware'] satisfies DailyMarketBriefScope[])
   reportScope?: DailyMarketBriefScope;
 }

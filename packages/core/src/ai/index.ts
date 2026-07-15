@@ -1,4 +1,5 @@
 export * from './types';
+export * from './portfolio-context';
 export * from './task-definition';
 export * from './tasks';
 export * from './providers';

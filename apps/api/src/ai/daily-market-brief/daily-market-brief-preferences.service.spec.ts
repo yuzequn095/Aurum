@@ -75,7 +75,7 @@ describe('DailyMarketBriefPreferencesService', () => {
       cadence: 'weekdays',
       deliveryTimeLocal: '07:30',
       timezone: 'America/New_York',
-      reportScope: 'market_overview',
+      reportScope: 'portfolio_aware',
       deliveryChannel: 'email_placeholder',
       sourceSnapshotId: 'snapshot_1',
     });
@@ -95,14 +95,14 @@ describe('DailyMarketBriefPreferencesService', () => {
       cadence: 'WEEKDAYS',
       deliveryTimeLocal: '07:30',
       timezone: 'America/New_York',
-      reportScope: 'MARKET_OVERVIEW',
+      reportScope: 'PORTFOLIO_AWARE',
       deliveryChannel: 'EMAIL_PLACEHOLDER',
       sourceSnapshotId: 'snapshot_1',
     });
     expect(result).toMatchObject({
       enabled: true,
       cadence: 'weekdays',
-      reportScope: 'market_overview',
+      reportScope: 'portfolio_aware',
       deliveryChannel: 'email_placeholder',
       sourceSnapshotId: 'snapshot_1',
     });

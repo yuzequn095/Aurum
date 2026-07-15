@@ -1,4 +1,4 @@
-export type DailyMarketBriefScope = 'portfolio_aware' | 'market_overview';
+export type DailyMarketBriefScope = 'portfolio_aware';
 
 export type DailyMarketBriefCadence = 'daily' | 'weekdays' | 'weekly';
 

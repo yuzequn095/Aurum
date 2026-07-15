@@ -51,6 +51,8 @@ type SourceAccountWithSourceRecord =
     include: { source: true };
   }>;
 
+type ConnectedSourceRecord = Prisma.ConnectedSourceRecordGetPayload<object>;
+
 const PORTFOLIO_DIAGNOSTIC_THRESHOLDS = {
   singleHoldingConcentration: 0.25,
   cryptoExposure: 0.15,
@@ -185,9 +187,7 @@ function mapMetadata(
   return value as Record<string, unknown>;
 }
 
-function mapConnectedSource(
-  record: NonNullable<SnapshotLineageRecord['source']>,
-): ConnectedSource {
+function mapConnectedSource(record: ConnectedSourceRecord): ConnectedSource {
   return {
     id: record.id,
     userId: record.userId,
@@ -281,14 +281,30 @@ export class PortfolioSnapshotsService {
   ): Promise<PortfolioSnapshot> {
     const scopedUserId =
       userId ?? snapshot.userId ?? LEGACY_SNAPSHOT_OWNER_USER_ID;
+    const sourceId = sanitizeOptionalString(snapshot.metadata.sourceId);
+    const sourceSyncRunId = sanitizeOptionalString(
+      snapshot.metadata.sourceSyncRunId,
+    );
+    const sourceAccountIds = [
+      ...new Set(
+        snapshot.positions
+          .map((position) => sanitizeOptionalString(position.sourceAccountId))
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ];
+
+    await this.validateSnapshotLineageOwnership({
+      userId: scopedUserId,
+      sourceId,
+      sourceSyncRunId,
+      sourceAccountIds,
+    });
 
     const created = await this.prisma.portfolioSnapshotRecord.create({
       data: {
         userId: scopedUserId,
-        sourceId: sanitizeOptionalString(snapshot.metadata.sourceId),
-        sourceSyncRunId: sanitizeOptionalString(
-          snapshot.metadata.sourceSyncRunId,
-        ),
+        sourceId,
+        sourceSyncRunId,
         ingestionMode: toPrismaIngestionMode(
           snapshot.metadata.ingestionMode,
           snapshot.metadata.sourceType,
@@ -386,9 +402,13 @@ export class PortfolioSnapshotsService {
       ),
     ];
     const accounts = await this.prisma.connectedSourceAccountRecord.findMany({
-      where: record.sourceId
-        ? { sourceId: record.sourceId }
-        : { id: { in: sourceAccountIds } },
+      where: {
+        ...(record.sourceId
+          ? { sourceId: record.sourceId }
+          : { id: { in: sourceAccountIds } }),
+        source: { userId: scopedUserId },
+      },
+      include: { source: true },
       orderBy: [{ createdAt: 'asc' }],
     });
     const accountsById = Object.fromEntries(
@@ -397,14 +417,30 @@ export class PortfolioSnapshotsService {
         mapConnectedSourceAccount(account),
       ]),
     );
+    const sourcesById = Object.fromEntries(
+      accounts.map((account) => [
+        account.source.id,
+        mapConnectedSource(account.source),
+      ]),
+    );
+    if (record.source?.userId === scopedUserId) {
+      sourcesById[record.source.id] = mapConnectedSource(record.source);
+    }
     const snapshot = mapPortfolioSnapshotRecordToSnapshot(record);
+    const source =
+      record.source?.userId === scopedUserId ? record.source : null;
+    const sourceSyncRun =
+      record.sourceSyncRun?.userId === scopedUserId
+        ? record.sourceSyncRun
+        : null;
 
     return {
       snapshot,
-      source: record.source ? mapConnectedSource(record.source) : undefined,
-      sourceSyncRun: record.sourceSyncRun
-        ? mapConnectedSyncRun(record.sourceSyncRun)
+      source: source ? mapConnectedSource(source) : undefined,
+      sourceSyncRun: sourceSyncRun
+        ? mapConnectedSyncRun(sourceSyncRun)
         : undefined,
+      sourcesById,
       accountsById,
       positionsWithAccountContext: snapshot.positions.map((position) => {
         const sourceAccount = position.sourceAccountId
@@ -415,8 +451,10 @@ export class PortfolioSnapshotsService {
           ...position,
           sourceAccount,
           sourceName:
-            sourceAccount?.displayName ??
-            record.source?.displayName ??
+            (sourceAccount
+              ? sourcesById[sourceAccount.sourceId]?.displayName
+              : undefined) ??
+            source?.displayName ??
             snapshot.metadata.sourceLabel,
         };
       }),
@@ -468,7 +506,10 @@ export class PortfolioSnapshotsService {
     ];
     const accountRecords =
       await this.prisma.connectedSourceAccountRecord.findMany({
-        where: { id: { in: accountIds } },
+        where: {
+          id: { in: accountIds },
+          source: { userId: scopedUserId },
+        },
       });
     const accountNames = new Map(
       accountRecords.map((account) => [account.id, account.displayName]),
@@ -577,7 +618,10 @@ export class PortfolioSnapshotsService {
     ];
     const sourceAccounts =
       await this.prisma.connectedSourceAccountRecord.findMany({
-        where: { id: { in: sourceAccountIds } },
+        where: {
+          id: { in: sourceAccountIds },
+          source: { userId: scopedUserId },
+        },
         include: { source: true },
       });
     const accountsById = new Map(
@@ -630,10 +674,12 @@ export class PortfolioSnapshotsService {
     );
     const staleSourceIds = this.getStaleSourceIds(
       sourceAccounts,
-      snapshot.source,
+      snapshot.source?.userId === scopedUserId ? snapshot.source : null,
     );
     const missingSourceAccountPositionCount = snapshot.positions.filter(
-      (position) => !position.sourceAccountId,
+      (position) =>
+        !position.sourceAccountId ||
+        !accountsById.has(position.sourceAccountId),
     ).length;
     const hasBaselineSnapshot = Boolean(previous);
     const flags = this.buildDiagnosticsFlags({
@@ -737,14 +783,14 @@ export class PortfolioSnapshotsService {
         : query.scope === 'asset_category'
           ? { category: toPrismaCategory(query.assetCategory) }
           : undefined;
-    const records = await this.prisma.portfolioSnapshotRecord.findMany({
+    const loadedRecords = await this.prisma.portfolioSnapshotRecord.findMany({
       where: {
         userId: scopedUserId,
         sourceId: historySourceId,
         ...(positionFilter ? { positions: { some: positionFilter } } : {}),
       },
       orderBy: [{ snapshotDate: 'desc' }, { createdAt: 'desc' }],
-      take: limit,
+      take: limit + 1,
       include: {
         positions: {
           ...(positionFilter ? { where: positionFilter } : {}),
@@ -752,6 +798,8 @@ export class PortfolioSnapshotsService {
         },
       },
     });
+    const hasMore = loadedRecords.length > limit;
+    const records = loadedRecords.slice(0, limit);
 
     const points = records.map((record, index) => {
       const value =
@@ -810,6 +858,7 @@ export class PortfolioSnapshotsService {
       summary: {
         scope: query.scope,
         pointCount: points.length,
+        hasMore,
         latestSnapshotId: latest?.snapshotId,
         latestSnapshotDate: latest?.snapshotDate,
         oldestSnapshotDate: points.at(-1)?.snapshotDate,
@@ -899,6 +948,15 @@ export class PortfolioSnapshotsService {
         totalValueDelta: 0,
         cashValueDelta: 0,
         drivers: [],
+        driverGroups: {
+          primary: [],
+          byInstitution: [],
+          byAccount: [],
+          byAssetCategory: [],
+          byHolding: [],
+        },
+        primaryDriversNote:
+          'Primary drivers are cross-dimension highlights and must not be summed.',
         dataLimitations,
         notes,
       };
@@ -1025,6 +1083,15 @@ export class PortfolioSnapshotsService {
       currentLineage,
       previousLineage,
     );
+    const primaryDrivers = [
+      ...institutionDrivers,
+      ...accountDrivers,
+      ...categoryDrivers,
+      ...holdingDrivers,
+    ]
+      .filter((driver) => driver.delta !== 0)
+      .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta))
+      .slice(0, 8);
 
     drivers.push(
       ...institutionDrivers,
@@ -1044,6 +1111,15 @@ export class PortfolioSnapshotsService {
       totalValueDelta: delta.totalValueDelta,
       cashValueDelta: delta.cashValueDelta,
       drivers,
+      driverGroups: {
+        primary: primaryDrivers,
+        byInstitution: institutionDrivers,
+        byAccount: accountDrivers,
+        byAssetCategory: categoryDrivers,
+        byHolding: holdingDrivers,
+      },
+      primaryDriversNote:
+        'Primary drivers are cross-dimension highlights and must not be summed.',
       dataLimitations,
       notes,
     };
@@ -1256,43 +1332,48 @@ export class PortfolioSnapshotsService {
       ...previous.accountsById,
       ...current.accountsById,
     };
+    const sourcesById = {
+      ...previous.sourcesById,
+      ...current.sourcesById,
+    };
     const values = new Map<
       string,
-      { previousValue: number; currentValue: number }
+      {
+        label: string;
+        sourceId: string;
+        previousValue: number;
+        currentValue: number;
+      }
     >();
 
     accountDeltas.forEach((item) => {
       if (!item.sourceAccountId) return;
       const account = accountsById[item.sourceAccountId];
-      const source =
-        account?.sourceId === current.source?.id
-          ? current.source
-          : account?.sourceId === previous.source?.id
-            ? previous.source
-            : undefined;
-      const label =
-        account?.institutionOrIssuer ??
-        source?.institutionName ??
-        source?.displayName;
-      if (!label) return;
-      const existing = values.get(label) ?? {
+      const source = account ? sourcesById[account.sourceId] : undefined;
+      const label = source?.institutionName ?? source?.displayName;
+      if (!source || !label) return;
+      const existing = values.get(source.id) ?? {
+        label,
+        sourceId: source.id,
         previousValue: 0,
         currentValue: 0,
       };
-      values.set(label, {
+      values.set(source.id, {
+        label: existing.label,
+        sourceId: existing.sourceId,
         previousValue: existing.previousValue + item.previousValue,
         currentValue: existing.currentValue + item.currentValue,
       });
     });
 
     return [...values.entries()]
-      .map<PortfolioChangeDriver>(([label, value]) => {
+      .map<PortfolioChangeDriver>(([, value]) => {
         const delta = value.currentValue - value.previousValue;
         return {
-          id: `institution:${label.toLowerCase().replace(/\s+/g, '-')}`,
+          id: `institution:${value.sourceId}`,
           dimension: 'institution',
-          label,
-          description: `${label} snapshot value ${this.describeDirection(delta)} by ${this.formatAbsoluteValue(delta)}.`,
+          label: value.label,
+          description: `${value.label} snapshot value ${this.describeDirection(delta)} by ${this.formatAbsoluteValue(delta)}.`,
           category:
             current.snapshot.metadata.ingestionMode === 'MANUAL_STATIC' ||
             current.snapshot.metadata.sourceType === 'manual'
@@ -1303,12 +1384,77 @@ export class PortfolioSnapshotsService {
           delta,
           percentDelta: this.calculatePercentDelta(delta, value.previousValue),
           causalityStatus: 'insufficient_data_for_causality',
-          sourceLabel: label,
+          sourceId: value.sourceId,
+          sourceLabel: value.label,
         };
       })
       .filter((driver) => driver.delta !== 0)
       .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta))
       .slice(0, 5);
+  }
+
+  private async validateSnapshotLineageOwnership(input: {
+    userId: string;
+    sourceId?: string;
+    sourceSyncRunId?: string;
+    sourceAccountIds: string[];
+  }): Promise<void> {
+    const [source, sourceSyncRun, accounts] = await Promise.all([
+      input.sourceId
+        ? this.prisma.connectedSourceRecord.findFirst({
+            where: { id: input.sourceId, userId: input.userId },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+      input.sourceSyncRunId
+        ? this.prisma.connectedSyncRunRecord.findFirst({
+            where: { id: input.sourceSyncRunId, userId: input.userId },
+            select: { id: true, sourceId: true },
+          })
+        : Promise.resolve(null),
+      input.sourceAccountIds.length > 0
+        ? this.prisma.connectedSourceAccountRecord.findMany({
+            where: {
+              id: { in: input.sourceAccountIds },
+              source: { userId: input.userId },
+            },
+            select: { id: true, sourceId: true },
+          })
+        : Promise.resolve<Array<{ id: string; sourceId: string }>>([]),
+    ]);
+
+    if (input.sourceId && !source) {
+      throw new BadRequestException(
+        'Snapshot source must belong to the authenticated user.',
+      );
+    }
+    if (input.sourceSyncRunId && !sourceSyncRun) {
+      throw new BadRequestException(
+        'Snapshot sync run must belong to the authenticated user.',
+      );
+    }
+    if (accounts.length !== input.sourceAccountIds.length) {
+      throw new BadRequestException(
+        'Every snapshot account must belong to the authenticated user.',
+      );
+    }
+    if (
+      input.sourceId &&
+      accounts.some((account) => account.sourceId !== input.sourceId)
+    ) {
+      throw new BadRequestException(
+        'A source-level snapshot may only reference accounts from its source.',
+      );
+    }
+    if (
+      input.sourceId &&
+      sourceSyncRun &&
+      sourceSyncRun.sourceId !== input.sourceId
+    ) {
+      throw new BadRequestException(
+        'Snapshot sync run must belong to the selected source.',
+      );
+    }
   }
 
   private isEmployerEquityAccount(

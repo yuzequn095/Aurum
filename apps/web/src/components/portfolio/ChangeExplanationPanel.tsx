@@ -78,13 +78,13 @@ export function ChangeExplanationPanel({
   error,
 }: ChangeExplanationPanelProps) {
   const currency = snapshot?.metadata.valuationCurrency ?? 'USD';
-  const topDrivers =
-    explanation?.drivers
-      .filter(
-        (driver) =>
-          driver.dimension !== 'total' && driver.dimension !== 'cash' && driver.delta !== 0,
-      )
-      .slice(0, 8) ?? [];
+  const topDrivers = (
+    explanation?.driverGroups?.primary ??
+    explanation?.drivers.filter(
+      (driver) => driver.dimension !== 'total' && driver.dimension !== 'cash' && driver.delta !== 0,
+    ) ??
+    []
+  ).slice(0, 8);
 
   return (
     <Card id="what-changed" className="scroll-mt-24 overflow-hidden">
@@ -136,10 +136,16 @@ export function ChangeExplanationPanel({
             </div>
 
             {topDrivers.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {topDrivers.map((driver) => (
-                  <ChangeDriverCard key={driver.id} driver={driver} currency={currency} />
-                ))}
+              <div className="space-y-3">
+                <p className="text-xs text-[var(--aurum-text-muted)]">
+                  Primary highlights are ranked by absolute change across overlapping dimensions; do
+                  not add them together.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {topDrivers.map((driver) => (
+                    <ChangeDriverCard key={driver.id} driver={driver} currency={currency} />
+                  ))}
+                </div>
               </div>
             ) : (
               <p className="text-[var(--aurum-text-muted)]">

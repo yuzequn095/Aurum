@@ -63,30 +63,53 @@ export class PortfolioAIContextService {
     const historyScope: PortfolioHistoryScope = snapshot.metadata.sourceId
       ? 'source'
       : 'consolidated';
-    const [diagnostics, changeExplanation, history] = await Promise.all([
-      this.portfolioSnapshotsService.getSnapshotDiagnostics(
-        snapshot.id,
-        userId,
-      ),
-      this.portfolioSnapshotsService.getSnapshotChangeExplanation(
-        snapshot.id,
-        'previous',
-        userId,
-      ),
-      this.portfolioSnapshotsService.getPortfolioHistory(
-        snapshot.metadata.sourceId
-          ? {
-              scope: 'source',
-              sourceId: snapshot.metadata.sourceId,
-              limit: 24,
-            }
-          : { scope: 'consolidated', limit: 24 },
-        userId,
-      ),
-    ]);
+    const [diagnosticsResult, changeResult, historyResult] =
+      await Promise.allSettled([
+        this.portfolioSnapshotsService.getSnapshotDiagnostics(
+          snapshot.id,
+          userId,
+        ),
+        this.portfolioSnapshotsService.getSnapshotChangeExplanation(
+          snapshot.id,
+          'previous',
+          userId,
+        ),
+        this.portfolioSnapshotsService.getPortfolioHistory(
+          snapshot.metadata.sourceId
+            ? {
+                scope: 'source',
+                sourceId: snapshot.metadata.sourceId,
+                limit: 24,
+              }
+            : { scope: 'consolidated', limit: 24 },
+          userId,
+        ),
+      ]);
+    const diagnostics =
+      diagnosticsResult.status === 'fulfilled' ? diagnosticsResult.value : null;
+    const changeExplanation =
+      changeResult.status === 'fulfilled' ? changeResult.value : null;
+    const historySummary: PortfolioHistorySummary =
+      historyResult.status === 'fulfilled'
+        ? historyResult.value.summary
+        : { scope: historyScope, pointCount: 0 };
     const dataLimitations = new Set(changeExplanation?.dataLimitations ?? []);
 
-    if (history.summary.pointCount < 2) {
+    if (diagnosticsResult.status === 'rejected') {
+      dataLimitations.add(
+        'Portfolio diagnostics context was temporarily unavailable.',
+      );
+    }
+    if (changeResult.status === 'rejected') {
+      dataLimitations.add(
+        'Portfolio change context was temporarily unavailable.',
+      );
+    }
+    if (historyResult.status === 'rejected') {
+      dataLimitations.add(
+        'Portfolio history context was temporarily unavailable.',
+      );
+    } else if (historySummary.pointCount < 2) {
       dataLimitations.add(
         'Fewer than two snapshots are available in this history scope.',
       );
@@ -108,7 +131,7 @@ export class PortfolioAIContextService {
       diagnostics,
       changeExplanation,
       historyScope,
-      historySummary: history.summary,
+      historySummary,
       baselineSnapshotId: changeExplanation?.baselineSnapshotId,
       dataLimitations: [...dataLimitations],
     };

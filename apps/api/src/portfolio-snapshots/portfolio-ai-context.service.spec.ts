@@ -76,4 +76,42 @@ describe('PortfolioAIContextService', () => {
       ]),
     );
   });
+
+  it('keeps the base snapshot available when enrichment queries fail', async () => {
+    const service = new PortfolioAIContextService(
+      portfolioSnapshotsService as never,
+    );
+    const snapshot: PortfolioSnapshot = {
+      id: 'snapshot_1',
+      metadata: { snapshotDate: '2026-03-24' },
+      totalValue: 1000,
+      positions: [],
+    };
+    portfolioSnapshotsService.getSnapshotDiagnostics.mockRejectedValue(
+      new Error('diagnostics unavailable'),
+    );
+    portfolioSnapshotsService.getSnapshotChangeExplanation.mockRejectedValue(
+      new Error('change unavailable'),
+    );
+    portfolioSnapshotsService.getPortfolioHistory.mockRejectedValue(
+      new Error('history unavailable'),
+    );
+
+    const context = await service.assembleForSnapshot('user_1', snapshot);
+
+    expect(context).toMatchObject({
+      snapshot,
+      diagnostics: null,
+      changeExplanation: null,
+      historyScope: 'consolidated',
+      historySummary: { scope: 'consolidated', pointCount: 0 },
+    });
+    expect(context.dataLimitations).toEqual(
+      expect.arrayContaining([
+        'Portfolio diagnostics context was temporarily unavailable.',
+        'Portfolio change context was temporarily unavailable.',
+        'Portfolio history context was temporarily unavailable.',
+      ]),
+    );
+  });
 });

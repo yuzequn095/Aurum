@@ -1,5 +1,6 @@
 import type { AITaskDefinition } from '../task-definition';
 import type { PromptPack } from '../types';
+import type { PortfolioAIContextInput } from '../portfolio-context';
 import { buildJsonBlock, buildPromptPackUserMessage } from './task-helpers';
 
 export interface HealthScoreExplainerDimensionInput {
@@ -19,10 +20,11 @@ export interface HealthScoreExplainerInput {
   headline?: string;
   summary?: string;
   breakdown: HealthScoreExplainerDimensionInput[];
+  portfolioContext?: PortfolioAIContextInput;
 }
 
 const TASK_TYPE = 'health_score_explainer_v1';
-const PROMPT_VERSION = '1.0.0';
+const PROMPT_VERSION = '1.1.0';
 const TITLE = 'Financial Health Score Explainer';
 const REQUIRED_HEADINGS = [
   '# Financial Health Score',
@@ -49,6 +51,7 @@ function buildUserMessage(input: HealthScoreExplainerInput): string {
       headline: input.headline ?? null,
       summary: input.summary ?? null,
       breakdown: input.breakdown,
+      structuredPortfolioContext: input.portfolioContext ?? null,
     }),
     '',
     'Requirements:',
@@ -66,7 +69,7 @@ export const healthScoreExplainerV1TaskDefinition: AITaskDefinition<HealthScoreE
     return {
       taskType: TASK_TYPE,
       promptVersion: PROMPT_VERSION,
-      schemaVersion: '1.0.0',
+      schemaVersion: '1.1.0',
       title: TITLE,
       messages: [
         {

@@ -38,7 +38,7 @@ Milestone 14 is now complete in the web layer. The web app has product-grade des
   asset-center-first portfolio surface with latest snapshot posture, snapshot library, source/account overview, connected provider flows, and manual asset maintenance
 - `/ai-insights`
   AI workspace organized into Reports, Analysis, Conversations, and Planning with:
-  snapshot-driven Monthly Financial Review and Daily Market Brief workflows,
+  snapshot-driven Monthly Financial Review and Portfolio Market Lens workflows,
   Financial Health Score generation/history,
   guided portfolio analysis entry,
   Quick Chat with explicit Save to Conversations,

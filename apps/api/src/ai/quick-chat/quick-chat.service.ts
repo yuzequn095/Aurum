@@ -91,6 +91,10 @@ export class QuickChatService {
     }
 
     const context = await this.resolveOwnedContext(userId, dto);
+    const contextView = normalizeContext({
+      ...dto,
+      sourceSnapshotId: context.snapshot?.id ?? dto.sourceSnapshotId,
+    });
     const createdAt = new Date().toISOString();
 
     const llmEnabled =
@@ -106,7 +110,7 @@ export class QuickChatService {
 
         return {
           mode: 'llm',
-          context: normalizeContext(dto),
+          context: contextView,
           reply: {
             role: 'assistant',
             content,
@@ -122,7 +126,7 @@ export class QuickChatService {
 
     return {
       mode: 'fallback',
-      context: normalizeContext(dto),
+      context: contextView,
       reply: {
         role: 'assistant',
         content: buildQuickChatFallbackReply({
@@ -143,38 +147,49 @@ export class QuickChatService {
     score?: FinancialHealthScoreArtifact;
     portfolioContext?: PortfolioAIContext;
   }> {
-    const snapshot = dto.sourceSnapshotId
-      ? await this.portfolioSnapshotsService.getSnapshotById(
-          dto.sourceSnapshotId,
-          userId,
-        )
-      : null;
-    if (dto.sourceSnapshotId && !snapshot) {
-      throw new NotFoundException(
-        `Portfolio snapshot not found: ${dto.sourceSnapshotId}`,
-      );
-    }
-
-    const report = dto.sourceReportId
-      ? await this.aiReportsService.getReportById(dto.sourceReportId, userId)
-      : null;
+    const [report, score] = await Promise.all([
+      dto.sourceReportId
+        ? this.aiReportsService.getReportById(dto.sourceReportId, userId)
+        : Promise.resolve(null),
+      dto.sourceFinancialHealthScoreId
+        ? this.financialHealthScoresService.getScoreArtifactById(
+            dto.sourceFinancialHealthScoreId,
+            userId,
+          )
+        : Promise.resolve(null),
+    ]);
     if (dto.sourceReportId && !report) {
       throw new NotFoundException(`AI report not found: ${dto.sourceReportId}`);
     }
-
-    const score = dto.sourceFinancialHealthScoreId
-      ? await this.financialHealthScoresService.getScoreArtifactById(
-          dto.sourceFinancialHealthScoreId,
-          userId,
-        )
-      : null;
     if (dto.sourceFinancialHealthScoreId && !score) {
       throw new NotFoundException(
         `Financial health score not found: ${dto.sourceFinancialHealthScoreId}`,
       );
     }
 
-    const snapshotId = snapshot?.id ?? dto.sourceSnapshotId;
+    if (
+      report?.sourceSnapshotId &&
+      score?.sourceSnapshotId &&
+      report.sourceSnapshotId !== score.sourceSnapshotId
+    ) {
+      throw new BadRequestException(
+        'Quick chat report and score contexts must reference the same snapshot.',
+      );
+    }
+
+    const snapshotId =
+      dto.sourceSnapshotId?.trim() ||
+      report?.sourceSnapshotId ||
+      score?.sourceSnapshotId;
+    const snapshot = snapshotId
+      ? await this.portfolioSnapshotsService.getSnapshotById(snapshotId, userId)
+      : null;
+    if (snapshotId && !snapshot) {
+      throw new NotFoundException(
+        `Portfolio snapshot not found: ${snapshotId}`,
+      );
+    }
+
     if (
       snapshotId &&
       report?.sourceSnapshotId &&
@@ -193,16 +208,6 @@ export class QuickChatService {
         'Quick chat score context must belong to the selected snapshot.',
       );
     }
-    if (
-      report?.sourceSnapshotId &&
-      score?.sourceSnapshotId &&
-      report.sourceSnapshotId !== score.sourceSnapshotId
-    ) {
-      throw new BadRequestException(
-        'Quick chat report and score contexts must reference the same snapshot.',
-      );
-    }
-
     const portfolioContext = snapshot
       ? await this.portfolioAIContextService.assembleForSnapshot(
           userId,

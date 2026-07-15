@@ -70,6 +70,7 @@ export interface PortfolioHistoryPoint {
 export interface PortfolioHistorySummary {
   scope: PortfolioHistoryScope;
   pointCount: number;
+  hasMore?: boolean;
   latestSnapshotId?: string;
   latestSnapshotDate?: string;
   oldestSnapshotDate?: string;
@@ -101,6 +102,7 @@ export interface PortfolioSnapshotLineage {
   snapshot: PortfolioSnapshot;
   source?: ConnectedSource;
   sourceSyncRun?: ConnectedSyncRun;
+  sourcesById: Record<string, ConnectedSource>;
   accountsById: Record<string, ConnectedSourceAccount>;
   positionsWithAccountContext: PortfolioPositionWithAccountContext[];
 }
@@ -185,6 +187,15 @@ export interface PortfolioChangeDriver {
   symbol?: string;
 }
 
+export interface PortfolioChangeDriverGroups {
+  /** Cross-dimension highlights sorted by absolute delta; values are not additive. */
+  primary: PortfolioChangeDriver[];
+  byInstitution: PortfolioChangeDriver[];
+  byAccount: PortfolioChangeDriver[];
+  byAssetCategory: PortfolioChangeDriver[];
+  byHolding: PortfolioChangeDriver[];
+}
+
 export interface PortfolioChangeExplanationNote {
   code:
     | 'snapshot_state_only'
@@ -207,7 +218,10 @@ export interface PortfolioChangeExplanation {
   summary: string;
   totalValueDelta: number;
   cashValueDelta: number;
+  /** Legacy flat view retained for existing consumers. */
   drivers: PortfolioChangeDriver[];
+  driverGroups?: PortfolioChangeDriverGroups;
+  primaryDriversNote?: string;
   dataLimitations: string[];
   notes: PortfolioChangeExplanationNote[];
 }

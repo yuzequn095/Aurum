@@ -198,7 +198,7 @@ export const mockDailyMarketBriefInput: DailyMarketBriefInput = {
   generatedAt: '2026-03-24T15:30:00.000Z',
   marketSessionLabel: 'pre_market',
   reportScope: 'portfolio_aware',
-  operatingMode: 'internal_market_template_v1',
+  operatingMode: 'internal_portfolio_lens_v1',
   dataFreshnessNote:
     'This is a workflow validation brief using internal heuristics and snapshot context rather than live market feeds.',
   portfolioName: 'Aurum Core Growth',
@@ -368,8 +368,8 @@ export const AI_WORKBENCH_SCENARIOS: Array<{
   },
   {
     taskType: 'daily_market_brief_v1',
-    title: 'Daily Market Brief',
-    description: 'Preset report task for a compact system-generated daily market read.',
+    title: 'Portfolio Market Lens',
+    description: 'Preset report task for a compact snapshot-grounded portfolio exposure read.',
     payload: mockDailyMarketBriefInput as unknown as Record<string, unknown>,
     reportCapable: true,
   },

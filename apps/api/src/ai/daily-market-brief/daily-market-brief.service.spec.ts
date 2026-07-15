@@ -88,7 +88,7 @@ describe('DailyMarketBriefService', () => {
       generatedAt: '2026-03-24T15:30:00.000Z',
       sessionLabel: 'pre_market',
       scope: 'portfolio_aware',
-      operatingMode: 'internal_market_template_v1',
+      operatingMode: 'internal_portfolio_lens_v1',
       dataFreshnessNote: 'Internal template',
       topHoldings: [
         {
@@ -162,14 +162,16 @@ describe('DailyMarketBriefService', () => {
       snapshotSelectionStrategy: 'latest_available_snapshot',
       portfolioAIContextVersion: 'portfolio-ai-context-v1',
       externalMarketDataAvailable: false,
+      productBoundary: 'portfolio_exposure_only',
     });
-    expect(createDailyBriefCall.title).toContain('Market Brief');
+    expect(createDailyBriefCall.title).toContain('Portfolio Market Lens');
+    expect(createDailyBriefCall.contentMarkdown).toContain('## Data Boundary');
     expect(createDailyBriefCall.contentMarkdown).toContain(
       '## Recent Portfolio State Change',
     );
   });
 
-  it('supports an explicit snapshot override and market overview scope', async () => {
+  it('supports an explicit snapshot override for the portfolio exposure scope', async () => {
     portfolioSnapshotsService.getSnapshotById.mockResolvedValue({
       id: 'snapshot_override',
       metadata: {
@@ -184,8 +186,8 @@ describe('DailyMarketBriefService', () => {
       briefDate: '2026-03-24',
       generatedAt: '2026-03-24T15:30:00.000Z',
       sessionLabel: 'pre_market',
-      scope: 'market_overview',
-      operatingMode: 'internal_market_template_v1',
+      scope: 'portfolio_aware',
+      operatingMode: 'internal_portfolio_lens_v1',
       dataFreshnessNote: 'Internal template',
       topHoldings: [],
       watchlistSymbols: ['SPY'],
@@ -215,7 +217,7 @@ describe('DailyMarketBriefService', () => {
 
     await service.createDailyMarketBrief('user_1', {
       sourceSnapshotId: 'snapshot_override',
-      reportScope: 'market_overview',
+      reportScope: 'portfolio_aware',
     });
 
     expect(portfolioSnapshotsService.getSnapshotById).toHaveBeenCalledWith(
@@ -232,7 +234,7 @@ describe('DailyMarketBriefService', () => {
 
     expect(explicitOverrideCall.sourceSnapshotId).toBe('snapshot_override');
     expect(explicitOverrideCall.metadata).toMatchObject({
-      reportScope: 'market_overview',
+      reportScope: 'portfolio_aware',
       snapshotSelectionStrategy: 'explicit_snapshot_override',
     });
   });

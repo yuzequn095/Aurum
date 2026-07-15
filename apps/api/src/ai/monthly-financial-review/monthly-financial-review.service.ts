@@ -181,16 +181,19 @@ function buildMonthlyReviewContent(input: {
       `- Baseline snapshot: ${changeExplanation.baselineSnapshotId ?? 'Unavailable'}`,
       `- Causality note: The values are deterministic state deltas; available data is insufficient to identify the cause.`,
     );
-    const topDrivers = changeExplanation.drivers
-      .filter(
+    const topDrivers = (
+      changeExplanation.driverGroups?.primary ??
+      changeExplanation.drivers.filter(
         (driver) =>
           driver.dimension !== 'total' &&
           driver.dimension !== 'cash' &&
           driver.delta !== 0,
       )
-      .slice(0, 5);
+    ).slice(0, 5);
     if (topDrivers.length > 0) {
-      lines.push(`- Top state-change drivers:`);
+      lines.push(
+        `- Primary state-change highlights (cross-dimension; not additive):`,
+      );
       for (const driver of topDrivers) {
         lines.push(
           `  - ${driver.label} (${driver.dimension}): ${formatMoney(driver.delta)}`,

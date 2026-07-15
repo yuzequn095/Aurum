@@ -65,12 +65,12 @@ export const aiInsightsCatalogEntries: AIInsightsCatalogEntry[] = [
   {
     id: 'daily-market-brief',
     section: 'reports',
-    title: 'Daily Market Brief',
+    title: 'Portfolio Market Lens',
     description:
-      'First-class daily brief workflow with persisted history and delivery preferences foundation.',
+      'Snapshot-grounded exposure lens with persisted history and delivery preferences foundation.',
     state: 'available',
     featureKey: 'ai.report.daily_market_brief',
-    actionLabel: 'Generate brief',
+    actionLabel: 'Generate lens',
     anchor: 'reports-daily-market-brief',
   },
   {

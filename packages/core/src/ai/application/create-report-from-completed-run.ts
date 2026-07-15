@@ -5,7 +5,6 @@ import type { AIRunRecord } from '../types';
 function generateAIReportId(): string {
   return `aireport_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
-
 function deriveReportType(taskType: AIRunRecord['taskType']): AIReportType {
   if (taskType === 'portfolio_report_v1') {
     return 'portfolio_report_v1';
@@ -40,10 +39,10 @@ function deriveReportTitle(run: AIRunRecord): string {
 
   if (run.taskType === 'daily_market_brief_v1' && typeof briefDate === 'string') {
     if (typeof portfolioName === 'string' && portfolioName.trim().length > 0) {
-      return `${briefDate} Daily Market Brief - ${portfolioName}`;
+      return `${briefDate} Portfolio Market Lens - ${portfolioName}`;
     }
 
-    return `${briefDate} Daily Market Brief`;
+    return `${briefDate} Portfolio Market Lens`;
   }
 
   if (run.taskType === 'portfolio_report_v1') {
@@ -55,7 +54,7 @@ function deriveReportTitle(run: AIRunRecord): string {
   }
 
   if (run.taskType === 'daily_market_brief_v1') {
-    return 'Daily Market Brief';
+    return 'Portfolio Market Lens';
   }
 
   return run.promptPack.title;

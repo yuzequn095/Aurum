@@ -83,6 +83,18 @@ function diagnosticAttentionItem(
         severity: 'warning',
         category: 'concentration',
       };
+    case 'high_institution_concentration':
+      return {
+        ...shared,
+        id: 'high_institution_concentration',
+        title: 'One institution has a large portfolio weight',
+        severity: 'warning',
+        category: 'concentration',
+        action: {
+          label: 'Review institutions',
+          href: '/portfolio#connections-workspace',
+        },
+      };
     case 'high_employer_stock_concentration':
       return {
         ...shared,
@@ -117,13 +129,41 @@ export class PortfolioAttentionService {
   ) {}
 
   async getAttentionItems(userId: string): Promise<PortfolioAttentionItem[]> {
-    const [snapshots, overview] = await Promise.all([
+    const [snapshotsResult, overviewResult] = await Promise.allSettled([
       this.portfolioSnapshotsService.listSnapshots(userId),
       this.connectedFinanceService.getOverview(userId),
     ]);
+    const snapshots =
+      snapshotsResult.status === 'fulfilled' ? snapshotsResult.value : [];
+    const overview: ConnectedFinanceOverview =
+      overviewResult.status === 'fulfilled'
+        ? overviewResult.value
+        : {
+            sources: [],
+            summary: {
+              sourceCount: 0,
+              accountCount: 0,
+              staleSourceCount: 0,
+              needsAttentionCount: 0,
+            },
+          };
     const snapshot =
       this.portfolioAIContextService.selectPreferredSnapshot(snapshots);
     const items = new Map<string, PortfolioAttentionItem>();
+
+    if (snapshotsResult.status === 'rejected') {
+      items.set('snapshot_context_unavailable', {
+        id: 'snapshot_context_unavailable',
+        title: 'Portfolio snapshot context is temporarily unavailable',
+        description:
+          'Aurum could not calculate snapshot-based attention items right now. Existing portfolio workflows remain available.',
+        severity: 'info',
+        category: 'data_health',
+        action: { label: 'Open portfolio', href: '/portfolio' },
+      });
+      this.addConnectedSourceItems(items, overview);
+      return this.sorted(items);
+    }
 
     if (!snapshot?.id) {
       items.set('no_snapshot', {
@@ -263,14 +303,14 @@ export class PortfolioAttentionService {
       });
       items.set('market_brief_after_change', {
         id: 'market_brief_after_change',
-        title: 'A Market Brief can summarize the latest state',
+        title: 'Portfolio Market Lens can summarize the latest state',
         description:
-          'Manual Market Brief generation is available now with the selected snapshot and its observed change context.',
+          'Manual Portfolio Market Lens generation is available with the selected snapshot and its observed change context.',
         severity: 'info',
         category: 'market_brief',
         snapshotId,
         action: {
-          label: 'Generate Market Brief',
+          label: 'Generate Portfolio Lens',
           href: '/ai-insights#reports-daily-market-brief',
         },
       });

@@ -29,6 +29,7 @@ import { useHomeOverview } from '@/hooks/useHomeOverview';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
+import { getAIReportDisplayTitle } from '@/lib/ai/report-display';
 
 const CategoryBreakdownDonut = dynamic(
   () =>
@@ -244,7 +245,7 @@ export default function DashboardPage() {
                     </p>
                     <p className='mt-2 text-sm leading-6 text-[var(--aurum-text-muted)]'>
                       {homeOverview.latestReport
-                        ? `Latest brief: ${homeOverview.latestReport.title}.`
+                        ? `Latest brief: ${getAIReportDisplayTitle(homeOverview.latestReport)}.`
                         : 'No saved brief yet. AI Insights remains available for on-demand analysis.'}
                     </p>
                   </div>

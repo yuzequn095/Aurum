@@ -15,6 +15,10 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { mockPortfolioCsvImportInput } from '@/lib/ai/dev-seeds';
 import {
+  getAIReportDisplayTitle,
+  isLegacyPortfolioMarketLensReport,
+} from '@/lib/ai/report-display';
+import {
   aiInsightsCatalogEntries,
   aiInsightsCatalogSections,
   type AIInsightsCatalogEntry,
@@ -91,7 +95,7 @@ function formatReportTypeLabel(reportType: AIReportArtifact['reportType']): stri
     case 'monthly_financial_review_v1':
       return 'Monthly Financial Review';
     case 'daily_market_brief_v1':
-      return 'Market Brief';
+      return 'Portfolio Market Lens';
     case 'portfolio_report_v1':
     default:
       return 'Portfolio Report';
@@ -490,8 +494,7 @@ export default function AiInsightsPage() {
   const [useSelectedSnapshotOverride, setUseSelectedSnapshotOverride] = useState(false);
   const [isGeneratingDailyMarketBrief, setIsGeneratingDailyMarketBrief] = useState(false);
   const [dailyMarketBriefStatusMessage, setDailyMarketBriefStatusMessage] = useState('');
-  const [dailyMarketBriefScope, setDailyMarketBriefScope] =
-    useState<DailyMarketBriefScope>('portfolio_aware');
+  const dailyMarketBriefScope: DailyMarketBriefScope = 'portfolio_aware';
   const [useSelectedSnapshotForDailyMarketBrief, setUseSelectedSnapshotForDailyMarketBrief] =
     useState(false);
   const [dailyMarketBriefPreferences, setDailyMarketBriefPreferences] =
@@ -635,7 +638,7 @@ export default function AiInsightsPage() {
       setDailyMarketBriefPreferencesStatusMessage(
         error instanceof Error
           ? error.message
-          : 'Failed to load Market Brief preferences.',
+          : 'Failed to load Portfolio Market Lens preferences.',
       );
     }
   };
@@ -840,7 +843,7 @@ export default function AiInsightsPage() {
     try {
       if (useSelectedSnapshotForDailyMarketBrief && (!selectedSnapshot || !selectedSnapshot.id)) {
         setDailyMarketBriefStatusMessage(
-          'Select a portfolio snapshot before using the Market Brief snapshot override.',
+          'Select a portfolio snapshot before using the Portfolio Market Lens snapshot override.',
         );
         return;
       }
@@ -857,10 +860,10 @@ export default function AiInsightsPage() {
         setSelectedSnapshotId(createdReport.sourceSnapshotId);
       }
       await loadReports(createdReport.id);
-      setDailyMarketBriefStatusMessage(`Market Brief created: ${createdReport.id}`);
+      setDailyMarketBriefStatusMessage(`Portfolio Market Lens created: ${createdReport.id}`);
     } catch (error) {
       setDailyMarketBriefStatusMessage(
-        error instanceof Error ? error.message : 'Failed to generate Market Brief.',
+        error instanceof Error ? error.message : 'Failed to generate Portfolio Market Lens.',
       );
     } finally {
       setIsGeneratingDailyMarketBrief(false);
@@ -891,7 +894,7 @@ export default function AiInsightsPage() {
   const onSaveDailyMarketBriefPreferences = async () => {
     if (!dailyMarketBriefPreferences) {
       setDailyMarketBriefPreferencesStatusMessage(
-        'Market Brief preferences are still loading.',
+        'Portfolio Market Lens preferences are still loading.',
       );
       return;
     }
@@ -921,12 +924,12 @@ export default function AiInsightsPage() {
       setUseSelectedSnapshotForDailyMarketBriefDelivery(
         Boolean(updatedPreferences.sourceSnapshotId),
       );
-      setDailyMarketBriefPreferencesStatusMessage('Market Brief preferences saved.');
+      setDailyMarketBriefPreferencesStatusMessage('Portfolio Market Lens preferences saved.');
     } catch (error) {
       setDailyMarketBriefPreferencesStatusMessage(
         error instanceof Error
           ? error.message
-          : 'Failed to save Market Brief preferences.',
+          : 'Failed to save Portfolio Market Lens preferences.',
       );
     } finally {
       setIsDailyMarketBriefPreferencesSaving(false);
@@ -1149,13 +1152,13 @@ export default function AiInsightsPage() {
           : `Creates a ${effectiveReviewMonthLabel} review using the latest relevant snapshot.`;
       case 'daily-market-brief':
         if (snapshots.length === 0) {
-          return 'Create or import a portfolio snapshot first so the Market Brief can use portfolio-aware context.';
+          return 'Create or import a portfolio snapshot first so Portfolio Market Lens can inspect portfolio exposures.';
         }
         return useSelectedSnapshotForDailyMarketBrief
           ? selectedSnapshot?.id
-            ? 'Creates a Market Brief using the selected snapshot.'
-            : 'Select a portfolio snapshot before using the Market Brief snapshot override.'
-          : 'Creates a Market Brief using the latest preferred snapshot.';
+            ? 'Creates a Portfolio Market Lens using the selected snapshot.'
+            : 'Select a portfolio snapshot before using the Portfolio Market Lens snapshot override.'
+          : 'Creates a Portfolio Market Lens using the latest preferred snapshot.';
       case 'financial-health-score':
         return selectedSnapshot?.id
           ? 'Generates and saves a snapshot-linked score.'
@@ -1237,7 +1240,11 @@ export default function AiInsightsPage() {
               <MetadataTile label="Portfolio Value" value={selectedSnapshotValue} />
               <MetadataTile
                 label="Latest AI Item"
-                value={latestReport?.title ?? latestConversation?.title ?? 'No AI history yet'}
+                value={
+                  latestReport
+                    ? getAIReportDisplayTitle(latestReport)
+                    : latestConversation?.title ?? 'No AI history yet'
+                }
               />
             </div>
           </div>
@@ -1269,7 +1276,7 @@ export default function AiInsightsPage() {
 
       <PortfolioAttentionItems
         title="Portfolio prompts for your AI workspace"
-        description="Review deterministic portfolio context or open manual Market Brief generation when a recent state deserves a closer look."
+        description="Review deterministic portfolio context or open Portfolio Market Lens when a recent state deserves a closer look."
       />
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.08fr_0.92fr]">
@@ -1285,7 +1292,12 @@ export default function AiInsightsPage() {
               label="Snapshot"
               value={selectedSnapshot?.metadata.portfolioName ?? 'Select a portfolio snapshot'}
             />
-            <MetadataTile label="Report" value={selectedReport?.title ?? 'No report selected'} />
+            <MetadataTile
+              label="Report"
+              value={
+                selectedReport ? getAIReportDisplayTitle(selectedReport) : 'No report selected'
+              }
+            />
             <MetadataTile
               label="Score"
               value={selectedScoreInsight?.headline ?? 'No score selected'}
@@ -1302,7 +1314,10 @@ export default function AiInsightsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3 xl:grid-cols-1">
-            <MetadataTile label="Reports" value="Monthly reviews and market briefs are saved." />
+            <MetadataTile
+              label="Reports"
+              value="Monthly reviews and Portfolio Market Lens reports are saved."
+            />
             <MetadataTile label="Analysis" value="Scores are stored against the selected snapshot." />
             <MetadataTile label="Conversations" value="Quick Chat saves only when you choose Save." />
           </CardContent>
@@ -1586,7 +1601,7 @@ export default function AiInsightsPage() {
         <SectionHeading
           eyebrow="Reports"
           title="Saved AI briefings"
-          description="Monthly reviews and market briefs are first-class AI outputs: generated from selected context, saved to history, and readable later."
+          description="Monthly reviews and Portfolio Market Lens reports are first-class AI outputs: generated from selected context, saved to history, and readable later."
           badge={<Badge variant="info">Saved reports</Badge>}
         />
       </section>
@@ -1778,10 +1793,10 @@ export default function AiInsightsPage() {
         <Card id="reports-daily-market-brief" className="scroll-mt-24">
           <CardHeader className="space-y-3">
             <div className="space-y-1">
-              <CardTitle>Market Brief</CardTitle>
+              <CardTitle>Portfolio Market Lens</CardTitle>
               <CardDescription>
-                Generate a concise market brief, optionally grounded in the selected portfolio
-                snapshot for a more relevant readout.
+                Summarize snapshot exposures, concentration, cash posture, and recent state change.
+                Live market prices, indices, rates, volatility, and news are not included.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1795,7 +1810,7 @@ export default function AiInsightsPage() {
                   (useSelectedSnapshotForDailyMarketBrief && !selectedSnapshot?.id)
                 }
               >
-                {isGeneratingDailyMarketBrief ? 'Generating...' : 'Generate Market Brief'}
+                {isGeneratingDailyMarketBrief ? 'Generating...' : 'Generate Portfolio Lens'}
               </Button>
               <Badge variant="neutral">Saved to report history</Badge>
             </div>
@@ -1805,21 +1820,14 @@ export default function AiInsightsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <label className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm">
                 <span className="text-xs uppercase tracking-wide text-aurum-muted">
-                  Brief Scope
+                  Data Scope
                 </span>
-                <select
-                  value={dailyMarketBriefScope}
-                  onChange={(event) =>
-                    setDailyMarketBriefScope(event.target.value as DailyMarketBriefScope)
-                  }
-                  className="w-full rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text outline-none transition focus:border-[var(--aurum-accent)]"
-                >
-                  <option value="portfolio_aware">Portfolio Aware</option>
-                  <option value="market_overview">Market Overview</option>
-                </select>
-              </label>
+                <p className="rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text">
+                  Portfolio exposure only
+                </p>
+              </div>
               <label className="flex items-start gap-3 rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3 text-sm">
                 <input
                   type="checkbox"
@@ -1844,9 +1852,7 @@ export default function AiInsightsPage() {
               <div>
                 <p className="text-xs uppercase tracking-wide text-aurum-muted">Current Scope</p>
                 <p className="text-aurum-text">
-                  {dailyMarketBriefScope === 'portfolio_aware'
-                    ? 'Portfolio-aware'
-                    : 'Market overview'}
+                  Portfolio exposure only
                 </p>
               </div>
               <div>
@@ -1864,10 +1870,11 @@ export default function AiInsightsPage() {
         <Card>
           <CardHeader className="space-y-3">
             <div className="space-y-1">
-              <CardTitle>Market Brief Preferences</CardTitle>
+              <CardTitle>Portfolio Market Lens Preferences</CardTitle>
               <CardDescription>
                 Store preferred cadence, time, and scope. Scheduled generation remains a reserved
-                capability coming later, so manual Market Brief generation remains available now.
+                capability coming later, so manual Portfolio Market Lens generation remains
+                available now.
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1887,7 +1894,7 @@ export default function AiInsightsPage() {
           <CardContent className="space-y-4">
             {!dailyMarketBriefPreferences ? (
               <p className="text-sm text-aurum-muted">
-                Loading Market Brief preferences...
+                Loading Portfolio Market Lens preferences...
               </p>
             ) : (
               <>
@@ -2005,29 +2012,14 @@ export default function AiInsightsPage() {
                       <option value="email_placeholder">Email (future channel)</option>
                     </select>
                   </label>
-                  <label className="space-y-2 text-sm">
+                  <div className="space-y-2 text-sm">
                     <span className="text-xs uppercase tracking-wide text-aurum-muted">
                       Scheduled Scope
                     </span>
-                    <select
-                      value={dailyMarketBriefPreferences.reportScope}
-                      onChange={(event) =>
-                        setDailyMarketBriefPreferences((current) =>
-                          current
-                            ? {
-                                ...current,
-                                reportScope: event.target
-                                  .value as DailyMarketBriefPreferenceView['reportScope'],
-                              }
-                            : current,
-                        )
-                      }
-                      className="w-full rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text outline-none transition focus:border-[var(--aurum-accent)]"
-                    >
-                      <option value="portfolio_aware">Portfolio-aware</option>
-                      <option value="market_overview">Market overview</option>
-                    </select>
-                  </label>
+                    <p className="rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-2 text-aurum-text">
+                      Portfolio exposure only
+                    </p>
+                  </div>
                   <label className="flex items-start gap-3 rounded-[12px] border border-aurum-border bg-aurum-surface px-3 py-3 text-sm">
                     <input
                       type="checkbox"
@@ -2062,7 +2054,8 @@ export default function AiInsightsPage() {
           <CardHeader>
             <CardTitle>Report History</CardTitle>
             <CardDescription>
-              Saved Monthly Financial Reviews and Market Briefs loaded for this account.
+              Saved Monthly Financial Reviews and Portfolio Market Lens reports loaded for this
+              account.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -2073,8 +2066,8 @@ export default function AiInsightsPage() {
               <p className="text-sm text-aurum-muted">Loading report history...</p>
             ) : reports.length === 0 ? (
               <p className="text-sm text-aurum-muted">
-                No reports yet. Generate a Monthly Financial Review or Market Brief to create
-                the first saved report.
+                No reports yet. Generate a Monthly Financial Review or Portfolio Market Lens to
+                create the first saved report.
               </p>
             ) : (
               reports.map((report) => (
@@ -2093,7 +2086,9 @@ export default function AiInsightsPage() {
                       : 'border-[var(--aurum-border)] bg-[var(--aurum-surface)] hover:bg-[var(--aurum-surface-alt)]'
                   }`}
                 >
-                  <p className="font-medium text-aurum-text">{report.title}</p>
+                  <p className="font-medium text-aurum-text">
+                    {getAIReportDisplayTitle(report)}
+                  </p>
                   <p className="text-aurum-muted">
                     type: {formatReportTypeLabel(report.reportType)}
                   </p>
@@ -2122,7 +2117,7 @@ export default function AiInsightsPage() {
                     <div className="space-y-2">
                       <Badge variant="info">{formatReportTypeLabel(selectedReport.reportType)}</Badge>
                       <h3 className="text-2xl font-semibold tracking-tight text-aurum-text">
-                        {selectedReport.title}
+                        {getAIReportDisplayTitle(selectedReport)}
                       </h3>
                       <p className="text-sm text-aurum-muted">
                         Created {formatDateTime(selectedReport.createdAt)}
@@ -2145,15 +2140,24 @@ export default function AiInsightsPage() {
                     <MetadataTile label="Review Window" value={selectedReviewMonthLabel} />
                   ) : null}
                   {selectedBriefDate ? (
-                    <MetadataTile label="Brief Date" value={selectedBriefDate} />
+                    <MetadataTile label="Lens Date" value={selectedBriefDate} />
                   ) : null}
                   {selectedMarketSessionLabel ? (
-                    <MetadataTile label="Market Session" value={selectedMarketSessionLabel} />
+                    <MetadataTile label="Generation Window" value={selectedMarketSessionLabel} />
                   ) : null}
                   {selectedReportScope ? (
                     <MetadataTile label="Report Scope" value={selectedReportScope} />
                   ) : null}
                 </div>
+
+                {isLegacyPortfolioMarketLensReport(selectedReport) ? (
+                  <StatusNote tone="warn">
+                    Legacy saved lens: this artifact predates the portfolio-only product boundary.
+                    It used no live market prices, indices, rates, volatility, or news. Any
+                    market-oriented wording below is retained for history and should be read only
+                    as portfolio exposure context.
+                  </StatusNote>
+                ) : null}
 
                 <div className="rounded-[24px] border border-aurum-border bg-white p-5">
                   <MarkdownReportContent content={selectedReport.contentMarkdown} />
@@ -2222,7 +2226,11 @@ export default function AiInsightsPage() {
               />
               <MetadataTile
                 label="Report Context"
-                value={selectedReport?.title ?? 'Optional report context'}
+                value={
+                  selectedReport
+                    ? getAIReportDisplayTitle(selectedReport)
+                    : 'Optional report context'
+                }
               />
               <MetadataTile
                 label="Score Context"

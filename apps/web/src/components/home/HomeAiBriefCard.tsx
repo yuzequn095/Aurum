@@ -9,6 +9,7 @@ import {
   getHealthVariant,
   getReportPreview,
 } from '@/components/home/format';
+import { getAIReportDisplayTitle } from '@/lib/ai/report-display';
 
 type HomeAiBriefCardProps = {
   latestReport: AIReportArtifact | null;
@@ -37,7 +38,6 @@ function getPlanBadge(entitlements: CurrentUserEntitlementsView | null) {
     variant: 'warn' as const,
   };
 }
-
 export function HomeAiBriefCard({
   latestReport,
   latestScore,
@@ -84,7 +84,7 @@ export function HomeAiBriefCard({
                   </div>
                   <div className='space-y-2'>
                     <h3 className='text-xl font-semibold text-[var(--aurum-text)]'>
-                      {latestReport.title}
+                      {getAIReportDisplayTitle(latestReport)}
                     </h3>
                     <p className='text-sm leading-7 text-[var(--aurum-text-muted)]'>
                       {getReportPreview(latestReport)}
@@ -98,7 +98,7 @@ export function HomeAiBriefCard({
                     AI Insights is ready when you need it
                   </p>
                   <p className='text-sm leading-7 text-[var(--aurum-text-muted)]'>
-                    Generate a Monthly Financial Review, Daily Market Brief, or start a Quick Chat
+                    Generate a Monthly Financial Review, Portfolio Market Lens, or start a Quick Chat
                     when you want Home to surface a richer executive layer.
                   </p>
                 </div>

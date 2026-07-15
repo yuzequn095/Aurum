@@ -15,6 +15,7 @@ interface PortfolioAttentionItemsProps {
   title?: string;
   description?: string;
   limit?: number;
+  refreshKey?: string | number;
 }
 
 const categoryLabels: Record<PortfolioAttentionCategory, string> = {
@@ -23,7 +24,7 @@ const categoryLabels: Record<PortfolioAttentionCategory, string> = {
   allocation: 'Allocation',
   change: 'Portfolio change',
   setup: 'Setup',
-  market_brief: 'Market Brief',
+  market_brief: 'Portfolio lens',
 };
 
 function severityBadgeVariant(severity: PortfolioAttentionSeverity): 'info' | 'warn' | 'error' {
@@ -46,6 +47,7 @@ export function PortfolioAttentionItems({
   title = 'Portfolio Attention',
   description = 'A short, deterministic list of portfolio states worth reviewing.',
   limit = 6,
+  refreshKey,
 }: PortfolioAttentionItemsProps) {
   const [items, setItems] = useState<PortfolioAttentionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +79,7 @@ export function PortfolioAttentionItems({
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshKey]);
 
   const visibleItems = items.slice(0, limit);
 

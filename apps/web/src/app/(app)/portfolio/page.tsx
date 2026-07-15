@@ -757,6 +757,7 @@ export default function PortfolioPage() {
       <PortfolioAttentionItems
         title="Portfolio Attention"
         description="Current product actions derived from source freshness, snapshot changes, allocation, and concentration diagnostics."
+        refreshKey={`${preferredPortfolioSnapshot?.id ?? 'none'}:${overview?.summary.latestSnapshotId ?? 'none'}:${snapshotInventory.length}:${valuations.length}`}
       />
 
       <Card>

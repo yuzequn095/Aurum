@@ -24,10 +24,7 @@ export class UpdateDailyMarketBriefPreferencesDto {
   @IsString()
   timezone!: string;
 
-  @IsIn([
-    'portfolio_aware',
-    'market_overview',
-  ] satisfies DailyMarketBriefScope[])
+  @IsIn(['portfolio_aware'] satisfies DailyMarketBriefScope[])
   reportScope!: DailyMarketBriefScope;
 
   @IsIn([

@@ -71,7 +71,7 @@ describe('PortfolioAttentionService', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('surfaces stale data, large change, concentration, and a manual Market Brief action', async () => {
+  it('surfaces stale data, large change, concentration, and a manual portfolio lens action', async () => {
     const staleSnapshot: PortfolioSnapshot = {
       ...snapshot,
       metadata: { ...snapshot.metadata, snapshotDate: '2026-07-01' },
@@ -89,6 +89,12 @@ describe('PortfolioAttentionService', () => {
             label: 'High single holding concentration',
             severity: 'warning',
             detail: '42% is in the largest holding.',
+          },
+          {
+            code: 'high_institution_concentration',
+            label: 'High institution concentration',
+            severity: 'warning',
+            detail: '64% is held at the largest institution.',
           },
           {
             code: 'high_employer_stock_concentration',
@@ -112,6 +118,7 @@ describe('PortfolioAttentionService', () => {
         'stale_snapshot',
         'large_portfolio_change',
         'high_single_name_concentration',
+        'high_institution_concentration',
         'high_employer_equity_concentration',
         'market_brief_after_change',
       ]),
@@ -207,5 +214,24 @@ describe('PortfolioAttentionService', () => {
         ])
         .join(' '),
     ).not.toMatch(/\b(?:buy|sell|trade|invest)\b/i);
+  });
+
+  it('returns a calm partial result when snapshot selection is unavailable', async () => {
+    portfolioSnapshotsService.listSnapshots.mockRejectedValue(
+      new Error('snapshot query unavailable'),
+    );
+
+    const items = await createService().getAttentionItems('user_1');
+
+    expect(items).toEqual([
+      expect.objectContaining({
+        id: 'snapshot_context_unavailable',
+        severity: 'info',
+        category: 'data_health',
+      }),
+    ]);
+    expect(
+      portfolioAIContextService.assembleForSnapshot,
+    ).not.toHaveBeenCalled();
   });
 });

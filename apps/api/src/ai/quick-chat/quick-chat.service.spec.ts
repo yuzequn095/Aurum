@@ -133,6 +133,53 @@ describe('QuickChatService', () => {
     );
   });
 
+  it('derives structured snapshot context from a report when no snapshot id is supplied', async () => {
+    entitlementsService.assertFeatureEnabled.mockResolvedValue(undefined);
+    aiReportsService.getReportById.mockResolvedValue({
+      id: 'report_1',
+      title: 'Portfolio Review',
+      sourceSnapshotId: 'snapshot_from_report',
+      contentMarkdown: 'Observed portfolio state.',
+    });
+    portfolioSnapshotsService.getSnapshotById.mockResolvedValue({
+      id: 'snapshot_from_report',
+      metadata: {
+        portfolioName: 'Household Portfolio',
+        snapshotDate: '2026-03-24',
+      },
+      totalValue: 250000,
+      positions: [],
+    });
+    const service = new QuickChatService(
+      config as never,
+      entitlementsService as never,
+      portfolioSnapshotsService as never,
+      aiReportsService as never,
+      financialHealthScoresService as never,
+      chatClient as never,
+      portfolioAIContextService as never,
+    );
+
+    const response = await service.runQuickChat('user_1', {
+      messages: [{ role: 'user', content: 'What changed in this report?' }],
+      sourceReportId: 'report_1',
+    });
+
+    expect(portfolioSnapshotsService.getSnapshotById).toHaveBeenCalledWith(
+      'snapshot_from_report',
+      'user_1',
+    );
+    expect(portfolioAIContextService.assembleForSnapshot).toHaveBeenCalledWith(
+      'user_1',
+      expect.objectContaining({ id: 'snapshot_from_report' }),
+    );
+    expect(response.context).toEqual({
+      sourceSnapshotId: 'snapshot_from_report',
+      sourceReportId: 'report_1',
+      sourceFinancialHealthScoreId: undefined,
+    });
+  });
+
   it('returns llm mode when the configured provider succeeds', async () => {
     config.get.mockImplementation((key: string) => {
       if (key === 'AURUM_LLM_ENABLED') {

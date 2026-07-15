@@ -177,6 +177,97 @@ describe('PortfolioSnapshotsService', () => {
     });
   });
 
+  it('rejects snapshot lineage references owned by another user', async () => {
+    const prisma = {
+      connectedSourceRecord: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      connectedSyncRunRecord: {
+        findFirst: jest.fn(),
+      },
+      connectedSourceAccountRecord: {
+        findMany: jest.fn(),
+      },
+      portfolioSnapshotRecord: {
+        create: jest.fn(),
+      },
+    };
+    const service = new PortfolioSnapshotsService(
+      prisma as unknown as PrismaService,
+    );
+
+    await expect(
+      service.createSnapshot(
+        {
+          metadata: {
+            snapshotDate: '2026-03-18',
+            sourceId: 'foreign_source',
+          },
+          totalValue: 100,
+          positions: [],
+        },
+        'user_1',
+      ),
+    ).rejects.toThrow('Snapshot source must belong to the authenticated user.');
+    expect(prisma.portfolioSnapshotRecord.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects foreign accounts and mixed-source accounts for source-level snapshots', async () => {
+    const prisma = {
+      connectedSourceRecord: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'source_1' }),
+      },
+      connectedSyncRunRecord: {
+        findFirst: jest.fn(),
+      },
+      connectedSourceAccountRecord: {
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([{ id: 'account_1', sourceId: 'source_1' }])
+          .mockResolvedValueOnce([
+            { id: 'account_1', sourceId: 'source_1' },
+            { id: 'account_2', sourceId: 'source_2' },
+          ]),
+      },
+      portfolioSnapshotRecord: {
+        create: jest.fn(),
+      },
+    };
+    const service = new PortfolioSnapshotsService(
+      prisma as unknown as PrismaService,
+    );
+    const buildSnapshot = (accountIds: string[]): PortfolioSnapshot => ({
+      metadata: {
+        snapshotDate: '2026-03-18',
+        sourceId: 'source_1',
+      },
+      totalValue: accountIds.length * 100,
+      positions: accountIds.map((sourceAccountId, index) => ({
+        assetKey: `asset_${index}`,
+        marketValue: 100,
+        sourceAccountId,
+      })),
+    });
+
+    await expect(
+      service.createSnapshot(
+        buildSnapshot(['account_1', 'foreign_account']),
+        'user_1',
+      ),
+    ).rejects.toThrow(
+      'Every snapshot account must belong to the authenticated user.',
+    );
+    await expect(
+      service.createSnapshot(
+        buildSnapshot(['account_1', 'account_2']),
+        'user_1',
+      ),
+    ).rejects.toThrow(
+      'A source-level snapshot may only reference accounts from its source.',
+    );
+    expect(prisma.portfolioSnapshotRecord.create).not.toHaveBeenCalled();
+  });
+
   it('returns no-baseline delta when there is no previous snapshot', async () => {
     const prisma = {
       portfolioSnapshotRecord: {
@@ -254,7 +345,7 @@ describe('PortfolioSnapshotsService', () => {
       sourceId: null,
       userId: 'user_1',
     });
-    expect(capturedFindManyArgs?.take).toBe(24);
+    expect(capturedFindManyArgs?.take).toBe(25);
     expect(
       prisma.connectedSourceAccountRecord.findFirst,
     ).not.toHaveBeenCalled();
@@ -370,7 +461,7 @@ describe('PortfolioSnapshotsService', () => {
           sourceId: null,
           positions: { some: { category: 'CASH' } },
         },
-        take: 120,
+        take: 121,
       }),
     );
     expect(history).toMatchObject({
@@ -401,6 +492,7 @@ describe('PortfolioSnapshotsService', () => {
         cashValue: 500,
         positions: [],
       },
+      sourcesById: {},
       accountsById: {},
       positionsWithAccountContext: [],
     });
@@ -432,8 +524,19 @@ describe('PortfolioSnapshotsService', () => {
       accountType: 'brokerage',
       currency: 'USD',
       assetSubType: 'employer_rsu',
-      institutionOrIssuer: 'Fidelity',
+      institutionOrIssuer: 'Amazon',
       isActive: true,
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-20T00:00:00.000Z',
+    };
+    const fidelitySource = {
+      id: 'source_fidelity',
+      userId: 'user_1',
+      kind: 'MANUAL_STATIC' as const,
+      displayName: 'Fidelity',
+      status: 'ACTIVE' as const,
+      institutionName: 'Fidelity',
+      baseCurrency: 'USD',
       createdAt: '2026-03-01T00:00:00.000Z',
       updatedAt: '2026-03-20T00:00:00.000Z',
     };
@@ -512,11 +615,13 @@ describe('PortfolioSnapshotsService', () => {
       .spyOn(service, 'getSnapshotLineage')
       .mockResolvedValueOnce({
         snapshot: currentSnapshot,
+        sourcesById: { source_fidelity: fidelitySource },
         accountsById: { account_rsu: rsuAccount },
         positionsWithAccountContext: [],
       })
       .mockResolvedValueOnce({
         snapshot: previousSnapshot,
+        sourcesById: { source_fidelity: fidelitySource },
         accountsById: { account_rsu: rsuAccount },
         positionsWithAccountContext: [],
       });
@@ -561,6 +666,167 @@ describe('PortfolioSnapshotsService', () => {
     expect(wording).not.toContain('you bought');
     expect(wording).not.toContain('you sold');
     expect(wording).not.toContain('market caused');
+    expect(explanation?.driverGroups?.primary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          dimension: 'holding',
+          delta: 550,
+        }),
+      ]),
+    );
+  });
+
+  it('attributes consolidated institutions through account sources instead of issuers', async () => {
+    const service = new PortfolioSnapshotsService({} as PrismaService);
+    const sources = {
+      source_wells: {
+        id: 'source_wells',
+        userId: 'user_1',
+        kind: 'MANUAL_STATIC' as const,
+        displayName: 'Wells Fargo',
+        institutionName: 'Wells Fargo',
+        status: 'ACTIVE' as const,
+        baseCurrency: 'USD',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-20T00:00:00.000Z',
+      },
+      source_fidelity: {
+        id: 'source_fidelity',
+        userId: 'user_1',
+        kind: 'MANUAL_STATIC' as const,
+        displayName: 'Fidelity',
+        institutionName: 'Fidelity',
+        status: 'ACTIVE' as const,
+        baseCurrency: 'USD',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-20T00:00:00.000Z',
+      },
+      source_coinbase: {
+        id: 'source_coinbase',
+        userId: 'user_1',
+        kind: 'MANUAL_STATIC' as const,
+        displayName: 'Coinbase',
+        institutionName: 'Coinbase',
+        status: 'ACTIVE' as const,
+        baseCurrency: 'USD',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-20T00:00:00.000Z',
+      },
+    };
+    const accounts = {
+      account_checking: {
+        id: 'account_checking',
+        sourceId: 'source_wells',
+        displayName: 'Checking',
+        accountType: 'checking',
+        currency: 'USD',
+        isActive: true,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-20T00:00:00.000Z',
+      },
+      account_401k: {
+        id: 'account_401k',
+        sourceId: 'source_fidelity',
+        displayName: '401(k)',
+        accountType: 'retirement',
+        currency: 'USD',
+        isActive: true,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-20T00:00:00.000Z',
+      },
+      account_rsu: {
+        id: 'account_rsu',
+        sourceId: 'source_fidelity',
+        displayName: 'RSU',
+        accountType: 'brokerage',
+        assetSubType: 'employer_rsu',
+        institutionOrIssuer: 'Amazon',
+        currency: 'USD',
+        isActive: true,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-20T00:00:00.000Z',
+      },
+      account_crypto: {
+        id: 'account_crypto',
+        sourceId: 'source_coinbase',
+        displayName: 'Crypto',
+        accountType: 'crypto',
+        currency: 'USD',
+        isActive: true,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-20T00:00:00.000Z',
+      },
+    };
+    const previousValues = [100, 200, 300, 400];
+    const currentValues = [120, 230, 340, 450];
+    const accountIds = Object.keys(accounts) as Array<keyof typeof accounts>;
+    const buildSnapshot = (
+      id: string,
+      snapshotDate: string,
+      values: number[],
+    ): PortfolioSnapshot => ({
+      id,
+      metadata: { snapshotDate },
+      totalValue: values.reduce((sum, value) => sum + value, 0),
+      positions: accountIds.map((sourceAccountId, index) => ({
+        assetKey: `asset_${index}`,
+        marketValue: values[index] ?? 0,
+        category: index === 0 ? 'cash' : index === 3 ? 'crypto' : 'equity',
+        sourceAccountId,
+      })),
+    });
+    const previousSnapshot = buildSnapshot(
+      'snapshot_previous',
+      '2026-03-19',
+      previousValues,
+    );
+    const currentSnapshot = buildSnapshot(
+      'snapshot_current',
+      '2026-03-20',
+      currentValues,
+    );
+    jest.spyOn(service, 'getSnapshotDelta').mockResolvedValue({
+      baseSnapshotId: 'snapshot_current',
+      compareSnapshotId: 'snapshot_previous',
+      totalValueDelta: 140,
+      cashValueDelta: 20,
+      baselineStatus: 'available',
+      positionDeltas: [],
+      accountDeltas: accountIds.map((sourceAccountId, index) => ({
+        sourceAccountId,
+        sourceAccountName: accounts[sourceAccountId].displayName,
+        previousValue: previousValues[index] ?? 0,
+        currentValue: currentValues[index] ?? 0,
+        delta: (currentValues[index] ?? 0) - (previousValues[index] ?? 0),
+      })),
+    });
+    jest
+      .spyOn(service, 'getSnapshotLineage')
+      .mockResolvedValueOnce({
+        snapshot: currentSnapshot,
+        sourcesById: sources,
+        accountsById: accounts,
+        positionsWithAccountContext: [],
+      })
+      .mockResolvedValueOnce({
+        snapshot: previousSnapshot,
+        sourcesById: sources,
+        accountsById: accounts,
+        positionsWithAccountContext: [],
+      });
+    jest.spyOn(service, 'getSnapshotDiagnostics').mockResolvedValue(null);
+
+    const explanation = await service.getSnapshotChangeExplanation(
+      'snapshot_current',
+      'previous',
+      'user_1',
+    );
+    const institutions =
+      explanation?.driverGroups?.byInstitution.map((driver) => driver.label) ??
+      [];
+
+    expect(institutions).toEqual(['Fidelity', 'Coinbase', 'Wells Fargo']);
+    expect(institutions).not.toContain('Amazon');
   });
 
   it('returns no-baseline delta when a source-level snapshot has no same-source previous snapshot', async () => {
@@ -928,6 +1194,21 @@ describe('PortfolioSnapshotsService', () => {
             metadata: null,
             createdAt: new Date('2026-03-18T00:00:00.000Z'),
             updatedAt: new Date('2026-03-18T00:00:00.000Z'),
+            source: {
+              id: 'source_1',
+              userId: 'user_1',
+              kind: 'MANUAL_STATIC',
+              providerKey: null,
+              providerConnectionId: null,
+              displayName: 'Fidelity',
+              status: 'ACTIVE',
+              institutionName: 'Fidelity',
+              baseCurrency: 'USD',
+              metadata: { institutionKey: 'fidelity' },
+              lastSuccessfulSyncAt: new Date('2026-03-20T10:00:00.000Z'),
+              createdAt: new Date('2026-03-18T00:00:00.000Z'),
+              updatedAt: new Date('2026-03-20T10:00:00.000Z'),
+            },
           },
         ]),
       },
@@ -964,6 +1245,18 @@ describe('PortfolioSnapshotsService', () => {
     expect(lineage?.accountsById.account_shares).toMatchObject({
       displayName: 'Shares',
     });
+    expect(lineage?.sourcesById.source_1).toMatchObject({
+      institutionName: 'Fidelity',
+    });
+    expect(prisma.connectedSourceAccountRecord.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          sourceId: 'source_1',
+          source: { userId: 'user_1' },
+        },
+        include: { source: true },
+      }),
+    );
     expect(
       lineage?.positionsWithAccountContext.find(
         (position) => position.assetKey === 'symbol:AAPL',

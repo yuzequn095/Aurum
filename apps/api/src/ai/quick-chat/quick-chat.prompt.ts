@@ -67,13 +67,15 @@ function buildContextBlock(context: QuickChatResolvedContext): string {
     );
     if (explanation?.baselineStatus === 'available') {
       lines.push(`Recent state change: ${explanation.summary}`);
-      const topDrivers = explanation.drivers
-        .filter(
+      const topDrivers = (
+        explanation.driverGroups?.primary ??
+        explanation.drivers.filter(
           (driver) =>
             driver.dimension !== 'total' &&
             driver.dimension !== 'cash' &&
             driver.delta !== 0,
         )
+      )
         .slice(0, 5)
         .map(
           (driver) =>

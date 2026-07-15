@@ -130,12 +130,17 @@ export function PortfolioHistorySection({
                   </div>
                   <p className="mt-2 text-xs text-[var(--aurum-text-muted)]">
                     {point.deltaFromPrevious === undefined
-                      ? 'First point in this history scope'
+                      ? 'No prior point in the loaded history window'
                       : `${formatMoney(point.deltaFromPrevious, currency)} from prior snapshot`}
                   </p>
                 </div>
               ))}
             </div>
+            {history.summary.hasMore ? (
+              <p className="text-xs text-[var(--aurum-text-muted)]">
+                More snapshots exist outside this loaded history window.
+              </p>
+            ) : null}
           </>
         )}
       </CardContent>

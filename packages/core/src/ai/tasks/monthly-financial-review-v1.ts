@@ -1,5 +1,6 @@
 import type { AITaskDefinition } from '../task-definition';
 import type { PromptPack } from '../types';
+import type { PortfolioAIContextInput } from '../portfolio-context';
 import { buildJsonBlock, buildPromptPackUserMessage, formatUsd } from './task-helpers';
 
 export interface MonthlyFinancialReviewInsightInput {
@@ -45,10 +46,11 @@ export interface MonthlyFinancialReviewInput {
     summary?: string;
   };
   notableInsights?: MonthlyFinancialReviewInsightInput[];
+  portfolioContext?: PortfolioAIContextInput;
 }
 
 const TASK_TYPE = 'monthly_financial_review_v1';
-const PROMPT_VERSION = '1.0.0';
+const PROMPT_VERSION = '1.1.0';
 const TITLE = 'Monthly Financial Review';
 const REQUIRED_HEADINGS = [
   '# Monthly Financial Review',
@@ -86,6 +88,7 @@ function buildUserMessage(input: MonthlyFinancialReviewInput): string {
     },
     latestHealthScore: input.latestHealthScore ?? null,
     notableInsights: input.notableInsights ?? [],
+    structuredPortfolioContext: input.portfolioContext ?? null,
   };
 
   return buildPromptPackUserMessage([
@@ -113,7 +116,7 @@ export const monthlyFinancialReviewV1TaskDefinition: AITaskDefinition<MonthlyFin
     return {
       taskType: TASK_TYPE,
       promptVersion: PROMPT_VERSION,
-      schemaVersion: '1.0.0',
+      schemaVersion: '1.1.0',
       title: TITLE,
       messages: [
         {

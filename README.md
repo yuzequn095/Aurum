@@ -28,6 +28,7 @@ This document serves as both a product overview and developer reference for Auru
 - [What Milestone 13 Changed](#what-milestone-13-changed)
 - [What Milestone 14 Changed](#what-milestone-14-changed)
 - [What Milestone 15 Changed](#what-milestone-15-changed)
+- [What Milestone 16 Changed](#what-milestone-16-changed)
 - [Current Architecture](#current-architecture)
 - [Long-term Vision](#long-term-vision)
 - [Architecture Documents](#architecture-documents)
@@ -120,7 +121,7 @@ Transactions represent **cash flow tracking**.
 AI-powered financial intelligence workspace.
 
 - Reports:
-  Monthly Financial Review and Daily Market Brief
+  Monthly Financial Review and Portfolio Market Lens
 - Analysis:
   Financial Health Score, first-class portfolio analysis entry points, and snapshot-aware diagnostics
 - Planning:
@@ -168,7 +169,7 @@ Current shipped workflows include:
 - Quick Chat:
   protected, temporary by default, and explicitly savable into Conversations
 - Reports:
-  Monthly Financial Review and Daily Market Brief with saved history
+  Monthly Financial Review and Portfolio Market Lens with saved history
 - Analysis:
   Financial Health Score plus first-class portfolio analysis entry points
 - Planning:
@@ -224,7 +225,7 @@ Mobile is intentionally not a separate route tree. The same product surfaces ada
 
 ## Current Status
 
-Milestones 1-15 are now complete at the foundation-plus-productization level. Milestone 15 expands connected-finance depth and portfolio diagnostics on top of the Milestone 11 snapshot-driven analysis architecture, Milestone 12 connected-finance ingestion foundation, Milestone 13 AI Product Layer, and Milestone 14 Experience Layer.
+Milestones 1-16 are now complete at the foundation-plus-productization level. Milestone 16 adds portfolio history, deterministic change explanation, structured AI context, snapshot-grounded Portfolio Market Lens reports, and computed in-app attention items on top of the Milestone 15 portfolio-depth foundation.
 
 - Platform status:
   monorepo, API, web, auth, ledger, taxonomy, analytics, import/export, and dashboard foundations are stable.
@@ -237,7 +238,7 @@ Milestones 1-15 are now complete at the foundation-plus-productization level. Mi
 - Experience status:
   Home, Portfolio, Transactions, AI Insights, Settings, Login/Register, desktop shell, mobile bottom nav, and command menu have been productized into a coherent day-to-day web experience with connected-finance status and portfolio depth visible where relevant.
 - Current execution focus:
-  the next major product direction is advanced AI automation, reconciliation, and planning depth rather than execution-layer financial actions.
+  the next major product direction is reconciliation, planning depth, optional persisted attention state, and intentionally sourced read-only market data rather than execution-layer financial actions.
 
 ## Milestone Summary
 
@@ -251,10 +252,10 @@ Milestones 1-15 are now complete at the foundation-plus-productization level. Mi
 | 10 | Web UX Foundation | Done | App shell, page structure, settings/logout, design tokens/primitives, and dashboard foundation. |
 | 11 | AI Foundation / Snapshot-Driven Analysis | Done | Shared AI contracts, prompt/task/provider/router/run foundations, workbench validation, canonical `PortfolioSnapshot`, snapshot-driven report/score flows, report persistence, score persistence, and snapshot-linked history with server-backed creation. |
 | 12 | Connected Finance & Real Ingestion | Done | Connected source foundation, source accounts, sync runs, snapshot lineage and ingestion hardening, manual static accounts with valuation history, Plaid bank foundation, SnapTrade brokerage holdings foundation, Coinbase crypto foundation, and provider-aware fallback guidance to Manual Create when backend provider config is missing. |
-| 13 | AI Product Layer | Done | Artifact ownership hardening, entitlement foundation, saved conversations, Quick Chat to Save to Conversations, AI Insights IA productization, Monthly Financial Review, Daily Market Brief, first-class analysis workflows, and preset prompt pack expansion. |
+| 13 | AI Product Layer | Done | Artifact ownership hardening, entitlement foundation, saved conversations, Quick Chat to Save to Conversations, AI Insights IA productization, Monthly Financial Review, report workflow foundations, first-class analysis workflows, and preset prompt pack expansion. |
 | 14 | Experience Layer / Productization | Done | Product structure cleanup, desktop polish, mobile page-level productization, command menu refinement, visual polish, and final cross-surface acceptance review. |
 | 15 | Connected Finance Expansion / Portfolio Depth | Done | Institution-aware manual presets, connected-finance overview health, snapshot lineage/delta APIs, deterministic portfolio diagnostics, demo data, and validation docs. |
-| 16 | Advanced AI / Automation | Future | Scheduled delivery, richer report orchestration, proactive alerts, reconciliation depth, and deeper planning/budgeting/goals workflows. |
+| 16 | Portfolio History & Proactive Context | Done | Scoped snapshot history, deterministic change explanations, structured best-effort AI context, Portfolio Market Lens, and computed in-app attention items. |
 
 **Milestone 11 delivered:**
 
@@ -282,7 +283,7 @@ Milestones 1-15 are now complete at the foundation-plus-productization level. Mi
 - saved conversation persistence plus current-user save/list/get/rename/delete APIs
 - Quick Chat temporary execution with explicit Save into Conversations and persistent conversation history
 - AI Insights productization around Reports, Analysis, Planning, and Conversations
-- Reports workflows for Monthly Financial Review and Daily Market Brief with saved history plus Daily Market Brief delivery-preferences foundation
+- Reports workflows for Monthly Financial Review and the snapshot-grounded Portfolio Market Lens with saved history plus delivery-preferences foundation
 - Analysis workflows for Financial Health Score and a guided Portfolio Analysis entry point into Quick Chat with context
 - entitlement-aware AI create/save/reply actions while preserving historical readability
 - preset task prompt packs, provider/model-swappable task execution, and workbench-based no-key validation improvements
@@ -319,7 +320,7 @@ Milestone 13 changed Aurum from a snapshot-driven AI foundation into a usable AI
 - Entitlements now gate premium create, refresh, save, and reply actions without blocking historical reads.
 - Quick Chat is implemented as a temporary-by-default flow with explicit Save into persistent Conversations.
 - AI Insights is now organized into Reports, Analysis, Planning, and Conversations rather than behaving like a single AI demo surface.
-- Monthly Financial Review and Daily Market Brief are first-class server-backed report workflows with saved history, and Daily Market Brief now has a delivery-preferences foundation.
+- Monthly Financial Review and Portfolio Market Lens are first-class server-backed report workflows with saved history, and Portfolio Market Lens has a delivery-preferences foundation.
 - Financial Health Score is productized as a first-class analysis workflow, and portfolio analysis now exists as a guided entry into Quick Chat with contextual inputs.
 - Saved conversations can be listed, opened, renamed, and deleted after an explicit Save from Quick Chat.
 - Preset prompt packs and manual prepared-run support now make no-key testing practical across key report, analysis, and planning tasks.
@@ -396,6 +397,38 @@ Milestone 15 = **Connected Finance Expansion / Portfolio Depth**.
 - not payments, transfers, trading, wallet execution, staking, KYC, compliance, or tax-lot accounting
 - not a service split or provider writeback layer
 - not a full investment advice engine or AI-generated recommendation layer
+
+## What Milestone 16 Changed
+
+Milestone 16 = **Portfolio History, Change Context, and Lightweight Proactive Attention**.
+
+- Added scoped portfolio history at `GET /v1/portfolio-snapshots/history` for consolidated, source, account, and asset-category views. The response reports whether more history exists outside the loaded window.
+- Added deterministic change explanations at `GET /v1/portfolio-snapshots/:id/change-explanation`, including grouped institution, account, asset-category, and holding drivers plus globally ranked primary highlights.
+- Primary change highlights cross overlapping attribution dimensions and are explicitly non-additive. Snapshot delta is observed state change, not realized P&L and not proof of transaction or market causality.
+- Enforced snapshot lineage ownership on creation for source, sync-run, and account references. Lineage, delta, and diagnostics account queries are user-scoped.
+- Added `sourcesById` to consolidated lineage so institution attribution follows `account.sourceId -> source.institutionName/displayName`; `institutionOrIssuer` remains issuer metadata and is not used for institution grouping.
+- Added best-effort `PortfolioAIContext`: diagnostics, history, or change enrichment can degrade independently without blocking the base snapshot/report workflow.
+- Quick Chat now derives the effective snapshot from an attached report or score when the request does not provide a snapshot id directly.
+- Shared prompt packs for Monthly Financial Review, Portfolio Market Lens, Portfolio Analysis, and Health Score Explainer now use prompt/schema version `1.1.0` and accept provider-neutral structured portfolio context.
+- Added computed attention items at `GET /v1/ai/attention-items`, including freshness, setup, change, cash/crypto allocation, single-holding, institution, and employer-equity concentration states. Attention cards revalidate after Portfolio data changes.
+- Added responsive Portfolio History, What Changed, and Portfolio Attention surfaces across Home, Portfolio, and AI Insights.
+
+### Portfolio Market Lens Data Boundary
+
+The legacy `/v1/ai/daily-market-brief` route and task id remain for compatibility, but the user-facing workflow is **Portfolio Market Lens**. It uses portfolio snapshots, diagnostics, history, and change context only. It does not currently contain live index performance, security price changes, Treasury yields, VIX, crypto market quotes, macro news, or market events. The misleading Market Overview option is disabled until a read-only market-data provider with timestamps and source attribution is intentionally added.
+
+### Milestone 16 Validation
+
+- API unit coverage includes ownership rejection, same-source account enforcement, consolidated institution attribution with an Amazon RSU issuer under Fidelity, no-baseline explanation, best-effort context degradation, derived Quick Chat snapshot context, and partial attention failure.
+- API e2e coverage exercises authenticated history, change-explanation, and attention-item HTTP contracts plus the application health route.
+- Repository validation covers `pnpm typecheck`, `pnpm lint`, `pnpm build`, and the complete API Jest suite.
+- Desktop and 390px mobile acceptance verify the history, change, and attention cards without horizontal overflow.
+
+### What Milestone 16 Is Not
+
+- not scheduled generation, email/push delivery, a background agent, or persisted read/dismiss state
+- not live market data or a current-market overview
+- not transaction reconciliation, tax-lot accounting, realized P&L, investment advice, or trade execution
 
 ## Current Architecture
 
@@ -726,16 +759,19 @@ This section is a curated reference for the main product routes, not an exhausti
 | `/v1/connected-finance/sources/:id/materialize-snapshot` | POST | Yes | Materialize a snapshot from a manual static connected source. |
 | `/v1/portfolio-snapshots` | POST | Yes | Create canonical portfolio snapshot with nested positions. |
 | `/v1/portfolio-snapshots` | GET | Yes | List persisted portfolio snapshots (newest first). |
+| `/v1/portfolio-snapshots/history` | GET | Yes | Query user-scoped consolidated, source, account, or asset-category snapshot history. |
 | `/v1/portfolio-snapshots/:id` | GET | Yes | Get single portfolio snapshot by id. |
 | `/v1/portfolio-snapshots/:id/lineage` | GET | Yes | Get snapshot source, sync run, accounts, and positions with account context. |
 | `/v1/portfolio-snapshots/:id/delta` | GET | Yes | Compare a snapshot to the previous baseline. |
 | `/v1/portfolio-snapshots/:id/diagnostics` | GET | Yes | Get deterministic allocation, concentration, and data health diagnostics. |
+| `/v1/portfolio-snapshots/:id/change-explanation` | GET | Yes | Get grouped deterministic snapshot state-change highlights and causality limitations. |
 | `/v1/portfolio-snapshots/:id` | DELETE | Yes | Delete snapshot if no linked persisted reports (409 when blocked). |
 | `/v1/entitlements/me` | GET | Yes | Get current user's effective AI entitlements and historical-read flags. |
 | `/v1/ai/quick-chat` | POST | Yes | Run temporary Quick Chat with optional snapshot/report/score context. |
 | `/v1/ai/monthly-financial-review` | POST | Yes | Create a Monthly Financial Review report artifact. |
-| `/v1/ai/daily-market-brief` | POST | Yes | Create a Daily Market Brief report artifact. |
-| `/v1/ai/daily-market-brief/preferences/me` | GET / PATCH | Yes | Read or update current-user Daily Market Brief delivery preferences. |
+| `/v1/ai/daily-market-brief` | POST | Yes | Compatibility route that creates a snapshot-grounded Portfolio Market Lens artifact; no live market data. |
+| `/v1/ai/daily-market-brief/preferences/me` | GET / PATCH | Yes | Read or update current-user Portfolio Market Lens delivery preferences. |
+| `/v1/ai/attention-items` | GET | Yes | Compute deterministic, non-persisted portfolio attention items. |
 | `/v1/ai-reports` | POST | Yes | Create persisted AI report artifact (verification path). |
 | `/v1/ai-reports` | GET | Yes | List persisted AI report artifacts. |
 | `/v1/ai-reports/by-snapshot/:sourceSnapshotId` | GET | Yes | List report artifacts linked to a snapshot. |

@@ -42,7 +42,7 @@ function formatSessionLabel(
 function requireSnapshotId(snapshot: PortfolioSnapshot): string {
   if (!snapshot.id?.trim()) {
     throw new BadRequestException(
-      'Market Brief requires a persisted portfolio snapshot id.',
+      'Portfolio Market Lens requires a persisted portfolio snapshot id.',
     );
   }
 
@@ -58,18 +58,18 @@ function buildDailyMarketBriefContent(input: {
   const { marketContext } = input;
   const topHoldings = marketContext.topHoldings.slice(0, 5);
   const lines: string[] = [
-    `# Market Brief`,
+    `# Portfolio Market Lens`,
     ``,
-    `## Brief Setup`,
+    `## Data Boundary`,
     `- Brief date: ${marketContext.briefDate}`,
-    `- Market session lens: ${formatSessionLabel(marketContext.sessionLabel)}`,
-    `- Report scope: ${marketContext.scope}`,
+    `- Generated during: ${formatSessionLabel(marketContext.sessionLabel)}`,
+    `- Report scope: portfolio snapshot exposure`,
     `- Ownership anchor snapshot: ${input.snapshot.metadata.snapshotDate}`,
     `- Snapshot selection strategy: ${input.selectionStrategy}`,
     `- Operating mode: ${marketContext.operatingMode}`,
     `- Data note: ${marketContext.dataFreshnessNote}`,
     ``,
-    `## Market Lens`,
+    `## Portfolio Exposures`,
   ];
 
   for (const signal of marketContext.signals) {
@@ -115,14 +115,15 @@ function buildDailyMarketBriefContent(input: {
       `- Cash snapshot change: ${formatMoney(changeExplanation.cashValueDelta)}`,
       `- Cause note: This is an observed state delta; transaction or market causality is not inferred.`,
     );
-    const recentDrivers = changeExplanation.drivers
-      .filter(
+    const recentDrivers = (
+      changeExplanation.driverGroups?.primary ??
+      changeExplanation.drivers.filter(
         (driver) =>
           driver.dimension !== 'total' &&
           driver.dimension !== 'cash' &&
           driver.delta !== 0,
       )
-      .slice(0, 5);
+    ).slice(0, 5);
     for (const driver of recentDrivers) {
       lines.push(
         `- ${driver.label} (${driver.dimension}): ${formatMoney(driver.delta)}`,
@@ -136,16 +137,11 @@ function buildDailyMarketBriefContent(input: {
     }
   }
 
-  lines.push(``, `## Next Read`);
-  if (marketContext.scope === 'market_overview') {
-    lines.push(
-      `- Use this brief as a lightweight market posture check. Portfolio-specific interpretation can be added later without changing the delivery workflow.`,
-    );
-  } else {
-    lines.push(
-      `- Use this brief to frame today's market read against your current portfolio concentration, cash optionality, and leading watchlist symbols.`,
-    );
-  }
+  lines.push(
+    ``,
+    `## Next Read`,
+    `- Use this lens to review portfolio concentration, cash posture, and leading symbols. It does not describe current market performance.`,
+  );
 
   return lines.join('\n');
 }
@@ -175,10 +171,7 @@ export class DailyMarketBriefService {
       snapshot: snapshotContext.snapshot,
       scope,
     });
-    const title =
-      scope === 'market_overview'
-        ? `${marketContext.briefDate} Market Brief`
-        : `${marketContext.briefDate} Market Brief - ${snapshotContext.snapshot.metadata.portfolioName ?? 'Portfolio'}`;
+    const title = `${marketContext.briefDate} Portfolio Market Lens - ${snapshotContext.snapshot.metadata.portfolioName ?? 'Portfolio'}`;
 
     return this.aiReportsService.createDailyMarketBriefReport({
       userId,
@@ -214,6 +207,7 @@ export class DailyMarketBriefService {
         baselineSnapshotId: portfolioContext.baselineSnapshotId,
         dataLimitations: portfolioContext.dataLimitations,
         externalMarketDataAvailable: false,
+        productBoundary: 'portfolio_exposure_only',
       },
     });
   }
@@ -246,7 +240,7 @@ export class DailyMarketBriefService {
       await this.portfolioSnapshotsService.listSnapshots(userId);
     if (snapshots.length === 0) {
       throw new BadRequestException(
-        'Market Brief currently requires at least one portfolio snapshot.',
+        'Portfolio Market Lens requires at least one portfolio snapshot.',
       );
     }
 
