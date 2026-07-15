@@ -1399,6 +1399,12 @@ export class PortfolioSnapshotsService {
     sourceSyncRunId?: string;
     sourceAccountIds: string[];
   }): Promise<void> {
+    if (input.sourceSyncRunId && !input.sourceId) {
+      throw new BadRequestException(
+        'A source sync run can only be attached to a source-level snapshot.',
+      );
+    }
+
     const [source, sourceSyncRun, accounts] = await Promise.all([
       input.sourceId
         ? this.prisma.connectedSourceRecord.findFirst({

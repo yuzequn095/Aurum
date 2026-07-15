@@ -405,21 +405,21 @@ Milestone 16 = **Portfolio History, Change Context, and Lightweight Proactive At
 - Added scoped portfolio history at `GET /v1/portfolio-snapshots/history` for consolidated, source, account, and asset-category views. The response reports whether more history exists outside the loaded window.
 - Added deterministic change explanations at `GET /v1/portfolio-snapshots/:id/change-explanation`, including grouped institution, account, asset-category, and holding drivers plus globally ranked primary highlights.
 - Primary change highlights cross overlapping attribution dimensions and are explicitly non-additive. Snapshot delta is observed state change, not realized P&L and not proof of transaction or market causality.
-- Enforced snapshot lineage ownership on creation for source, sync-run, and account references. Lineage, delta, and diagnostics account queries are user-scoped.
+- Enforced snapshot lineage ownership on creation for source, sync-run, and account references. A source-specific sync run is valid only on a source-level snapshot; consolidated materialization will require a future dedicated aggregation-run model. Lineage, delta, and diagnostics account queries are user-scoped.
 - Added `sourcesById` to consolidated lineage so institution attribution follows `account.sourceId -> source.institutionName/displayName`; `institutionOrIssuer` remains issuer metadata and is not used for institution grouping.
 - Added best-effort `PortfolioAIContext`: diagnostics, history, or change enrichment can degrade independently without blocking the base snapshot/report workflow.
 - Quick Chat now derives the effective snapshot from an attached report or score when the request does not provide a snapshot id directly.
-- Shared prompt packs for Monthly Financial Review, Portfolio Market Lens, Portfolio Analysis, and Health Score Explainer now use prompt/schema version `1.1.0` and accept provider-neutral structured portfolio context.
+- Shared prompt packs accept provider-neutral structured portfolio context. Monthly Financial Review, Portfolio Analysis, and Health Score Explainer use prompt/schema `1.1.0`; Portfolio Market Lens uses `1.2.0` after removing unsupported market-session classification.
 - Added computed attention items at `GET /v1/ai/attention-items`, including freshness, setup, change, cash/crypto allocation, single-holding, institution, and employer-equity concentration states. Attention cards revalidate after Portfolio data changes.
 - Added responsive Portfolio History, What Changed, and Portfolio Attention surfaces across Home, Portfolio, and AI Insights.
 
 ### Portfolio Market Lens Data Boundary
 
-The legacy `/v1/ai/daily-market-brief` route and task id remain for compatibility, but the user-facing workflow is **Portfolio Market Lens**. It uses portfolio snapshots, diagnostics, history, and change context only. It does not currently contain live index performance, security price changes, Treasury yields, VIX, crypto market quotes, macro news, or market events. The misleading Market Overview option is disabled until a read-only market-data provider with timestamps and source attribution is intentionally added.
+The legacy `/v1/ai/daily-market-brief` route and task id remain for compatibility, but the user-facing workflow is **Portfolio Market Lens**. It uses portfolio snapshots, diagnostics, history, and change context only. It does not currently contain live index performance, security price changes, Treasury yields, VIX, crypto market quotes, macro news, or market events. Lens dates use the `America/New_York` calendar date while `generatedAt` preserves the exact UTC timestamp. Pre-market, intraday, and post-market labels are intentionally absent until a real market calendar can account for weekends, holidays, and early closes. The misleading Market Overview option is disabled until a read-only market-data provider with timestamps and source attribution is intentionally added.
 
 ### Milestone 16 Validation
 
-- API unit coverage includes ownership rejection, same-source account enforcement, consolidated institution attribution with an Amazon RSU issuer under Fidelity, no-baseline explanation, best-effort context degradation, derived Quick Chat snapshot context, and partial attention failure.
+- API unit coverage includes ownership rejection, same-source account enforcement, consolidated sync-run rejection, New York lens-date rollover, removal of unsupported session classification, consolidated institution attribution with an Amazon RSU issuer under Fidelity, no-baseline explanation, best-effort context degradation, derived Quick Chat snapshot context, and partial attention failure.
 - API e2e coverage exercises authenticated history, change-explanation, and attention-item HTTP contracts plus the application health route.
 - Repository validation covers `pnpm typecheck`, `pnpm lint`, `pnpm build`, and the complete API Jest suite.
 - Desktop and 390px mobile acceptance verify the history, change, and attention cards without horizontal overflow.

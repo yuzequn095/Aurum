@@ -4,6 +4,8 @@ import type { DailyMarketBriefScope } from './daily-market-brief.types';
 
 type DailyMarketBriefSignalSeverity = 'info' | 'warn' | 'good';
 
+const PORTFOLIO_LENS_TIME_ZONE = 'America/New_York';
+
 export interface DailyMarketBriefSignal {
   id: string;
   title: string;
@@ -14,7 +16,7 @@ export interface DailyMarketBriefSignal {
 export interface DailyMarketBriefMarketContext {
   briefDate: string;
   generatedAt: string;
-  sessionLabel: 'pre_market' | 'intraday' | 'post_market';
+  generationTimeZone: typeof PORTFOLIO_LENS_TIME_ZONE;
   scope: DailyMarketBriefScope;
   operatingMode: 'internal_portfolio_lens_v1';
   dataFreshnessNote: string;
@@ -42,26 +44,18 @@ function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
-function resolveSessionLabel(
-  date: Date,
-): DailyMarketBriefMarketContext['sessionLabel'] {
-  const hour = Number(
-    new Intl.DateTimeFormat('en-US', {
-      hour: '2-digit',
-      hour12: false,
-      timeZone: 'America/New_York',
-    }).format(date),
+function formatDateInTimeZone(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone,
+  }).formatToParts(date);
+  const valueByType = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
   );
 
-  if (hour < 9) {
-    return 'pre_market';
-  }
-
-  if (hour < 16) {
-    return 'intraday';
-  }
-
-  return 'post_market';
+  return `${valueByType.year}-${valueByType.month}-${valueByType.day}`;
 }
 
 @Injectable()
@@ -155,9 +149,9 @@ export class MarketContextService {
     }
 
     return {
-      briefDate: now.toISOString().slice(0, 10),
+      briefDate: formatDateInTimeZone(now, PORTFOLIO_LENS_TIME_ZONE),
       generatedAt: now.toISOString(),
-      sessionLabel: resolveSessionLabel(now),
+      generationTimeZone: PORTFOLIO_LENS_TIME_ZONE,
       scope: input.scope,
       operatingMode: 'internal_portfolio_lens_v1',
       dataFreshnessNote:

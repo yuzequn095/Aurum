@@ -41,7 +41,7 @@ describe('Milestone 16 shared prompt contracts', () => {
     dailyMarketBriefV1TaskDefinition.buildPromptPack({
       briefDate: '2026-03-24',
       generatedAt: '2026-03-24T12:00:00.000Z',
-      marketSessionLabel: 'intraday',
+      generationTimeZone: 'America/New_York',
       reportScope: 'portfolio_aware',
       operatingMode: 'internal_portfolio_lens_v1',
       dataFreshnessNote: 'Portfolio snapshot only.',
@@ -74,10 +74,12 @@ describe('Milestone 16 shared prompt contracts', () => {
       portfolioContext,
     }),
   ])(
-    'uses prompt/schema 1.1.0 and serializes structured portfolio context',
+    'uses versioned prompt/schema contracts and serializes structured portfolio context',
     (promptPack) => {
-      expect(promptPack.promptVersion).toBe('1.1.0');
-      expect(promptPack.schemaVersion).toBe('1.1.0');
+      const expectedVersion =
+        promptPack.taskType === 'daily_market_brief_v1' ? '1.2.0' : '1.1.0';
+      expect(promptPack.promptVersion).toBe(expectedVersion);
+      expect(promptPack.schemaVersion).toBe(expectedVersion);
       expect(promptPack.messages.at(-1)?.content).toContain(
         'structuredPortfolioContext',
       );

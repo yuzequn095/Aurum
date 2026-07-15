@@ -827,7 +827,6 @@ export default function AiInsightsPage() {
   const selectedSnapshotDate = getStringMetadataValue(selectedReport, 'snapshotDate');
   const selectedReviewMonthLabel = getStringMetadataValue(selectedReport, 'reviewMonthLabel');
   const selectedBriefDate = getStringMetadataValue(selectedReport, 'briefDate');
-  const selectedMarketSessionLabel = getStringMetadataValue(selectedReport, 'marketSessionLabel');
   const selectedReportScope = getStringMetadataValue(selectedReport, 'reportScope');
   const selectedSnapshotSelectionStrategy = getStringMetadataValue(
     selectedReport,
@@ -2141,9 +2140,6 @@ export default function AiInsightsPage() {
                   ) : null}
                   {selectedBriefDate ? (
                     <MetadataTile label="Lens Date" value={selectedBriefDate} />
-                  ) : null}
-                  {selectedMarketSessionLabel ? (
-                    <MetadataTile label="Generation Window" value={selectedMarketSessionLabel} />
                   ) : null}
                   {selectedReportScope ? (
                     <MetadataTile label="Report Scope" value={selectedReportScope} />

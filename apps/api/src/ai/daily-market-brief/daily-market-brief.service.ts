@@ -25,20 +25,6 @@ function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
-function formatSessionLabel(
-  sessionLabel: 'pre_market' | 'intraday' | 'post_market',
-): string {
-  switch (sessionLabel) {
-    case 'pre_market':
-      return 'Pre-market';
-    case 'intraday':
-      return 'Intraday';
-    case 'post_market':
-    default:
-      return 'Post-market';
-  }
-}
-
 function requireSnapshotId(snapshot: PortfolioSnapshot): string {
   if (!snapshot.id?.trim()) {
     throw new BadRequestException(
@@ -61,8 +47,9 @@ function buildDailyMarketBriefContent(input: {
     `# Portfolio Market Lens`,
     ``,
     `## Data Boundary`,
-    `- Brief date: ${marketContext.briefDate}`,
-    `- Generated during: ${formatSessionLabel(marketContext.sessionLabel)}`,
+    `- Lens date: ${marketContext.briefDate}`,
+    `- Generated at: ${marketContext.generatedAt}`,
+    `- Lens date timezone: ${marketContext.generationTimeZone}`,
     `- Report scope: portfolio snapshot exposure`,
     `- Ownership anchor snapshot: ${input.snapshot.metadata.snapshotDate}`,
     `- Snapshot selection strategy: ${input.selectionStrategy}`,
@@ -183,13 +170,13 @@ export class DailyMarketBriefService {
         marketContext,
         portfolioContext,
       }),
-      promptVersion: '1.1.0',
+      promptVersion: '1.2.0',
       sourceRunId: `daily-market-brief:${marketContext.briefDate}:${sourceSnapshotId}`,
       metadata: {
         sourceTaskType: 'daily_market_brief_v1',
         briefDate: marketContext.briefDate,
         generatedAt: marketContext.generatedAt,
-        marketSessionLabel: marketContext.sessionLabel,
+        generationTimeZone: marketContext.generationTimeZone,
         reportScope: marketContext.scope,
         operatingMode: marketContext.operatingMode,
         dataFreshnessNote: marketContext.dataFreshnessNote,

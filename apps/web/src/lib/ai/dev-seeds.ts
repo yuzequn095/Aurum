@@ -196,7 +196,7 @@ export const mockMonthlyFinancialReviewInput: MonthlyFinancialReviewInput = {
 export const mockDailyMarketBriefInput: DailyMarketBriefInput = {
   briefDate: '2026-03-24',
   generatedAt: '2026-03-24T15:30:00.000Z',
-  marketSessionLabel: 'pre_market',
+  generationTimeZone: 'America/New_York',
   reportScope: 'portfolio_aware',
   operatingMode: 'internal_portfolio_lens_v1',
   dataFreshnessNote:

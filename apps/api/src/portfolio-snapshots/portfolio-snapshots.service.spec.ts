@@ -212,6 +212,50 @@ describe('PortfolioSnapshotsService', () => {
     expect(prisma.portfolioSnapshotRecord.create).not.toHaveBeenCalled();
   });
 
+  it('rejects a source-specific sync run on a consolidated snapshot', async () => {
+    const prisma = {
+      portfolioSnapshotRecord: {
+        create: jest.fn(),
+      },
+    };
+    const service = new PortfolioSnapshotsService(
+      prisma as unknown as PrismaService,
+    );
+
+    await expect(
+      service.createSnapshot(
+        {
+          metadata: {
+            snapshotDate: '2026-03-18',
+            sourceSyncRunId: 'sync_fidelity',
+          },
+          totalValue: 300,
+          positions: [
+            {
+              assetKey: 'symbol:AAPL',
+              marketValue: 100,
+              sourceAccountId: 'account_fidelity',
+            },
+            {
+              assetKey: 'symbol:BTC',
+              marketValue: 100,
+              sourceAccountId: 'account_coinbase',
+            },
+            {
+              assetKey: 'cash:USD',
+              marketValue: 100,
+              sourceAccountId: 'account_wells',
+            },
+          ],
+        },
+        'user_1',
+      ),
+    ).rejects.toThrow(
+      'A source sync run can only be attached to a source-level snapshot.',
+    );
+    expect(prisma.portfolioSnapshotRecord.create).not.toHaveBeenCalled();
+  });
+
   it('rejects foreign accounts and mixed-source accounts for source-level snapshots', async () => {
     const prisma = {
       connectedSourceRecord: {

@@ -122,6 +122,11 @@ Capabilities:
 - richer conversational continuation
 - proactive portfolio and cashflow alerts
 
+Current milestone boundary:
+
+- **M16 — Portfolio Market Lens: Done.** Manual, read-only generation summarizes saved portfolio exposure, concentration, cash posture, diagnostics, history, and observed snapshot changes. It does not claim live market context.
+- **M17 / M16.1 — Read-only On-demand Market Brief: Future.** A real market brief requires provider-sourced index snapshots, security quotes, market events, source attribution, and explicit `asOf`, `fetchedAt`, and freshness metadata before any current-market narrative is enabled.
+
 Examples:
 
 - spending anomaly detection

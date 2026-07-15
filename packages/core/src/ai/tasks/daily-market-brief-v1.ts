@@ -19,7 +19,7 @@ export interface DailyMarketBriefHoldingInput {
 export interface DailyMarketBriefInput {
   briefDate: string;
   generatedAt: string;
-  marketSessionLabel: 'pre_market' | 'intraday' | 'post_market';
+  generationTimeZone: string;
   reportScope: 'portfolio_aware';
   operatingMode: string;
   dataFreshnessNote: string;
@@ -38,7 +38,7 @@ export interface DailyMarketBriefInput {
 }
 
 const TASK_TYPE = 'daily_market_brief_v1';
-const PROMPT_VERSION = '1.1.0';
+const PROMPT_VERSION = '1.2.0';
 const TITLE = 'Portfolio Market Lens';
 const REQUIRED_HEADINGS = [
   '# Portfolio Market Lens',
@@ -53,7 +53,7 @@ function buildUserMessage(input: DailyMarketBriefInput): string {
   const briefContext = {
     briefDate: input.briefDate,
     generatedAt: input.generatedAt,
-    marketSessionLabel: input.marketSessionLabel,
+    generationTimeZone: input.generationTimeZone,
     reportScope: input.reportScope,
     operatingMode: input.operatingMode,
     dataFreshnessNote: input.dataFreshnessNote,
@@ -99,7 +99,7 @@ export const dailyMarketBriefV1TaskDefinition: AITaskDefinition<DailyMarketBrief
     return {
       taskType: TASK_TYPE,
       promptVersion: PROMPT_VERSION,
-      schemaVersion: '1.1.0',
+      schemaVersion: '1.2.0',
       title: TITLE,
       messages: [
         {
@@ -123,6 +123,7 @@ export const dailyMarketBriefV1TaskDefinition: AITaskDefinition<DailyMarketBrief
         portfolioName: input.portfolioName,
         snapshotDate: input.snapshotDate,
         briefDate: input.briefDate,
+        generationTimeZone: input.generationTimeZone,
         reportScope: input.reportScope,
         watchlistCount: input.watchlistSymbols.length,
       },

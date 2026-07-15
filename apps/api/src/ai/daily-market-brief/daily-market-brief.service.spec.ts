@@ -86,7 +86,7 @@ describe('DailyMarketBriefService', () => {
     marketContextService.assembleContext.mockReturnValue({
       briefDate: '2026-03-24',
       generatedAt: '2026-03-24T15:30:00.000Z',
-      sessionLabel: 'pre_market',
+      generationTimeZone: 'America/New_York',
       scope: 'portfolio_aware',
       operatingMode: 'internal_portfolio_lens_v1',
       dataFreshnessNote: 'Internal template',
@@ -158,6 +158,8 @@ describe('DailyMarketBriefService', () => {
     expect(createDailyBriefCall.sourceSnapshotId).toBe('snapshot_latest');
     expect(createDailyBriefCall.metadata).toMatchObject({
       briefDate: '2026-03-24',
+      generatedAt: '2026-03-24T15:30:00.000Z',
+      generationTimeZone: 'America/New_York',
       reportScope: 'portfolio_aware',
       snapshotSelectionStrategy: 'latest_available_snapshot',
       portfolioAIContextVersion: 'portfolio-ai-context-v1',
@@ -166,6 +168,15 @@ describe('DailyMarketBriefService', () => {
     });
     expect(createDailyBriefCall.title).toContain('Portfolio Market Lens');
     expect(createDailyBriefCall.contentMarkdown).toContain('## Data Boundary');
+    expect(createDailyBriefCall.contentMarkdown).toContain(
+      'Generated at: 2026-03-24T15:30:00.000Z',
+    );
+    expect(createDailyBriefCall.contentMarkdown).not.toContain(
+      'Generated during:',
+    );
+    expect(createDailyBriefCall.metadata).not.toHaveProperty(
+      'marketSessionLabel',
+    );
     expect(createDailyBriefCall.contentMarkdown).toContain(
       '## Recent Portfolio State Change',
     );
@@ -185,7 +196,7 @@ describe('DailyMarketBriefService', () => {
     marketContextService.assembleContext.mockReturnValue({
       briefDate: '2026-03-24',
       generatedAt: '2026-03-24T15:30:00.000Z',
-      sessionLabel: 'pre_market',
+      generationTimeZone: 'America/New_York',
       scope: 'portfolio_aware',
       operatingMode: 'internal_portfolio_lens_v1',
       dataFreshnessNote: 'Internal template',
