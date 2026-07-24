@@ -38,7 +38,7 @@ Capacitor v8 documents a local `localhost` origin as its normal bundled-web conf
 2. Reach a usable direct-installed beta quickly enough to learn from real device use.
 3. Avoid duplicating financial calculations, persistence, or session semantics in native code.
 4. Keep all long-lived financial data on the server so a future SwiftUI client does not require data migration.
-5. Protect refresh credentials with iOS Keychain storage and fix current refresh concurrency behavior before real beta data.
+5. Resolve the long-lived credential boundary so remotely served JavaScript cannot retrieve the refresh credential, and fix current refresh concurrency behavior before real beta data.
 6. Keep deployment simple, low-cost, HTTPS-only, and recoverable.
 7. Make web fixes deployable without rebuilding and re-signing the iOS shell during the learning phase.
 8. Retain a credible path to a bundled shell or native client after the API contract and product flows stabilize.
@@ -108,9 +108,9 @@ Feasible with the least rendering and routing change. The Capacitor shell loads 
 
 - create the minimal Capacitor iOS shell and set its trusted HTTPS application URL;
 - restrict navigation to the application origin and open external destinations through the system browser;
-- add a native bridge for secure refresh-token storage;
-- refactor authentication behind a storage adapter and single-flight refresh coordinator;
-- move the proxy target to server-only configuration, while retaining any direct API path as an explicit, tested exception;
+- complete a 17D authentication security spike and implement one approved credential boundary that never returns the raw refresh token to remotely served page JavaScript;
+- refactor authentication behind explicit browser/native boundaries and a single-flight refresh coordinator;
+- move the proxy target to server-only configuration and disable direct production API access by default;
 - add a local shell-level startup/outage state so a failed remote load does not present an unexplained blank screen;
 - configure safe areas, status bar, keyboard behavior, and lifecycle resumption;
 - add environment and deployment gates before real data.
@@ -121,7 +121,9 @@ No current page is blocked by rendering mode. The app requires network access to
 
 #### Authentication
 
-The hosted page communicates with a small native credential bridge. The native refresh token is stored in Keychain; the access token is held in memory. Browser users keep a browser adapter for compatibility during M17. Refresh is coordinated through one in-flight promise so parallel 401 responses cannot independently rotate the same refresh token.
+Authentication is an unresolved security boundary for the remote-runtime model. Origin pinning, a navigation allowlist, and Content Security Policy can reduce navigation and injection risk, but they do not protect a credential from compromised JavaScript legitimately served by the trusted Aurum origin. A generic Keychain bridge that returns the raw refresh token to page JavaScript is therefore insufficient and is not approved for real-data use.
+
+Model B may proceed through the 17B foundation with non-sensitive development or demo data only. In 17D, Aurum must select, implement, and device-test one of the real-data credential designs defined in the Authentication Decision. Regardless of the selected design, refresh rotation must use one in-flight operation so parallel 401 responses cannot independently rotate the same credential.
 
 #### API and deployment
 
@@ -129,7 +131,7 @@ The primary path is:
 
 `iOS WebView or browser -> hosted Next.js origin -> same-origin /api -> Next rewrite/proxy -> NestJS API -> PostgreSQL`
 
-This removes CORS from the normal browser/WebView request path. The NestJS API still needs a narrow production allowlist for explicitly supported direct access and diagnostics; it is not assumed private merely because normal clients use a proxy.
+This removes CORS from the normal browser/WebView request path. In the primary M17 topology, NestJS is a private same-region service reachable by the Next.js server over the hosting provider's private network. Direct browser/native production API access is disabled rather than retained as a fallback.
 
 #### Update and version relationship
 
@@ -142,7 +144,7 @@ The web deployment must maintain a short compatibility window for the installed 
 - web host unavailable: shell shows a local outage/retry screen; no cached financial workflow is promised;
 - API unavailable: hosted page loads but data actions fail through a consistent retryable error state;
 - incompatible web/native bridge: capability check blocks the affected feature and reports an upgrade requirement;
-- compromised or misconfigured trusted web deployment: native bridge access could be abused, so the origin is pinned, navigation is restricted, content security is hardened, and the bridge exposes only minimal credential operations;
+- compromised or misconfigured trusted web deployment: origin pinning and CSP do not protect a JavaScript-readable long-lived credential; real data remains prohibited until the 17D credential boundary prevents page JavaScript from retrieving or exfiltrating the refresh credential;
 - provider hostname change: existing shells still point at the old host, so a stable custom domain should be introduced before broader distribution if provider portability becomes important.
 
 #### Advantages
@@ -158,7 +160,7 @@ The web deployment must maintain a short compatibility window for the installed 
 - Capacitor documents remote `server.url` as development-oriented, so this is explicit beta debt;
 - the application cannot start meaningfully without the web host and API;
 - web deployment safety becomes native deployment safety;
-- a trusted remote document receives access to the narrow native bridge;
+- remotely served trusted-origin JavaScript remains inside the application threat model and must not receive a raw long-lived credential;
 - this model is not approved here for TestFlight or App Store distribution.
 
 #### Decision
@@ -218,29 +220,48 @@ This is **Accepted with debt** because Capacitor's remote runtime configuration 
 - there is no TestFlight or App Store claim;
 - the remote origin is HTTPS, pinned, and navigation-restricted;
 - the native bridge is minimal and exposes no financial-domain logic;
-- secure native refresh storage and single-flight rotation land before real beta data;
+- origin pinning and CSP are not treated as protection against compromised JavaScript served by the trusted origin;
+- a generic JavaScript-readable Keychain token adapter is prohibited for real-data Model B use;
+- one approved 17D credential boundary, single-flight rotation, and proof that application JavaScript cannot retrieve or exfiltrate the long-lived credential must land before real beta data;
 - the decision is reviewed before any external beta or store distribution.
 
 Exit triggers are App Store/TestFlight preparation, more than a tightly controlled owner beta, a need for meaningful offline use, inability to secure remote bridge access, or unacceptable remote-load reliability. At an exit trigger, Model A is evaluated first; a SwiftUI client is a later product decision rather than a Milestone 17 fallback.
+
+Until the real-data authentication gate is satisfied, Model B is limited to synthetic, development, or demo data even if the shell, hosting, and other controls are operational.
 
 ## Authentication Decision
 
 ### Storage abstraction
 
-Introduce an asynchronous `AuthStorage` interface used by session and API code rather than reading `localStorage` or cookies directly.
+Introduce explicit asynchronous authentication boundaries so session and API code no longer read `localStorage`, cookies, or native storage directly.
 
-- Browser adapter: retain the current local-storage behavior for M17 compatibility, document its XSS exposure, and remove unnecessary cookie duplication when server-rendered auth is not using it.
-- Native adapter: use a pinned, audited Capacitor plugin backed by iOS Keychain. `@aparajita/capacitor-secure-storage` is the current open-source candidate; it is not approved until its source, package integrity, Capacitor compatibility, entitlement behavior, and device lifecycle are tested in 17B–17F. Ionic Identity Vault is the paid fallback if a supported policy/biometric vault becomes necessary.
+- Browser adapter: retain the current local-storage behavior only as a compatibility baseline for non-sensitive development/demo use, document its XSS exposure, and remove unnecessary cookie duplication when server-rendered auth is not using it.
+- Native boundary: must not be a generic JavaScript-readable Keychain getter. If the native-broker option is selected, a pinned, audited Keychain plugin remains entirely behind native authentication operations. `@aparajita/capacitor-secure-storage` is a candidate implementation detail, not an approved page-facing bridge. Ionic Identity Vault remains a paid fallback if a supported policy/biometric vault becomes necessary.
 - Do not use Capacitor Preferences for secrets. Its iOS storage is UserDefaults, not an encrypted credential vault.
+
+### Remote-runtime credential threat model and real-data gate
+
+The page is remotely deployable code from the trusted Aurum origin. If that deployment, build pipeline, dependency graph, or served JavaScript is compromised, the malicious code runs with the same origin and bridge permissions as legitimate code. Origin pinning prevents an unrelated origin from using the bridge, and CSP can reduce some injection paths, but neither prevents trusted-origin code from calling an exposed `getRefreshToken()`-style API and exfiltrating its result.
+
+Before real personal financial data, 17D must select, implement, and device-test one of:
+
+1. **Native authentication broker:** native code owns login, refresh, logout, logout-all, Keychain persistence, and rotation; it never returns the raw refresh token to page JavaScript.
+2. **Same-origin HttpOnly cookie:** the hosted Next.js/auth path keeps the refresh credential in an `HttpOnly`, `Secure`, appropriately `SameSite` cookie that JavaScript cannot read.
+3. **Model A before real data:** move the native client to signed bundled assets, then evaluate a minimal Keychain adapter within that signed-code threat model.
+
+The 17D validation must actively prove that Aurum application JavaScript cannot retrieve or exfiltrate the long-lived credential. Storage-at-rest encryption, origin checks, and a successful login are not sufficient evidence.
 
 ### Token placement
 
-- Native refresh token: Keychain only, with iCloud synchronization disabled.
-- Native access token: memory only.
-- Browser tokens: existing browser storage through the adapter during M17, treated as accepted debt.
+- Long-lived refresh credential: never JavaScript-readable in an approved real-data Model B architecture.
+- Native-broker option: refresh token remains in Keychain with iCloud synchronization disabled and is used only by native authentication operations.
+- HttpOnly-cookie option: refresh credential remains in the server-set cookie and is unavailable to both page JavaScript and the native bridge.
+- Model A option: Keychain use is evaluated only after the signed bundled-asset boundary is in place.
+- Short-lived access credential: memory only and exposed to page JavaScript only to the minimum extent required by the selected 17D design.
+- Existing browser tokens: current browser storage remains a non-sensitive compatibility baseline, not approval for Model B real-data use.
 - Financial data: never copied into Keychain, Preferences, or a native database.
 
-Storing the short-lived access token in Keychain adds persistent attack surface without materially improving recovery. On termination the access token is lost; the app hydrates the refresh token and obtains a new access token on the next launch.
+Storing a short-lived access token in Keychain adds persistent attack surface without materially improving recovery. On termination, the access token is lost. The selected credential owner restores the session without returning the raw refresh credential to remotely served JavaScript.
 
 ### Refresh and concurrency
 
@@ -252,34 +273,36 @@ The current API rotates refresh tokens and treats reuse as compromise. The web c
 4. failed rotation clears local credentials and returns to sign-in;
 5. auth concurrency, reuse, revocation, and retry behavior must have automated tests.
 
-The server response and Keychain write cannot be made truly atomic. If the app terminates after server rotation but before storing the replacement, the safe recovery is a new sign-in.
+For the native-broker or Model A Keychain option, the server response and Keychain write cannot be made truly atomic. If the app terminates after server rotation but before storing the replacement, the safe recovery is a new sign-in.
 
 ### Lifecycle and revocation
 
-- launch: detect native bridge, check first-launch state, hydrate Keychain refresh token, then refresh;
+- launch: detect the selected credential owner and restore the session without hydrating the raw refresh credential into remote page JavaScript;
 - background: perform no background financial action and do not depend on access-token validity;
 - foreground: revalidate session before protected work;
-- logout: attempt server revocation, then always clear memory, Keychain, browser storage, and duplicate cookies;
+- logout: ask the selected credential owner to revoke the session, then clear every applicable memory, Keychain, HttpOnly-cookie, browser-storage, and duplicate-cookie location;
 - logout all: expose the existing API operation in the client and clear the current device regardless of network result;
 - server rejection/reuse detection: clear the device session immediately;
 - access tokens remain usable until their short expiry after logout; this is accepted for the private beta and should be revisited for higher-risk distribution.
 
-iOS Keychain items can survive uninstall. Store a non-secret first-launch marker in Preferences/UserDefaults. If the marker is absent, clear the Aurum Keychain entry before session restoration, then create the marker. Device tests must cover install, restart, background/resume, logout, logout-all, offline logout, uninstall/reinstall, and clock/token expiry behavior.
+If 17D selects a Keychain-based broker or Model A storage, iOS Keychain items can survive uninstall. Store a non-secret first-launch marker in Preferences/UserDefaults. If the marker is absent, clear the Aurum Keychain entry before session restoration, then create the marker. Device tests must cover install, restart, background/resume, logout, logout-all, offline logout, uninstall/reinstall, clock/token expiry behavior, and an attempted long-lived-credential read/exfiltration from application JavaScript.
 
 ## API and CORS Decision
 
-The normal beta path uses the hosted Next.js origin and same-origin `/api` requests. Next proxies those requests to NestJS using a **server-only** API target environment variable. Public `NEXT_PUBLIC_*` direct API configuration must not be the accidental primary production path.
+The normal beta path uses the hosted Next.js origin and same-origin `/api` requests. Next proxies those requests to NestJS using a **server-only internal** API target environment variable. Public `NEXT_PUBLIC_*` direct API configuration and direct production fallback are disabled.
 
 Production topology:
 
-- web: `https://<web-provider-domain>`;
-- API: `https://<api-provider-domain>`;
-- database: provider-private PostgreSQL connection from the API;
+- public web: `https://<web-provider-domain>` serving Next.js;
+- private API: provider-internal NestJS service address with no public domain;
+- private database: provider-internal PostgreSQL connection with external/public access disabled;
 - browser and iOS WebView: web origin `/api`;
-- Next.js server: HTTPS/private provider connection to the API;
-- explicit direct client fallback: disabled by default or separately enabled and monitored.
+- Next.js server: `INTERNAL_API_BASE_URL` (or equivalent server-only variable) pointing to the private NestJS address;
+- direct browser/native production API access: disabled.
 
-CORS remains deny-by-default with an exact allowlist. For Model B, permit only known direct-call origins that are actually used, such as the hosted web origin for a deliberately enabled fallback and local development origins. `capacitor://localhost` is needed only if Model A or another direct native API path is exercised. Never use wildcard origins with credentials.
+The normal production Model B request path does not depend on browser CORS because the browser/WebView calls its own Next.js origin and only the Next.js server reaches private NestJS. Development CORS origins belong to a separate development configuration and must never be carried into beta. `capacitor://localhost` is needed only if Model A or another explicitly introduced direct native API path is exercised.
+
+Any future direct production API must be introduced deliberately with a new threat model, public-edge controls, authentication review, rate limiting, logging/redaction, and an exact CORS allowlist. Never use wildcard origins with credentials.
 
 Local physical-device development should use a trusted HTTPS tunnel or a reachable LAN Next.js development URL configured only in the debug shell. The Next.js development server can continue proxying to the Mac-hosted API. Production remote-host settings must never be copied into arbitrary-navigation allowlists.
 
@@ -296,19 +319,21 @@ The API contract remains `/v1`. Before a future native client depends on it, sta
 
 Generate an OpenAPI-derived client once those semantics are stable; do not continue duplicating contract types independently across web and future native code.
 
+When a future SwiftUI client requires direct server access, expose a deliberately public versioned API through an API gateway or introduce a mobile BFF. Do not make the private M17 NestJS service public in anticipation of that future client.
+
 ## Private Deployment Direction
 
 ### Primary: Render
 
 Use three same-region services:
 
-1. paid Node web service for Next.js;
-2. paid Node web service for NestJS;
-3. paid managed PostgreSQL.
+1. one public paid Node web service for Next.js;
+2. one paid **private** Node service for NestJS, reachable only from same-region services over Render's private network;
+3. one paid managed PostgreSQL database using its internal connection URL with external/public access disabled.
 
 As checked on 2026-07-22, Render lists Starter web services at $7/month each. PostgreSQL entry tiers range from $6/month for 256 MB to $19/month for 1 GB, plus storage. A realistic private-beta base is approximately $21–35/month and should be budgeted at $25–45/month after storage and backup/export overhead. Pricing must be rechecked at provisioning.
 
-Use provider-assigned HTTPS domains initially. Place web, API, and database in one region. Paid services avoid free-tier sleeping/cold-start behavior. Introduce stable custom domains before any distribution where a provider hostname embedded in installed shells would become an operational trap.
+Use a provider-assigned HTTPS domain for the public Next.js service initially. NestJS receives no public `onrender.com` domain, and PostgreSQL external access is disabled. Next.js uses a server-only private-service address for the rewrite/proxy. Place all three resources in one region. Paid services avoid free-tier sleeping/cold-start behavior. Introduce a stable custom web domain before any distribution where a provider hostname embedded in installed shells would become an operational trap.
 
 Required operational controls:
 
@@ -326,7 +351,7 @@ The existing application-level backup is a convenience export, not disaster reco
 
 ### Fallback: Railway
 
-Railway is the fallback if Render provisioning, regional availability, or operational fit blocks 17E. Use separate Next.js, NestJS, and PostgreSQL services with provider HTTPS domains. As checked on 2026-07-22, Hobby has a $5 minimum with usage credits; Pro has a $20 minimum, with compute/storage metered. A small beta is estimated at roughly $10–30/month on Hobby or $20+ on Pro, but usage must be measured.
+Railway is the fallback if Render provisioning, regional availability, or operational fit blocks 17E. Expose only the Next.js service through Railway public networking. Keep NestJS on its `railway.internal` private address with no generated public domain, and use the private `DATABASE_URL` without a public database TCP proxy where platform capabilities permit. As checked on 2026-07-22, Hobby has a $5 minimum with usage credits; Pro has a $20 minimum, with compute/storage metered. A small beta is estimated at roughly $10–30/month on Hobby or $20+ on Pro, but usage must be measured.
 
 Railway volume backups provide useful daily/weekly/monthly recovery points, but the documented same-project restore limitations and evolving backup feature mean they are not the only copy. Keep the same encrypted off-platform PostgreSQL dump and isolated restore requirement.
 
@@ -340,14 +365,16 @@ The system remains portable because it is standard Node.js plus PostgreSQL, Pris
 
 No real private-beta financial data may be entered until all data gates pass:
 
-1. native refresh token is Keychain-backed and lifecycle-tested;
-2. refresh single-flight behavior and revocation tests pass;
-3. demo/dev and beta use separate services, databases, JWT secrets, encryption keys, and user credentials;
-4. `prisma/seed.ts` has a production/beta guard and explicit opt-in because it creates or resets the predictable `demo@aurum.local` / `password123` account;
-5. paid HTTPS web/API/database services are deployed with least-privilege secrets;
-6. full encrypted PostgreSQL backup completes and an isolated restore is proven;
-7. physical-device acceptance covers auth, network loss, restart, external navigation, and core read/write workflows;
-8. logs are reviewed for tokens, provider payloads, financial content, and upstream response bodies.
+1. **17B:** baseline repository CI is present and passing;
+2. **17D:** select and implement a native authentication broker, same-origin HttpOnly Secure refresh-cookie architecture, or Model A signed bundled assets;
+3. **17D/17F:** device validation proves application JavaScript cannot retrieve or exfiltrate the long-lived credential;
+4. **17D:** refresh single-flight behavior and revocation tests pass;
+5. **17E:** demo/dev and beta use separate services, databases, JWT secrets, encryption keys, and user credentials;
+6. **17G:** `prisma/seed.ts` has a production/beta guard and explicit opt-in because it creates or resets the predictable `demo@aurum.local` / `password123` account;
+7. **17E:** the public Next.js/private NestJS/private PostgreSQL environment is deployed with least-privilege secrets and no direct production API path;
+8. **17E/17G:** full encrypted PostgreSQL backup completes and an isolated restore is proven;
+9. **17F/17I:** physical-device acceptance covers auth, network loss, restart, external navigation, and core read/write workflows;
+10. **17G:** logs are reviewed for tokens, provider payloads, financial content, and upstream response bodies.
 
 Seed is not currently invoked by install, build, normal start, or `prisma migrate deploy`, which is positive. It is nevertheless unsafe to run accidentally against beta because it resets a known credential and writes synthetic finance data. The restore CLI also needs environment/confirmation guards before being considered an operational beta tool.
 
@@ -363,7 +390,7 @@ The native shell owns only:
 
 - WebView creation and lifecycle;
 - trusted-origin pinning and external-navigation handoff;
-- Keychain-backed refresh-token bridge;
+- the 17D-selected authentication boundary; if a native broker is chosen, it may own authentication lifecycle and Keychain access but no financial-domain behavior;
 - first-launch cleanup marker;
 - local loading, unrecoverable configuration, and outage/retry presentation;
 - safe-area, status-bar, keyboard, orientation, and display integration;
@@ -379,7 +406,7 @@ The native shell does **not** own:
 - a SQLite financial database, offline mutation queue, or synchronization engine;
 - API-domain policy or database migrations.
 
-The bridge must be minimal, capability-versioned, origin-gated, and documented. No generic arbitrary Keychain API, arbitrary HTTP proxy, or native code execution surface is exposed to page JavaScript.
+The bridge must be minimal, capability-versioned, origin-gated, and documented. Origin gating does not make a raw token getter safe from compromised trusted-origin JavaScript. No raw refresh-token getter, generic arbitrary Keychain API, arbitrary HTTP proxy, or native code execution surface is exposed to page JavaScript.
 
 ## Future Migration Compatibility
 
@@ -408,7 +435,7 @@ Capacitor and a future SwiftUI client may coexist during migration because both 
 - no TestFlight or App Store readiness claim;
 - hard dependency on network, hosted web, API, and database availability;
 - provider hostname embedded in the shell until stable domain work is justified;
-- browser localStorage session behavior retained behind an adapter;
+- browser localStorage session behavior retained only as a non-sensitive development/demo compatibility baseline until the 17D credential decision;
 - access tokens remain valid until short expiry after logout;
 - one region, basic observability, and manual operational response;
 - no meaningful offline finance workflow;
@@ -418,6 +445,8 @@ Capacitor and a future SwiftUI client may coexist during migration because both 
 - web deployment can affect the installed shell immediately.
 
 This debt is accepted only for a controlled owner beta. It must be reviewed before expanding users or distribution.
+
+The unresolved remote-runtime credential boundary is a real-data blocker, not accepted security debt. Hosting Model B with real personal financial data is prohibited until the 17D gate is implemented and proven.
 
 ## Rejected Complexity
 
@@ -445,35 +474,38 @@ The following are explicitly out of Milestone 17 unless a later decision supplie
 | Risk | Likelihood | Impact | Mitigation | Validation phase |
 | --- | --- | --- | --- | --- |
 | Remote `server.url` behaves poorly or is unacceptable beyond direct install | Medium | High | Limit to owner beta; pin HTTPS origin; keep Model A conversion documented; revisit before external distribution | 17C, 17F, 17H |
-| Parallel 401s trigger refresh-token reuse revocation | High today | High | Single-flight refresh coordinator, one retry, concurrency/reuse tests | 17B |
-| Refresh token is exposed through WebView storage | High today | High | Keychain adapter, memory-only access token, remove native cookie/local-storage dependency | 17B, 17F |
-| Keychain token survives uninstall unexpectedly | Medium | Medium | Preferences first-launch marker clears Aurum Keychain entry before restore | 17B, 17F |
-| Trusted web deployment gains an unsafe native bridge | Medium | High | Pin origin, restrict navigation, minimal capability-versioned bridge, CSP and dependency hygiene | 17C, 17F |
-| Web/API outage makes app unusable | Medium | High | Paid services, health checks, local outage/retry screen, monitoring, no false offline promise | 17D, 17E, 17F |
-| Web deployment is incompatible with installed shell | Medium | High | Versioned capability handshake, compatibility window, fail-closed upgrade screen, deployment smoke tests | 17B, 17E, 17F |
-| Accidental demo seed contaminates beta or resets a known account | Medium today | High | Environment guard, explicit opt-in, separate beta database and credentials | 17D, 17E |
-| Database loss or unusable encrypted provider rows | Low–Medium | Critical | PITR, encrypted off-platform dump, separate key escrow, isolated restore drill | 17E |
-| Logs leak financial/provider/AI content | Medium today | High | Structured logging, redaction, bounded upstream messages, no secret payload logs | 17D, 17E |
-| Provider hostname changes and strands installed shell | Low | Medium | Stable custom domain before broader distribution; retain old redirect/host through transition | 17E, 17H |
+| Parallel 401s trigger refresh-token reuse revocation | High today | High | Single-flight refresh coordinator, one retry, concurrency/reuse tests | 17D |
+| Compromised trusted-origin JavaScript retrieves or exfiltrates a Keychain refresh token | High if a raw-token bridge exists | Critical | Prohibit generic token getters; select native broker, HttpOnly cookie, or Model A; prove JavaScript cannot retrieve/exfiltrate the credential | 17D, 17F |
+| Keychain token survives uninstall unexpectedly | Medium | Medium | If Keychain is selected, a Preferences first-launch marker clears the Aurum entry before restore | 17D, 17F |
+| Trusted web deployment gains an unsafe non-credential native bridge | Medium | High | Pin origin, restrict navigation, expose minimal capability-versioned operations, apply CSP and dependency hygiene | 17C, 17F |
+| Current direct fallback leaves NestJS publicly reachable or bypasses the Next.js boundary | Medium today | High | Disable direct production fallback; deploy private NestJS; use a server-only internal API URL | 17E |
+| Web/API outage makes app unusable | Medium | High | Paid services, health checks, local outage/retry screen, monitoring, no false offline promise | 17E, 17F |
+| Web deployment is incompatible with installed shell | Medium | High | Versioned capability handshake, compatibility window, fail-closed upgrade screen, deployment smoke tests | 17C, 17E, 17F |
+| Accidental demo seed contaminates beta or resets a known account | Medium today | High | Environment guard, explicit opt-in, separate beta database and credentials | 17G |
+| Database loss or unusable encrypted provider rows | Low–Medium | Critical | PITR, encrypted off-platform dump, separate key escrow, isolated restore drill | 17E, 17G |
+| Logs leak financial/provider/AI content | Medium today | High | Structured logging, redaction, bounded upstream messages, no secret payload logs | 17G |
+| Provider hostname changes and strands installed shell | Low | Medium | Stable custom web domain before broader distribution; retain old redirect/host through transition | 17C, 17E, 17H |
 | External/OAuth navigation remains inside privileged WebView | Medium | High | System Browser plugin, strict navigation allowlist, defer provider OAuth until tested | 17C, 17F |
-| Safe areas, keyboard, charts, prompts, or window behavior fail on device | Medium | Medium | Focused iPhone test matrix and replace browser-only interactions where necessary | 17F, 17G |
-| Existing backup is mistaken for full recovery | High today | Critical | Label it partial; use full PostgreSQL backup; restore complete database in isolation | 17E |
-| No CI allows regression after the audit | Medium | High | Add frozen install, lint, typecheck, unit/e2e, build, Prisma, migration checks | 17D |
+| Safe areas, keyboard, charts, prompts, or window behavior fail on device | Medium | Medium | Focused iPhone test matrix and replace browser-only interactions where necessary | 17F |
+| Existing backup is mistaken for full recovery | High today | Critical | Label it partial; use full PostgreSQL backup; restore complete database in isolation | 17E, 17G |
+| No CI allows regression after the audit | Medium | High | Add frozen install, lint, typecheck, unit/e2e, build, Prisma, migration checks before or within foundation work | 17B |
 
 ## Implementation Handoff
 
-### 17B – Capacitor foundation
+### 17B – Capacitor foundation and baseline CI
 
 - add the minimum compatible Capacitor packages and generate the iOS project from macOS;
 - configure separate debug and release web origins without adding a static product fork;
 - define the minimal capability-versioned native bridge contract;
 - add a local loading/configuration/outage frame and system-browser handoff;
 - prove a non-production hosted page can load on the target device;
+- add baseline repository CI covering frozen pnpm install, lint, typecheck, API unit tests, API e2e tests, web/API/core production build, Prisma validate, and migration deployment against disposable PostgreSQL;
+- keep the macOS/Xcode build manual initially;
 - add no financial logic, real data, provider credentials, or unnecessary native permissions.
 
-Exit: the disposable shell builds and loads a non-production environment on device; no claim of secure authentication or beta readiness is made.
+Exit: baseline CI protects the repository and the disposable shell builds and loads a non-production environment on device; no claim of secure authentication or beta readiness is made.
 
-### 17C – App identity and native configuration
+### 17C – App identity, native configuration, and trusted-origin policy
 
 - set bundle identifier, display name, icons/splash assets, minimum iOS target, and configuration naming;
 - pin the trusted release origin and restrict all other navigation;
@@ -482,47 +514,50 @@ Exit: the disposable shell builds and loads a non-production environment on devi
 
 Exit: app identity and origin policy are stable, reviewable, and environment-specific.
 
-### 17D – Authentication and secure storage
+### 17D – Authentication and credential boundary
 
-- add async browser/native `AuthStorage` adapters;
-- audit and pin the Keychain plugin with iCloud synchronization disabled;
-- keep native access tokens in memory and refresh tokens in Keychain;
+- run the explicit remote-runtime threat-model/security spike;
+- select a native authentication broker, same-origin HttpOnly Secure refresh cookie, or Model A signed bundled assets before real-data use;
+- ensure no generic JavaScript-readable Keychain refresh-token adapter exists;
+- implement the selected browser/native authentication boundaries and audit any selected Keychain plugin with iCloud synchronization disabled;
 - implement first-launch cleanup, single-flight refresh, one-retry 401 recovery, logout, logout-all, and revocation handling;
-- make the server proxy target private configuration and any direct fallback explicit;
-- add auth concurrency, restart, reuse, and revocation tests while preserving browser behavior.
+- add auth concurrency, restart, reuse, and revocation tests while preserving browser behavior;
+- run an adversarial trusted-origin test build that enumerates the page bridge and attempts to retrieve or exfiltrate the long-lived credential, then document why the attempt cannot obtain it.
 
-Exit: native session behavior is automated and device-testable; no real beta data yet.
+Exit: the selected authentication design is implemented and tested, and the credential non-exfiltration proof passes. Real data remains prohibited until every other data-safety gate also passes.
 
-### 17E – Private beta hosting and recovery
+### 17E – Private hosting, migrations, and database recovery
 
-- provision Render web/API/PostgreSQL in one region, or document the Railway fallback decision;
+- provision a public Render Next.js service, private Render NestJS service, and private-access PostgreSQL database in one region, or document the equivalent Railway fallback;
+- configure a server-only internal API base URL and keep direct production API access disabled;
 - separate dev/demo/beta secrets and databases;
 - run `prisma migrate deploy` in release flow;
 - configure health checks and deployment rollback;
 - configure PITR plus encrypted off-platform logical export;
 - complete and record an isolated restore with encryption keys.
 
-Exit: HTTPS beta environment is recoverable; then and only then may real beta data be considered.
+Exit: the private hosting, migration, and database-recovery portion of the gate is satisfied. Real data remains prohibited until the 17D, 17F, and 17G gates also pass.
 
-### 17F – WKWebView hardening
+### 17F – WKWebView and physical-device runtime hardening
 
 - test safe areas, status bar, keyboard/viewport resizing, date/number inputs, charts, modals, fixed navigation, history, and degraded network;
 - replace unsuitable prompt/confirm/window interactions with accessible application UI;
 - verify external navigation, clipboard policy, file input/export limitations, and deferred OAuth behavior;
 - validate origin escape attempts, bridge capability mismatch, remote deployment failure, and local outage/retry handling;
+- revalidate authentication lifecycle and the long-lived-credential non-exfiltration property on the physical iPhone;
 - fix only device-proven issues while retaining the shared browser codepath.
 
-Exit: critical WKWebView and navigation defects are closed without expanding shell responsibilities.
+Exit: critical WKWebView, physical-device runtime, navigation, and authentication-boundary defects are closed without expanding shell financial-domain responsibilities.
 
-### 17G – Data safety and backup
+### 17G – Data safety and expanded operational validation
 
 - add seed and restore environment/confirmation guards;
 - add structured redacted logging, request IDs, bounded upstream errors, import limits, and shutdown handling;
-- add CI for frozen install, lint, typecheck, API tests, web/API build, Prisma validation, and disposable-database migration/e2e;
+- expand 17B CI with deployment smoke tests, security checks, backup/restore evidence, and later iOS automation where practical;
 - configure paid database recovery plus encrypted off-platform logical exports and separate encryption-key escrow;
 - complete and record an isolated full-database restore before real data.
 
-Exit: automated controls and a proven restore satisfy the data-safety gates.
+Exit: seed/restore, logging, operational validation, and restore evidence satisfy the 17G portion of the data-safety gates.
 
 ### 17H – Signing and repeatable direct installation
 
@@ -557,4 +592,5 @@ Exit: Milestone 17 evidence is complete and the next architecture decision has a
 - Capacitor Browser: <https://capacitorjs.com/docs/apis/browser>
 - secure-storage candidate: <https://www.npmjs.com/package/@aparajita/capacitor-secure-storage>
 - Render pricing and PostgreSQL recovery: <https://render.com/pricing>, <https://render.com/docs/postgresql-backups>
-- Railway pricing and backups: <https://railway.com/pricing>, <https://docs.railway.com/volumes/backups>
+- Render private services, private networking, and PostgreSQL access control: <https://render.com/docs/private-services>, <https://render.com/docs/private-network>, <https://render.com/docs/postgresql-creating-connecting>
+- Railway pricing, private networking, and backups: <https://railway.com/pricing>, <https://docs.railway.com/private-networking>, <https://docs.railway.com/volumes/backups>

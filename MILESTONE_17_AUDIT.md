@@ -6,6 +6,8 @@ Completed on 2026-07-22 against commit `8b9c0629a65fc7ccb932c823d40c38b88e6f5ec6
 
 This audit determines feasibility and architecture only. It does not add Capacitor, create an iOS project, install an app, implement Keychain storage, deploy infrastructure, or validate TestFlight. The design-demo repositories were treated as visual references only; their Vite/AI Studio implementations are not present in or authoritative for Aurum.
 
+Architecture-review corrections were incorporated on 2026-07-23. They clarify that trusted-origin remote JavaScript remains capable of abusing any JavaScript-readable native credential bridge, make the primary NestJS/PostgreSQL topology private, move baseline CI to 17B, and normalize phase ownership. These corrections do not claim that secure mobile authentication or real-data readiness is implemented.
+
 ## Repository state inspected
 
 - Branch at audit start: `main`, matching `origin/main`.
@@ -132,7 +134,7 @@ The second experiment proved there are no additional route-level export blockers
 - Routes are explicitly versioned with `/v1` in controllers; there is no global prefix.
 - All financial/product controllers are JWT guarded. Health, register, login, refresh, and logout are public as required; logout-all is access-token guarded.
 - Production CORS uses an exact comma-separated origin allowlist and credentials. Development reflects any origin. The production allowlist always includes both local web origins; production should instead be fully explicit.
-- With the selected remote-web model, normal browser calls remain same-origin through `/api`, so CORS is not involved in the primary path. The current direct fallback still makes a public API URL and hosted web-origin allowlisting necessary unless it is removed/refactored.
+- With the selected remote-web model, normal browser calls remain same-origin through `/api`, so CORS is not involved in the primary path. The current direct fallback must be disabled/refactored before beta so Next.js alone reaches a private NestJS service over the provider network; the primary M17 topology has no public NestJS domain or browser CORS dependency.
 - The simulated production preflight confirmed `capacitor://localhost` can be allowed by the current implementation for a future bundled/direct model.
 - Global DTO validation whitelists, rejects non-whitelisted input, and transforms values.
 - There is no custom exception filter, request-id middleware, structured request log, sensitive-field redaction layer, rate limiting, or production environment schema validation.
@@ -165,6 +167,10 @@ This must be fixed before real private-beta use. A single-flight refresh coordin
 
 There is no auth storage adapter. Token access is synchronous and directly imported across the API/session/logout helpers. Native secure storage is asynchronous, so the adapter boundary must be introduced before Keychain integration rather than patched into product components.
 
+Keychain storage alone does not resolve the selected Model B threat model. JavaScript served by the pinned Aurum origin can call any bridge method granted to that origin. If a generic bridge returns the raw refresh token, compromised trusted-origin JavaScript can retrieve and exfiltrate it; origin pinning and CSP do not prevent that behavior.
+
+Model B may use non-sensitive development/demo data during 17B. Real personal financial data is prohibited until 17D selects, implements, and device-tests a native authentication broker that never returns the raw refresh token, a same-origin `HttpOnly` `Secure` refresh-cookie architecture, or Model A signed bundled assets. Validation must prove that application JavaScript cannot retrieve or exfiltrate the long-lived credential.
+
 ## Data-safety findings
 
 ### Positive findings
@@ -195,7 +201,8 @@ Before real data, use separate dev/demo/beta databases and secrets; prohibit see
 - PostgreSQL is portable standard PostgreSQL 16 with no special extension. Migrations are checked into the repository and should run as a release/pre-deploy step, never concurrently from every application replica.
 - No custom domain is required. Provider-assigned HTTPS domains are sufficient for a private beta. The tradeoff is that a provider migration changes the web URL embedded in the shell and therefore requires a new device build unless a custom domain is added later.
 - Paid, non-sleeping services are appropriate once real data is introduced. Free sleeping/expiring database tiers are suitable only for disposable experiments.
-- The smallest stable primary topology is one paid Next.js Node service, one paid NestJS Node service, and one paid managed PostgreSQL database in one region/private network. Redis is not required.
+- The smallest stable primary topology is one public paid Next.js Node service, one paid private NestJS service reachable only through the same-region provider network, and one paid managed PostgreSQL database using an internal URL with external/public access disabled. Next.js uses a server-only internal API base URL; direct production API access is disabled. Redis is not required.
+- A public versioned API, API gateway, or mobile BFF can be introduced later when a SwiftUI client requires direct server access; it is not a dependency or preemptive exposure in the primary M17 topology.
 - See `MILESTONE_17_ARCHITECTURE_DECISION.md` for the selected provider direction, current cost ranges, backup/rollback policy, and fallback.
 
 ## Future-compatibility findings
@@ -225,7 +232,7 @@ The Capacitor shell can be removed without moving financial data as long as M17 
 - API unit coverage is substantial for connected finance, snapshots, AI workflows, artifacts, entitlements, and CSV parsing.
 - E2E coverage is small: health plus four Milestone 16 contract cases, mostly with mocked services.
 - There are no auth rotation/reuse/concurrency tests, web component tests, browser e2e tests, WKWebView tests, deployment smoke tests, migration-from-empty tests, backup restore drills, or CI workflows.
-- Local validation exceeds any checked-in CI expectation because no CI configuration exists. A later M17 phase should add CI for frozen install, lint, typecheck, API tests, production build, Prisma validate, and a disposable-Postgres migration/e2e job.
+- Local validation exceeds any checked-in CI expectation because no CI configuration exists. Baseline CI belongs before or within 17B and must cover frozen pnpm install, lint, typecheck, API unit tests, API e2e tests, web/API/core production build, Prisma validate, and migration deployment against a disposable PostgreSQL service. The macOS/Xcode build may remain manual initially; 17G can add deployment smoke, security, backup/restore, and later iOS automation.
 
 ## External references checked
 
@@ -236,7 +243,8 @@ Checked on 2026-07-22:
 - Capacitor Browser plugin: <https://capacitorjs.com/docs/apis/browser>
 - `@aparajita/capacitor-secure-storage` package: <https://www.npmjs.com/package/@aparajita/capacitor-secure-storage>
 - Render pricing and Postgres recovery: <https://render.com/pricing>, <https://render.com/docs/postgresql-backups>
-- Railway pricing and volume backups: <https://railway.com/pricing>, <https://docs.railway.com/volumes/backups>
+- Render private services, private networking, and Postgres access control: <https://render.com/docs/private-services>, <https://render.com/docs/private-network>, <https://render.com/docs/postgresql-creating-connecting>
+- Railway pricing, private networking, and volume backups: <https://railway.com/pricing>, <https://docs.railway.com/private-networking>, <https://docs.railway.com/volumes/backups>
 - Web/mobile design references: <https://github.com/yuzequn095/Aurum-Web-UX-Demo>, <https://github.com/yuzequn095/Aurum-Mobile-UX-Demo>
 
 Capacitor v8 documents `localhost` as the default hostname and `capacitor` as the default iOS local scheme. It also documents remote `server.url` and expanded `allowNavigation` as development-oriented rather than production-oriented. The selected private-beta remote model accepts this as explicit direct-install debt and is not an App Store recommendation.
@@ -244,8 +252,8 @@ Capacitor v8 documents `localhost` as the default hostname and `capacitor` as th
 ## Unresolved questions for later phases
 
 1. The actual Xcode and iOS WebKit behavior on the owner's iPhone 13 Pro cannot be validated from Windows.
-2. The final provider-assigned web/API hostnames do not exist until 17E.
-3. The open-source secure-storage plugin must be pinned, inspected, and tested in the generated iOS project before adoption; Ionic Identity Vault remains a paid fallback if stronger supported vault/biometric policy becomes necessary.
+2. The final provider-assigned public web hostname and private API/database addresses do not exist until 17E.
+3. The real-data credential boundary remains intentionally unresolved until 17D. Any selected open-source Keychain plugin must be pinned, inspected, kept behind the approved native boundary, and device-tested; Ionic Identity Vault remains a paid fallback if stronger supported vault/biometric policy becomes necessary.
 4. App identifier, display name, signing team, and minimum iOS target belong to 17C/17H.
 5. Provider OAuth/redirect workflows are intentionally deferred; no claim is made that Plaid, SnapTrade, or Coinbase connect flows work in WKWebView.
 6. GitHub Issues is approved for dogfood feedback, but issue templates/labels belong to 17J.
@@ -256,14 +264,18 @@ Capacitor v8 documents `localhost` as the default hostname and `capacitor` as th
 
 None. Repository evidence is sufficient to select a model and hand off 17B.
 
+The unresolved credential boundary does not block a non-sensitive 17B foundation, but it is an explicit blocker to real personal financial data.
+
 ### Must pass before real private-beta data
 
-- native Keychain-backed refresh-token storage behind an adapter;
-- single-flight refresh and concurrency/revocation tests;
-- strict beta/dev/demo separation with seed protection;
-- paid HTTPS web/API/PostgreSQL environment;
-- complete database backup and successful isolated restore test;
-- device validation of auth lifecycle, network failure, external navigation, and core workflows.
+- 17B baseline repository CI passing;
+- 17D selection and implementation of a native authentication broker, same-origin HttpOnly Secure refresh cookie, or Model A signed bundled assets;
+- 17D/17F device proof that application JavaScript cannot retrieve or exfiltrate the long-lived credential;
+- 17D single-flight refresh and concurrency/revocation tests;
+- 17E environment separation and private Next.js-to-NestJS/PostgreSQL topology with direct production API access disabled;
+- 17G seed protection, logging hardening, and expanded operational validation;
+- 17E/17G complete database backup and successful isolated restore test;
+- 17F/17I device validation of auth lifecycle, network failure, external navigation, and core workflows.
 
 ### Non-blocking private-beta debt
 
@@ -272,6 +284,6 @@ None. Repository evidence is sufficient to select a model and hand off 17B.
 - no offline financial workflows;
 - deferred provider OAuth;
 - basic observability and one region;
-- browser localStorage retained for the ordinary web client behind an adapter;
+- browser localStorage retained only as a non-sensitive development/demo compatibility baseline until the 17D credential decision;
 - no native CSV export/share until explicitly hardened;
 - no paid live AI/market/provider rollout.

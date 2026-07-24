@@ -521,6 +521,8 @@ All within one unified platform.
 - [AI_ARCHITECTURE.md](./AI_ARCHITECTURE.md) - insight engine modes, prompt architecture, AI pipeline.
 - [MILESTONE_14_CLOSEOUT.md](./MILESTONE_14_CLOSEOUT.md) - delivered Experience Layer / Productization scope, acceptance notes, and remaining non-blocking debt.
 - [MILESTONE_13_CLOSEOUT.md](./MILESTONE_13_CLOSEOUT.md) - delivered AI Product Layer capabilities, limitations, and Milestone 14 handoff notes.
+- [MILESTONE_17_AUDIT.md](./MILESTONE_17_AUDIT.md) - repository-grounded Capacitor feasibility, authentication, deployment, data-safety, and compatibility audit.
+- [MILESTONE_17_ARCHITECTURE_DECISION.md](./MILESTONE_17_ARCHITECTURE_DECISION.md) - accepted-with-debt private iOS beta architecture decision, security gates, and phased implementation handoff.
 - [FINANCIAL_DOMAIN_MODEL.md](./FINANCIAL_DOMAIN_MODEL.md) - financial entities, relationships, domain concepts.
 - [ROADMAP.md](./ROADMAP.md) - long-term product and platform evolution.
 
