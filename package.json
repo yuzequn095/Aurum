@@ -10,7 +10,14 @@
     "dev:restart": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-restart.ps1",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "mobile:build": "pnpm --filter mobile-shell run build",
+    "mobile:check": "pnpm --filter mobile-shell run config:check",
+    "mobile:prepare": "pnpm --filter mobile-shell run prepare:runtime",
+    "mobile:add:ios": "pnpm --filter mobile-shell run ios:add",
+    "mobile:sync:ios": "pnpm --filter mobile-shell run ios:sync",
+    "mobile:open:ios": "pnpm --filter mobile-shell run ios:open",
+    "mobile:doctor": "pnpm --filter mobile-shell run doctor"
   },
   "devDependencies": {
     "eslint": "^10.0.0",

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https:"
+    />
+    <title>Aurum is unavailable</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./runtime-config.js" defer></script>
+    <script src="./error.js" defer></script>
+  </head>
+  <body>
+    <main class="shell-card" aria-labelledby="title">
+      <div class="mark" aria-hidden="true">A</div>
+      <p class="eyebrow">AURUM</p>
+      <h1 id="title">We could not reach Aurum</h1>
+      <p class="message">
+        Check your connection, then retry. No financial details are stored on this page.
+      </p>
+      <button id="retry" type="button">Retry securely</button>
+      <p class="diagnostic" id="diagnostic">AURUM-MOBILE-RUNTIME-UNAVAILABLE · shell 0.1.0</p>
+    </main>
+  </body>
+</html>

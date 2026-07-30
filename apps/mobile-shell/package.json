@@ -1,0 +1,27 @@
+{
+  "name": "mobile-shell",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-assets.mjs",
+    "lint": "node scripts/lint-sources.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test",
+    "config:check": "node scripts/mobile-command.mjs check",
+    "prepare:runtime": "node scripts/mobile-command.mjs prepare",
+    "ios:add": "node scripts/mobile-command.mjs add",
+    "ios:sync": "node scripts/mobile-command.mjs sync",
+    "ios:open": "node scripts/mobile-command.mjs open",
+    "doctor": "node scripts/mobile-command.mjs doctor"
+  },
+  "dependencies": {
+    "@capacitor/core": "7.6.8",
+    "@capacitor/ios": "7.6.8"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "7.6.8",
+    "@types/node": "^20.17.0",
+    "typescript": "^5.9.3"
+  }
+}
