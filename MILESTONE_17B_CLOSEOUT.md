@@ -16,7 +16,7 @@ hard gate and this milestone cannot be reported as complete.
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Starting commit  | `e36125ee2adb47e48dffe7342d3743626ddf96df`                                                                                                                       |
 | Branch           | `main` (the owner explicitly requested direct pushes to `main`)                                                                                                  |
-| Final commits    | `c28fb8e` (`ci: add baseline repository validation workflow`), `596d0f5` (`feat(mobile): add disposable capacitor shell foundation`), and the documentation commit containing this closeout; the complete immutable range is `e36125e..HEAD` |
+| Final commits    | `c28fb8e` (`ci: add baseline repository validation workflow`), `596d0f5` (`feat(mobile): add disposable capacitor shell foundation`), `71ac0eb` (`docs(m17): document capacitor foundation validation`), and the CI-evidence update containing this revision; the complete immutable range is `e36125e..HEAD` |
 | Operating system | Microsoft Windows 11 Home 10.0.26200, build 26200                                                                                                                |
 | Node.js          | `v20.20.0`                                                                                                                                                       |
 | pnpm             | `9.0.0`                                                                                                                                                          |
@@ -144,8 +144,9 @@ pnpm build
 The migration uses only `postgres:16` service database `aurum_ci`. No step uses
 `continue-on-error`, `|| true`, production infrastructure, or a real secret.
 
-GitHub Actions result: pending the first push of the completed local change set.
-This line must be updated after the workflow has run.
+GitHub Actions result: **Pass**. The first complete pushed change set ran every
+listed step successfully in 1m53s:
+[CI run 30516422879](https://github.com/yuzequn095/Aurum/actions/runs/30516422879).
 
 ## Local validation
 
