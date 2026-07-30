@@ -225,7 +225,7 @@ Mobile is intentionally not a separate route tree. The same product surfaces ada
 
 ## Current Status
 
-Milestones 1-16 are now complete at the foundation-plus-productization level. Milestone 16 adds portfolio history, deterministic change explanation, structured AI context, snapshot-grounded Portfolio Market Lens reports, and computed in-app attention items on top of the Milestone 15 portfolio-depth foundation.
+Milestones 1-16 are complete at the foundation-plus-productization level. Milestone 17 is not complete. The 17A architecture decision is accepted, and 17B now contains a cross-platform CI and disposable Capacitor foundation, but its generated iOS project, Xcode build, Personal Team installation, and physical-device acceptance still require macOS and the owner's iPhone.
 
 - Platform status:
   monorepo, API, web, auth, ledger, taxonomy, analytics, import/export, and dashboard foundations are stable.
@@ -238,7 +238,7 @@ Milestones 1-16 are now complete at the foundation-plus-productization level. Mi
 - Experience status:
   Home, Portfolio, Transactions, AI Insights, Settings, Login/Register, desktop shell, mobile bottom nav, and command menu have been productized into a coherent day-to-day web experience with connected-finance status and portfolio depth visible where relevant.
 - Current execution focus:
-  the next major product direction is reconciliation, planning depth, optional persisted attention state, and intentionally sourced read-only market data rather than execution-layer financial actions.
+  finish the gated Milestone 17 private iOS beta sequence without changing the accepted remote-runtime, auth, hosting, or financial-data boundaries.
 
 ## Milestone Summary
 
@@ -256,6 +256,7 @@ Milestones 1-16 are now complete at the foundation-plus-productization level. Mi
 | 14 | Experience Layer / Productization | Done | Product structure cleanup, desktop polish, mobile page-level productization, command menu refinement, visual polish, and final cross-surface acceptance review. |
 | 15 | Connected Finance Expansion / Portfolio Depth | Done | Institution-aware manual presets, connected-finance overview health, snapshot lineage/delta APIs, deterministic portfolio diagnostics, demo data, and validation docs. |
 | 16 | Portfolio History & Proactive Context | Done | Scoped snapshot history, deterministic change explanations, structured best-effort AI context, Portfolio Market Lens, and computed in-app attention items. |
+| 17 | Private iOS Beta Architecture & Foundation | In progress | 17A accepted the remote Next.js runtime architecture. 17B adds baseline CI and a disposable Capacitor shell, with macOS/Xcode/physical-device acceptance still outstanding. |
 
 **Milestone 11 delivered:**
 
@@ -449,6 +450,12 @@ The legacy `/v1/ai/daily-market-brief` route and task id remain for compatibilit
 - `packages/core` for canonical portfolio, connected-finance, AI, report, and score domain contracts
 - shared adapters and mappers for source normalization, snapshot ingestion, and snapshot-driven analysis inputs
 
+**Mobile foundation:**
+
+- `apps/mobile-shell` contains the disposable Capacitor 7 shell and bundled loading/outage assets.
+- The shell loads one build-time-validated remote Next.js HTTPS origin and contains no financial-domain logic, local financial database, or credential bridge.
+- This foundation is not yet an accepted iOS build: see the 17B closeout for the unperformed Mac/Xcode/device work.
+
 **Key platform surfaces:**
 
 - ledger APIs for accounts, categories, subcategories, transactions, import/export, and analytics
@@ -470,6 +477,7 @@ The legacy `/v1/ai/daily-market-brief` route and task id remain for compatibilit
 ```mermaid
 flowchart LR
   B[Browser] --> W[Next.js Web apps/web]
+  M[Capacitor iOS shell apps/mobile-shell] -. "17B remote HTTPS runtime" .-> W
   W -->|REST /v1 + bearer access token| A[NestJS API apps/api]
   A -->|Prisma ORM v7| P[(PostgreSQL)]
   C[Shared Core packages/core] --> W
@@ -523,6 +531,7 @@ All within one unified platform.
 - [MILESTONE_13_CLOSEOUT.md](./MILESTONE_13_CLOSEOUT.md) - delivered AI Product Layer capabilities, limitations, and Milestone 14 handoff notes.
 - [MILESTONE_17_AUDIT.md](./MILESTONE_17_AUDIT.md) - repository-grounded Capacitor feasibility, authentication, deployment, data-safety, and compatibility audit.
 - [MILESTONE_17_ARCHITECTURE_DECISION.md](./MILESTONE_17_ARCHITECTURE_DECISION.md) - accepted-with-debt private iOS beta architecture decision, security gates, and phased implementation handoff.
+- [MILESTONE_17B_CLOSEOUT.md](./MILESTONE_17B_CLOSEOUT.md) - delivered CI/mobile-shell foundation, exact validation evidence, and outstanding Mac/Xcode/physical-device acceptance.
 - [FINANCIAL_DOMAIN_MODEL.md](./FINANCIAL_DOMAIN_MODEL.md) - financial entities, relationships, domain concepts.
 - [ROADMAP.md](./ROADMAP.md) - long-term product and platform evolution.
 
@@ -530,8 +539,11 @@ All within one unified platform.
 
 ```text
 Aurum/
+├─ .github/
+│  └─ workflows/ci.yml  # Node/pnpm/PostgreSQL baseline validation
 ├─ apps/
 │  ├─ api/              # NestJS + Prisma v7
+│  ├─ mobile-shell/     # disposable Capacitor remote-runtime foundation
 │  └─ web/              # Next.js App Router
 ├─ packages/
 │  └─ core/             # shared types/utilities
@@ -549,6 +561,8 @@ Prerequisites:
 - Node.js 20.x
 - pnpm 9.x
 - Docker Desktop
+- macOS with Xcode 16+ and CocoaPods only for iOS shell
+  generation/build/device work
 
 Start/stop infrastructure:
 
@@ -646,7 +660,44 @@ Troubleshooting:
 - Local Docker Postgres is exposed on `55432` instead of `5432` to avoid Windows port reservation conflicts on `5432`.
 - If you repeatedly hit `Failed to fetch` / `Cannot POST ...` during local dev, run `pnpm dev:restart` to clear stale web/api listeners and relaunch both services.
 
+### Mobile shell foundation
+
+The isolated shell lives in [`apps/mobile-shell`](./apps/mobile-shell). It is
+optional for ordinary web/API development and is not part of `pnpm dev:app`.
+
+Create `apps/mobile-shell/.env.mobile.local` from
+`apps/mobile-shell/mobile.env.example`, then use:
+
+```bash
+pnpm mobile:check
+pnpm mobile:build
+pnpm mobile:prepare
+```
+
+On macOS with Xcode 16 or newer:
+
+```bash
+pnpm mobile:add:ios
+pnpm mobile:sync:ios
+pnpm mobile:open:ios
+pnpm mobile:doctor
+```
+
+The native commands fail clearly outside macOS. The 17B shell is provisional:
+Milestone 17 remains incomplete until the iOS project is generated, built,
+installed with the owner's Personal Team, and validated on the physical iPhone
+using only demo/non-sensitive data. See
+[`MILESTONE_17B_CLOSEOUT.md`](./MILESTONE_17B_CLOSEOUT.md).
+
 ## Environment Variables
+
+### Mobile shell (`apps/mobile-shell/.env.mobile.local`)
+
+| Key | Example | Purpose |
+| --- | --- | --- |
+| `AURUM_MOBILE_MODE` | `debug` / `release` | Selects the validated non-production or release policy at Capacitor sync/build time. |
+| `AURUM_MOBILE_WEB_URL` | `https://temporary-tunnel.example.org` | Explicit remote Next.js runtime. HTTP is rejected in both modes; Release also rejects loopback, LAN, reserved, or empty hosts. |
+| `AURUM_MOBILE_TRUSTED_ORIGIN` | `https://app.example.org` | Required in Release and must exactly match the runtime URL origin. |
 
 ### Web (`apps/web/.env.local`)
 
