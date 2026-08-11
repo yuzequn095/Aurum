@@ -2,232 +2,213 @@
 
 ## Status
 
-**Not complete.**
+**Complete with debt.**
 
-The cross-platform repository, CI, configuration, and disposable shell
-foundation are implemented. This execution environment is Windows, so the iOS
-project could not be generated or opened in Xcode and no physical-device test
-was performed. Per the 17B acceptance criteria, physical installation is a
-hard gate and this milestone cannot be reported as complete.
+The disposable Capacitor shell has been generated and built on the owner's
+Intel Mac, signed with a Personal Team, installed on the owner's iPhone 13 Pro,
+and exercised against a synthetic local Aurum environment through a temporary
+HTTPS tunnel. The mandatory 17B device path passed. The device session also
+identified a concrete outage presentation issue for 17F: a reachable tunnel
+that returns HTTP 502 displays the tunnel provider's gateway page, while a true
+network/transport failure correctly displays Aurum's bundled fallback and
+recovers through Retry.
 
 ## Repository baseline
 
-| Item             | Value                                                                                                                                                            |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Starting commit  | `e36125ee2adb47e48dffe7342d3743626ddf96df`                                                                                                                       |
-| Branch           | `main` (the owner explicitly requested direct pushes to `main`)                                                                                                  |
-| Final commits    | `c28fb8e` (`ci: add baseline repository validation workflow`), `596d0f5` (`feat(mobile): add disposable capacitor shell foundation`), `71ac0eb` (`docs(m17): document capacitor foundation validation`), `302c75a` (`docs(m17): record baseline ci evidence`), and the final CI Action-runtime update containing this revision; the complete immutable range is `e36125e..HEAD` |
-| Operating system | Microsoft Windows 11 Home 10.0.26200, build 26200                                                                                                                |
-| Node.js          | `v20.20.0`                                                                                                                                                       |
-| pnpm             | `9.0.0`                                                                                                                                                          |
-| Xcode            | Unavailable on Windows; not run                                                                                                                                  |
-| Capacitor        | `7.6.8` for CLI, core, and iOS                                                                                                                                   |
-| Target device    | Owner's iPhone 13 Pro; not connected or tested in this environment                                                                                               |
-| Target iOS       | Owner-reported iOS 26.5.2; not independently verified                                                                                                            |
+| Item | Value |
+| --- | --- |
+| Original 17B starting commit | `e36125ee2adb47e48dffe7342d3743626ddf96df` |
+| Mac completion starting commit | `0db25904fe9fad19a0bbd7b52889d94147564c84` (`origin/main` at start) |
+| Mac completion branch | `milestone-17/17b-macos-device-completion` |
+| Prior cross-platform commits | `c28fb8e`, `596d0f5`, `71ac0eb`, `302c75a`, and `0db2590` |
+| macOS | 26.6.1 (build 25G76) |
+| CPU | Intel `x86_64` |
+| Xcode | 26.5 (build 17F42) |
+| iOS SDK | 26.5 device SDK available |
+| Node.js | `v20.20.2` |
+| pnpm | `9.0.0` |
+| Git | `2.50.1` |
+| Capacitor | `7.6.8` for CLI, core, and iOS |
+| Target device | iPhone 13 Pro, detected by Xcode and `devicectl` |
+| Target iOS | 26.5.2, detected from the connected device and supported by Xcode 26.5 |
 
-Capacitor 7 is intentionally pinned because it supports the repository's
-Node.js 20 baseline. The iOS project must be generated on the owner's Mac using
-the documented command before 17B can be accepted.
+The earlier Windows implementation and CI evidence remain valid historical
+evidence. This completion pass did not rewrite those commits or reimplement the
+working cross-platform foundation.
 
 ## Delivered scope
 
-### CI workflow
+### Disposable mobile shell and iOS project
 
-`.github/workflows/ci.yml` provides one fail-closed Ubuntu validation job for
-pull requests to `main`, pushes to `main`, and manual dispatch. It uses Node 20,
-pnpm 9, a PostgreSQL 16 service, frozen installation, dependency caching, and
-read-only repository permissions. Its static credentials are visibly CI-only
-and address only the disposable service database.
+`apps/mobile-shell` remains an independently removable workspace with no
+financial-domain logic. The repository-provided workflow generated
+`apps/mobile-shell/ios`, installed its native dependencies, synchronized the
+Capacitor configuration, and opened the workspace in Xcode.
 
-### Mobile-shell package
-
-`apps/mobile-shell` is an independently removable workspace with Capacitor
-configuration, environment validation, local bootstrap/outage assets, contract
-tests, a gitignored/generated-on-demand `dist` build directory, and
-package-specific documentation. It adds no dependency to `apps/web`.
-
-### iOS project
-
-Not generated on Windows. `pnpm mobile:add:ios` validates the runtime
-configuration, requires macOS, builds the local shell assets, and then invokes
-the supported `cap add ios` workflow. The generated `ios/` directory must be
-reviewed and committed from the Mac without personal signing state.
-
-Manual Mac/Xcode steps:
-
-1. Copy `apps/mobile-shell/mobile.env.example` to the ignored
-   `apps/mobile-shell/.env.mobile.local` and provide a temporary trusted HTTPS
-   tunnel or approved non-production URL.
-2. Run `pnpm install --frozen-lockfile`, `pnpm mobile:add:ios`, and
-   `pnpm mobile:doctor`.
-3. Run `pnpm mobile:open:ios` and select the provisional
-   `Aurum 17B Foundation` app target.
-4. Select the owner's Personal Team and allow Xcode to manage signing.
-5. Connect and trust the iPhone 13 Pro, enable Developer Mode if requested, and
-   select the phone as the run destination.
-6. Build and run, handle the device trust prompt if present, and repeat
-   installation when free provisioning expires.
-
-This does not claim TestFlight or App Store distribution support.
+The committed native project contains the provisional 17B identity
+`dev.aurum.mobile.foundation` and the generated Capacitor/CocoaPods integration.
+It does not contain a Personal Team identifier, provisioning profile, device
+identifier, Apple account information, temporary runtime URL, `xcuserdata`,
+Pods, DerivedData, or build output. Personal signing remains local to Xcode.
 
 ### Environment contract
 
 - `AURUM_MOBILE_MODE` is exactly `debug` or `release`.
-- `AURUM_MOBILE_WEB_URL` is consumed at Capacitor configuration/sync time and
+- `AURUM_MOBILE_WEB_URL` is consumed during Capacitor configuration/sync and
   must be an absolute HTTPS URL without credentials, query, or fragment.
 - Debug accepts an explicit HTTPS tunnel, non-production deployment, or HTTPS
-  local endpoint. HTTP is deliberately rejected, avoiding a broad ATS
-  exception.
+  local endpoint. HTTP remains rejected; no broad ATS exception was added.
 - Release additionally rejects loopback, private/LAN, reserved, empty, and
   non-public hostnames.
-- Release requires `AURUM_MOBILE_TRUSTED_ORIGIN` to exactly match the runtime
-  URL origin.
-- Local environment values live in the already-ignored
-  `apps/mobile-shell/.env.mobile.local`; no tunnel URL is committed.
+- Release requires `AURUM_MOBILE_TRUSTED_ORIGIN` to match the runtime URL origin.
+- Local values remain in ignored `apps/mobile-shell/.env.mobile.local`; the
+  temporary URL is not committed.
 
 ### Trusted-origin and external navigation behavior
 
-The configured server URL is the sole privileged WebView origin.
-`allowNavigation` is intentionally absent. Under Capacitor's default behavior,
-same-origin navigation remains in the WebView and external HTTP(S) destinations
-open outside it. There is no wildcard allowlist and no custom bridge.
-
-`mailto:` and unsupported/custom schemes have not been tested on iOS and remain
-explicit physical-device validation items. Provider/OAuth redirect handling is
-not implemented.
+The configured server URL remains the sole privileged WebView origin and
+`allowNavigation` remains absent. Same-origin Aurum navigation stayed in the
+WebView during the device test. The owner completed a temporary development-only
+external-link pass covering a safe HTTPS destination, `mailto:`, and an
+unsupported custom scheme without reporting a privileged WebView takeover.
+The temporary test surface was removed before commit. Provider OAuth was not
+implemented.
 
 ### Loading and outage handling
 
-The minimal local `webDir` includes:
+The minimal local `webDir` still provides the branded initial state and
+`server.errorPath: "error.html"`. On the physical device:
 
-- a branded initial loading/configuration state;
-- `server.errorPath: "error.html"` for remote load failures;
-- an understandable runtime-unavailable message;
-- a retry action targeting the same sync-time-validated URL;
-- only the non-sensitive diagnostic code
-  `AURUM-MOBILE-RUNTIME-UNAVAILABLE` and shell version.
+- disabling network connectivity displayed the bundled Aurum runtime-unavailable
+  fallback rather than an unexplained white screen;
+- the fallback exposed no sensitive information;
+- restoring connectivity and tapping Retry returned to Aurum successfully;
+- leaving the HTTPS tunnel reachable while stopping its local upstream produced
+  an HTTP 502 and displayed the tunnel provider's gateway page instead of the
+  bundled fallback.
 
-No financial data or credential is shown or stored. DNS, TLS, unreachable-host,
-and retry behavior still require iOS/Xcode/device validation.
+The last item is documented for 17F. It does not invalidate the 17B transport
+fallback, but the user-facing 5xx presentation needs a future product decision.
 
-### Root scripts
+## Mac development runtime
 
-| Command                | Purpose                                                                              |
-| ---------------------- | ------------------------------------------------------------------------------------ |
-| `pnpm mobile:build`    | Build generic or configured local shell assets cross-platform                        |
-| `pnpm mobile:check`    | Validate the explicit environment contract                                           |
-| `pnpm mobile:prepare`  | Validate config and embed the non-secret runtime target in generated fallback assets |
-| `pnpm mobile:add:ios`  | macOS-only supported iOS project generation                                          |
-| `pnpm mobile:sync:ios` | macOS-only asset/config sync                                                         |
-| `pnpm mobile:open:ios` | macOS-only Xcode open                                                                |
-| `pnpm mobile:doctor`   | Validate config, macOS/Xcode availability, iOS project, and Capacitor dependencies   |
-
-Existing web/API commands and the Windows restart helper are unchanged.
-
-## CI validation
-
-The `Validate repository` job runs:
+No pre-approved non-production deployment was available. The device session
+used the smallest isolated local stack required for validation:
 
 ```text
-pnpm install --frozen-lockfile
-pnpm --filter api exec prisma generate
-pnpm --filter api exec prisma validate
-pnpm --filter api exec prisma migrate deploy
-pnpm lint
-pnpm typecheck
-pnpm --filter api test
-pnpm --filter api test:e2e
-pnpm --filter mobile-shell test
-pnpm build
+iPhone 13 Pro
+  -> ephemeral Cloudflare Quick Tunnel (HTTPS)
+  -> Mac Next.js development server on port 3000
+  -> same-origin /api rewrite
+  -> Mac NestJS development server on port 3001
+  -> dedicated local PostgreSQL 16 database
 ```
 
-The migration uses only `postgres:16` service database `aurum_ci`. No step uses
-`continue-on-error`, `|| true`, production infrastructure, or a real secret.
+Homebrew PostgreSQL 16.14 and `cloudflared` 2026.7.3 were installed for this
+owner-only development session. All 16 Prisma migrations and the repository's
+synthetic demo seed ran against the dedicated `aurum_m17b` database. No real
+financial data or production/beta infrastructure was used. Docker was not
+installed or required.
 
-GitHub Actions result: **Pass**. The first complete pushed change set ran every
-listed step successfully in 1m53s:
+CocoaPods 1.11.2 continued to report its existing `ffi` native-extension
+warning, but the actual `pod install`, Capacitor add/sync, and native build all
+succeeded. CocoaPods, Ruby, and `ffi` were therefore not replaced or upgraded.
+
+## Validation
+
+### Cross-platform and CI history
+
+The earlier `Validate repository` GitHub Actions run passed the frozen install,
+Prisma generation/validation/migration, lint, typecheck, API unit/e2e tests,
+mobile-shell tests, and monorepo build in 1m53s:
 [CI run 30516422879](https://github.com/yuzequn095/Aurum/actions/runs/30516422879).
 
-## Local validation
+### macOS, Capacitor, and Xcode
 
-| Command                                                                   | Result                                                                                                                          |
-| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm install --frozen-lockfile --offline`                                | Pass; lockfile current                                                                                                          |
-| `pnpm --filter mobile-shell test`                                         | Pass; 16/16 tests                                                                                                               |
-| `pnpm --filter mobile-shell typecheck`                                    | Pass                                                                                                                            |
-| `pnpm --filter mobile-shell build`                                        | Pass; generic local assets generated                                                                                            |
-| `pnpm mobile:check` with explicit debug HTTPS URL                         | Pass                                                                                                                            |
-| `pnpm mobile:prepare` with explicit debug HTTPS URL                       | Pass                                                                                                                            |
-| `pnpm --filter mobile-shell exec cap doctor`                              | Pass as a dependency report; CLI/core/iOS all installed at 7.6.8                                                                |
-| `pnpm --filter mobile-shell exec cap config` with valid Release variables | Pass; TypeScript config resolved with HTTPS URL, no `allowNavigation`, Release logging disabled, and WebView debugging disabled |
-| `pnpm mobile:doctor`                                                      | Expected environment failure: current platform is `win32`; macOS/Xcode required                                                 |
-| `pnpm lint`                                                               | Pass                                                                                                                            |
-| `pnpm typecheck`                                                          | Pass across core, API, web, and mobile shell                                                                                    |
-| `pnpm --filter api test`                                                  | Pass; 22 suites and 113 tests                                                                                                   |
-| `pnpm --filter api test:e2e`                                              | Pass; 2 suites and 5 tests                                                                                                      |
-| `pnpm build`                                                              | Pass across core, API, web, and mobile shell                                                                                    |
-| `pnpm --filter api exec prisma validate`                                  | Pass                                                                                                                            |
-| `pnpm --filter api exec prisma migrate deploy`                            | Pass; all 16 migrations applied to an empty disposable PostgreSQL 16 container                                                  |
-| `cap sync ios`                                                            | Not run; no generated iOS project and Windows is unsupported                                                                    |
-| Xcode build                                                               | Not run; Xcode unavailable on Windows                                                                                           |
+| Check | Result | Evidence/notes |
+| --- | --- | --- |
+| Frozen dependency install | Pass | Lockfile current on macOS |
+| Mobile-shell tests | Pass | 16/16 tests |
+| Mobile-shell typecheck | Pass | No TypeScript errors |
+| Mobile-shell build | Pass | Generic shell assets generated |
+| `mobile:check` / `mobile:prepare` | Pass | Ignored debug HTTPS configuration validated and embedded |
+| `mobile:add:ios` | Pass | Generated the iOS project with Capacitor 7.6.8 |
+| `mobile:sync:ios` | Pass | Web assets/config copied; CocoaPods install completed |
+| `mobile:doctor` | Pass | Xcode, project, Pods, and Capacitor dependencies detected |
+| Xcode workspace open | Pass | `App.xcworkspace` and `App` scheme recognized |
+| Unsigned device-target build | Pass | Clean serial Xcode build for the connected iPhone destination |
+| Signed device build | Pass | Automatic Personal Team development signing succeeded |
+| App install and launch | Pass | Installed and launched as `dev.aurum.mobile.foundation` |
 
-The expected `mobile:doctor` failure is an environment capability failure, not
-an application test pass. The disposable `aurum-m17b-postgres` container used
-for migration and e2e validation was stopped and automatically removed after
-the tests; it did not use the repository's persistent development volume.
+Xcode emitted only non-blocking warnings: an upstream CapacitorCordova
+`WKProcessPool` deprecation and a CocoaPods embed-framework build phase without
+declared outputs.
 
-## Physical-device validation
+### Physical-device validation
 
-No device test was performed. “Not performed” is not treated as passing.
+| Test | Result | Evidence/notes |
+| --- | --- | --- |
+| iOS project opens in Xcode | Pass | Generated workspace and scheme opened on macOS |
+| Project builds | Pass | Clean unsigned and signed physical-destination builds |
+| App installs with Personal Team | Pass | Automatic signing, device registration, and installation succeeded |
+| App launches | Pass | Trusted developer profile and launched on iPhone 13 Pro |
+| Non-production Aurum runtime loads | Pass | Ephemeral HTTPS tunnel loaded the local Next.js runtime |
+| Login/demo entry renders | Pass | Login surface rendered using synthetic data only |
+| Demo login works | Pass | Seeded demo account reached the authenticated experience |
+| Same-origin Next.js navigation works | Pass | Aurum routes remained in the privileged WebView |
+| Dashboard renders | Pass | Dashboard cards and charts rendered |
+| Mobile navigation works | Pass | Home, Portfolio, Transactions, AI Insights, and Settings exercised |
+| Rotation observed | Pass | Portrait and landscape observed on the phone |
+| Background/foreground restores WebView | Pass | Returned after approximately ten seconds in background |
+| External HTTPS behavior | Pass | Temporary safe external link pass completed without reported WebView takeover |
+| `mailto:` behavior | Pass with observation debt | Trigger exercised; no blocking failure reported |
+| Unsupported custom scheme | Pass with observation debt | Trigger exercised; no blocking failure reported |
+| Return to Aurum works | Pass | App remained usable after external-navigation pass |
+| Runtime unavailable state | Pass | Offline transport failure displayed branded bundled fallback |
+| Retry works | Pass | Restored network and Retry returned to the runtime |
+| Reachable tunnel with failed upstream | Debt recorded | HTTP 502 displayed Cloudflare's gateway page; track in 17F |
+| Top and bottom safe areas | Pass for basic use | No core-path blocker reported |
+| Keyboard and modal interaction | Pass for basic use | Login/action flow usable; owner noted minor non-blocking issues |
+| Bottom navigation and charts | Pass for basic use | Core surfaces usable; hardening remains 17F scope |
+| Browser prompts and swipe/history | Pass for basic use | No core-path blocker reported |
+| No secret-bearing native bridge | Pass | Source/project inspection found no custom secret bridge |
+| No real financial data used | Pass | Dedicated database contained only repository demo/synthetic data |
 
-| Test                                    | Result                    | Evidence/Notes                                                      |
-| --------------------------------------- | ------------------------- | ------------------------------------------------------------------- |
-| iOS project opens in Xcode              | Not performed             | Xcode unavailable on Windows                                        |
-| Project builds                          | Not performed             | Requires Mac/Xcode                                                  |
-| App installs with Personal Team         | Not performed             | Requires owner account, signing, and device                         |
-| App launches                            | Not performed             | Requires installed app                                              |
-| Non-production runtime loads            | Not performed             | Requires device and temporary HTTPS target                          |
-| Login/demo entry renders                | Not performed             | Use synthetic/demo data only                                        |
-| Same-origin Next.js navigation works    | Not performed             | Default policy configured; device evidence required                 |
-| Dashboard/mobile navigation renders     | Not performed             | Device evidence required                                            |
-| Rotation observed                       | Not performed             | Observe only; policy remains deferred                               |
-| Background/foreground preserves WebView | Not performed             | Device evidence required                                            |
-| External HTTPS opens in system browser  | Not performed             | Capacitor default configured; test a safe link                      |
-| Return to Aurum works                   | Not performed             | Device evidence required                                            |
-| Unavailable runtime shows failure state | Not performed             | Supported local `errorPath` is configured; device evidence required |
-| Retry works                             | Not performed             | Bundled retry exists; DNS/TLS/network behavior must be observed     |
-| No secret-bearing native bridge         | Pass by source inspection | No custom native bridge or secret-storage plugin exists             |
-| No real financial data used             | Pass for repository work  | No real data, credential, or tunnel URL was added                   |
-
-Also observe safe areas, keyboard overlap, bottom navigation, modals, chart
-sizing, browser prompts, and swipe-back behavior during the device session.
-Record defects as 17F candidates rather than expanding 17B.
+The owner observed minor non-blocking device UX bugs and explicitly accepted
+the core device experience as sufficient for 17B. They were not itemized, so
+this closeout does not invent reproductions or claim fixes; concrete recurrence
+should be captured and prioritized in 17F.
 
 ## Architecture compliance
 
-- Disposable shell: yes; isolated in `apps/mobile-shell` and independently
-  removable.
+- Disposable shell: yes; isolated in `apps/mobile-shell` and independently removable.
 - Native financial logic: none.
-- Local financial database or persistence: none.
-- Raw-token/Keychain/generic secure-storage bridge: none.
+- Native financial persistence: none.
+- Raw-token, Keychain, or generic secure-storage bridge: none.
 - Production hosting or permanent domain: none.
 - Real personal financial data: none.
 - Provider/OAuth rollout: none.
 - TestFlight/App Store claim: none.
 - Final mobile authentication architecture: not implemented.
 
-## Known debt
+## 17F candidates and remaining debt
 
-- The application identifier `dev.aurum.mobile.foundation` is temporary.
-- The native `ios/` project still must be generated and committed from macOS.
-- The non-production runtime URL remains owner-local and intentionally
-  uncommitted.
-- Xcode build, Personal Team signing, physical install, navigation, outage, and
-  device lifecycle evidence are absent.
-- `mailto:` and unsupported/custom URL scheme behavior needs device validation.
-- Free Personal Team provisioning expires and requires periodic re-signing.
-- Safe-area, keyboard, modal, chart, rotation, browser-prompt, and swipe-back
-  observations remain 17F candidates.
+- Detect or replace provider-generated HTTP gateway/5xx pages with a consistent
+  Aurum runtime-unavailable experience; `server.errorPath` covered a transport
+  failure but did not intercept the observed tunnel HTTP 502 response.
+- Reproduce and itemize the owner's minor non-blocking physical-device UX bugs
+  before selecting fixes.
+- Continue focused safe-area, keyboard, modal, chart, browser-prompt, rotation,
+  and swipe/history hardening on representative devices.
+- The application identifier `dev.aurum.mobile.foundation` is provisional and
+  belongs to 17C.
+- The runtime is an owner-local development stack behind an ephemeral URL, not
+  production/beta infrastructure.
+- Personal Team provisioning expires and requires periodic local re-signing.
+- The CocoaPods `ffi` warning remains machine-level debt because it did not
+  affect generation, dependency installation, build, or installation.
+- Final authentication, secure credential lifecycle, permanent infrastructure,
+  production data, TestFlight, and App Store distribution remain out of 17B.
 
 ## 17C handoff
 
@@ -243,4 +224,4 @@ Only the following belongs to 17C:
 
 Authentication and credential lifecycle remain 17D. Production hosting,
 database, domain, backups, and deployment remain 17E. Runtime/device hardening
-and the observed UX issues remain 17F.
+and observed UX issues remain 17F.
