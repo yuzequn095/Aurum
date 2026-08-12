@@ -3,26 +3,40 @@ import test from 'node:test';
 
 import { optionalMobileRuntimeConfig, requireMobileRuntimeConfig } from './runtime-url.mjs';
 
-test('accepts an HTTPS debug endpoint, including loopback', () => {
+test('accepts an HTTPS debug origin, including loopback', () => {
   const config = requireMobileRuntimeConfig({
     AURUM_MOBILE_MODE: 'debug',
-    AURUM_MOBILE_WEB_URL: 'https://localhost:3000/mobile',
+    AURUM_MOBILE_WEB_URL: 'https://localhost:3000',
   });
 
   assert.equal(config.mode, 'debug');
-  assert.equal(config.url, 'https://localhost:3000/mobile');
+  assert.equal(config.url, 'https://localhost:3000/');
   assert.equal(config.origin, 'https://localhost:3000');
 });
 
 test('accepts a public release URL only with its exact trusted origin', () => {
   const config = requireMobileRuntimeConfig({
     AURUM_MOBILE_MODE: 'release',
-    AURUM_MOBILE_WEB_URL: 'https://app.aurum.example.org/mobile',
+    AURUM_MOBILE_WEB_URL: 'https://app.aurum.example.org',
     AURUM_MOBILE_TRUSTED_ORIGIN: 'https://app.aurum.example.org',
   });
 
   assert.equal(config.mode, 'release');
   assert.equal(config.origin, 'https://app.aurum.example.org');
+});
+
+test('rejects runtime URLs with a path in every mode', () => {
+  for (const mode of ['debug', 'release']) {
+    assert.throws(
+      () =>
+        requireMobileRuntimeConfig({
+          AURUM_MOBILE_MODE: mode,
+          AURUM_MOBILE_WEB_URL: 'https://app.aurum.example.org/mobile',
+          AURUM_MOBILE_TRUSTED_ORIGIN: 'https://app.aurum.example.org',
+        }),
+      /must be an origin without a path/u,
+    );
+  }
 });
 
 for (const invalidReleaseUrl of [

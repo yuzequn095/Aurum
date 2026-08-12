@@ -113,6 +113,12 @@ export function requireMobileRuntimeConfig(env = process.env) {
   const mode = parseMode(env.AURUM_MOBILE_MODE);
   const runtimeUrl = parseHttpsUrl(env.AURUM_MOBILE_WEB_URL, 'AURUM_MOBILE_WEB_URL');
 
+  if (runtimeUrl.pathname !== '/') {
+    throw configurationError(
+      'AURUM_MOBILE_WEB_URL must be an origin without a path; Aurum routes are same-origin navigation.',
+    );
+  }
+
   if (mode === 'release') {
     if (!isPublicReleaseHostname(runtimeUrl.hostname)) {
       throw configurationError(
