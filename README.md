@@ -29,6 +29,7 @@ This document serves as both a product overview and developer reference for Auru
 - [What Milestone 14 Changed](#what-milestone-14-changed)
 - [What Milestone 15 Changed](#what-milestone-15-changed)
 - [What Milestone 16 Changed](#what-milestone-16-changed)
+- [What Milestone 17C Changed](#what-milestone-17c-changed)
 - [Current Architecture](#current-architecture)
 - [Long-term Vision](#long-term-vision)
 - [Architecture Documents](#architecture-documents)
@@ -225,7 +226,7 @@ Mobile is intentionally not a separate route tree. The same product surfaces ada
 
 ## Current Status
 
-Milestones 1-16 are complete at the foundation-plus-productization level. Milestone 17 is not complete. The 17A architecture decision is accepted, and 17B now contains a cross-platform CI and disposable Capacitor foundation, but its generated iOS project, Xcode build, Personal Team installation, and physical-device acceptance still require macOS and the owner's iPhone.
+Milestones 1-16 are complete at the foundation-plus-productization level. Milestone 17 is in progress: 17A is accepted, 17B is complete with documented debt, and 17C establishes the durable iOS identity and trusted native configuration contract. The 17C shell builds, signs with a Personal Team, installs on the owner's iPhone, and has passed physical-device acceptance. Milestone 17D has not begun.
 
 - Platform status:
   monorepo, API, web, auth, ledger, taxonomy, analytics, import/export, and dashboard foundations are stable.
@@ -238,7 +239,7 @@ Milestones 1-16 are complete at the foundation-plus-productization level. Milest
 - Experience status:
   Home, Portfolio, Transactions, AI Insights, Settings, Login/Register, desktop shell, mobile bottom nav, and command menu have been productized into a coherent day-to-day web experience with connected-finance status and portfolio depth visible where relevant.
 - Current execution focus:
-  finish the gated Milestone 17 private iOS beta sequence without changing the accepted remote-runtime, auth, hosting, or financial-data boundaries.
+  continue the gated Milestone 17 sequence with the 17D authentication boundary, without mixing in 17E hosting or 17F UX hardening.
 
 ## Milestone Summary
 
@@ -256,7 +257,7 @@ Milestones 1-16 are complete at the foundation-plus-productization level. Milest
 | 14 | Experience Layer / Productization | Done | Product structure cleanup, desktop polish, mobile page-level productization, command menu refinement, visual polish, and final cross-surface acceptance review. |
 | 15 | Connected Finance Expansion / Portfolio Depth | Done | Institution-aware manual presets, connected-finance overview health, snapshot lineage/delta APIs, deterministic portfolio diagnostics, demo data, and validation docs. |
 | 16 | Portfolio History & Proactive Context | Done | Scoped snapshot history, deterministic change explanations, structured best-effort AI context, Portfolio Market Lens, and computed in-app attention items. |
-| 17 | Private iOS Beta Architecture & Foundation | In progress | 17A accepted the remote Next.js runtime architecture. 17B adds baseline CI and a disposable Capacitor shell, with macOS/Xcode/physical-device acceptance still outstanding. |
+| 17 | Private iOS Beta Architecture & Foundation | In progress | 17A accepted the remote-runtime architecture; 17B proved the disposable shell on a physical iPhone; 17C established durable identity, fail-closed trusted configuration, native presentation policy, and least-privilege metadata. 17D is next. |
 
 **Milestone 11 delivered:**
 
@@ -431,6 +432,31 @@ The legacy `/v1/ai/daily-market-brief` route and task id remain for compatibilit
 - not live market data or a current-market overview
 - not transaction reconciliation, tax-lot accounting, realized P&L, investment advice, or trade execution
 
+## What Milestone 17C Changed
+
+Milestone 17C turns the proven disposable Capacitor foundation into a stable,
+reviewable native shell without moving product or financial logic into iOS.
+
+- Replaced the provisional bundle identifier with the durable
+  `io.github.yuzequn095.aurum` identity and the `Aurum` display name.
+- Added an Aurum app icon and launch presentation derived from the existing
+  overlapping-ring mark and gold/dark-green visual language.
+- Made Debug and Release/private-beta configuration boundaries fail closed.
+  Debug accepts an explicit HTTPS development origin; Release requires an
+  explicit matching trusted public HTTPS origin and rejects local/private,
+  malformed, credential-bearing, path-bearing, query, and fragment values.
+- Kept `allowNavigation` absent so only the pinned Aurum origin remains inside
+  the privileged WebView and external navigation leaves it.
+- Set an explicit iOS 14.0 minimum, iPhone-only portrait policy, stable status
+  bar behavior, and clear native/web ownership for safe areas and keyboards.
+- Confirmed no app-level entitlement, sensitive permission, custom native
+  plugin, secret-bearing bridge, or financial-domain native code is present.
+- Froze bridge contract version 1 with no custom capabilities; browser
+  operation remains the baseline and future native features must be detected.
+
+See [`MILESTONE_17C_CLOSEOUT.md`](./MILESTONE_17C_CLOSEOUT.md) for the exact
+Mac, Xcode, signed-install, and physical-device evidence.
+
 ## Current Architecture
 
 **Backend stack:**
@@ -453,8 +479,10 @@ The legacy `/v1/ai/daily-market-brief` route and task id remain for compatibilit
 **Mobile foundation:**
 
 - `apps/mobile-shell` contains the disposable Capacitor 7 shell and bundled loading/outage assets.
-- The shell loads one build-time-validated remote Next.js HTTPS origin and contains no financial-domain logic, local financial database, or credential bridge.
-- This foundation is not yet an accepted iOS build: see the 17B closeout for the unperformed Mac/Xcode/device work.
+- The shell uses durable identity `io.github.yuzequn095.aurum`, displays as `Aurum`, and loads one build-time-validated remote Next.js HTTPS origin.
+- Debug and Release configuration are separately enforced at Capacitor sync and Xcode build time; `allowNavigation` remains absent.
+- The shell contains no financial-domain logic, local financial database, authentication implementation, or credential bridge.
+- Personal Team signing, installation, and the 17C identity/configuration contract are physically validated on the owner's iPhone 13 Pro.
 
 **Key platform surfaces:**
 
@@ -531,7 +559,8 @@ All within one unified platform.
 - [MILESTONE_13_CLOSEOUT.md](./MILESTONE_13_CLOSEOUT.md) - delivered AI Product Layer capabilities, limitations, and Milestone 14 handoff notes.
 - [MILESTONE_17_AUDIT.md](./MILESTONE_17_AUDIT.md) - repository-grounded Capacitor feasibility, authentication, deployment, data-safety, and compatibility audit.
 - [MILESTONE_17_ARCHITECTURE_DECISION.md](./MILESTONE_17_ARCHITECTURE_DECISION.md) - accepted-with-debt private iOS beta architecture decision, security gates, and phased implementation handoff.
-- [MILESTONE_17B_CLOSEOUT.md](./MILESTONE_17B_CLOSEOUT.md) - delivered CI/mobile-shell foundation, exact validation evidence, and outstanding Mac/Xcode/physical-device acceptance.
+- [MILESTONE_17B_CLOSEOUT.md](./MILESTONE_17B_CLOSEOUT.md) - completed disposable-shell foundation with Mac, Xcode, Personal Team, and physical-device evidence.
+- [MILESTONE_17C_CLOSEOUT.md](./MILESTONE_17C_CLOSEOUT.md) - durable iOS identity, trusted configuration, least-privilege native policy, and physical-device acceptance.
 - [FINANCIAL_DOMAIN_MODEL.md](./FINANCIAL_DOMAIN_MODEL.md) - financial entities, relationships, domain concepts.
 - [ROADMAP.md](./ROADMAP.md) - long-term product and platform evolution.
 
@@ -683,11 +712,13 @@ pnpm mobile:open:ios
 pnpm mobile:doctor
 ```
 
-The native commands fail clearly outside macOS. The 17B shell is provisional:
-Milestone 17 remains incomplete until the iOS project is generated, built,
-installed with the owner's Personal Team, and validated on the physical iPhone
-using only demo/non-sensitive data. See
-[`MILESTONE_17B_CLOSEOUT.md`](./MILESTONE_17B_CLOSEOUT.md).
+The native commands fail clearly outside macOS. The iOS project is committed;
+use `mobile:add:ios` only if it is genuinely missing. Debug configuration may
+use an ephemeral HTTPS development tunnel. Release/private-beta configuration
+requires an explicit public HTTPS runtime and an exactly matching trusted
+origin. Xcode verifies that the synced mode matches the selected build
+configuration. See [`apps/mobile-shell/README.md`](./apps/mobile-shell/README.md)
+and [`MILESTONE_17C_CLOSEOUT.md`](./MILESTONE_17C_CLOSEOUT.md).
 
 ## Environment Variables
 
@@ -696,8 +727,8 @@ using only demo/non-sensitive data. See
 | Key | Example | Purpose |
 | --- | --- | --- |
 | `AURUM_MOBILE_MODE` | `debug` / `release` | Selects the validated non-production or release policy at Capacitor sync/build time. |
-| `AURUM_MOBILE_WEB_URL` | `https://temporary-tunnel.example.org` | Explicit remote Next.js runtime. HTTP is rejected in both modes; Release also rejects loopback, LAN, reserved, or empty hosts. |
-| `AURUM_MOBILE_TRUSTED_ORIGIN` | `https://app.example.org` | Required in Release and must exactly match the runtime URL origin. |
+| `AURUM_MOBILE_WEB_URL` | `<explicit HTTPS origin>` | Remote Next.js runtime origin. Debug may use a temporary tunnel; Release rejects loopback, LAN/private, reserved, malformed, or non-origin values. |
+| `AURUM_MOBILE_TRUSTED_ORIGIN` | `<same Release HTTPS origin>` | Required in Release and must exactly match `AURUM_MOBILE_WEB_URL`'s origin. |
 
 ### Web (`apps/web/.env.local`)
 
