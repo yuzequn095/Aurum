@@ -30,6 +30,10 @@ class MemoryPersistence implements CredentialPersistence {
     this.session = null;
   }
 
+  replace(session: PersistedAuthSession): void {
+    this.session = { ...session };
+  }
+
   runExclusiveRefresh<T>(operation: () => Promise<T>): Promise<T> {
     return operation();
   }
@@ -178,5 +182,63 @@ test('an old refresh cannot overwrite a newer login', async () => {
   assert.deepEqual(persistence.read(), {
     refreshToken: 'refresh-new-login',
     userEmail: 'new@aurum.local',
+  });
+});
+
+test('an A to B persisted-account change clears A access and rehydrates B', async () => {
+  const persistence = new MemoryPersistence(null);
+  const pendingA = deferred<RefreshResult>();
+  const pendingB = deferred<RefreshResult>();
+  const manager = new AuthSessionManager(persistence, async (refreshToken) => {
+    if (refreshToken === 'refresh-a') return pendingA.promise;
+    if (refreshToken === 'refresh-b') return pendingB.promise;
+    return assert.fail(`Unexpected refresh token: ${refreshToken}`);
+  });
+
+  manager.establishSession({
+    accessToken: 'access-a',
+    refreshToken: 'refresh-a',
+    userEmail: 'account-a@aurum.local',
+  });
+  const staleARefresh = assert.rejects(manager.refreshAccessToken(), {
+    kind: 'superseded',
+  });
+  persistence.replace({
+    refreshToken: 'refresh-b',
+    userEmail: 'account-b@aurum.local',
+  });
+
+  manager.synchronizeFromPersistence();
+
+  assert.equal(manager.getAccessToken(), null);
+  assert.deepEqual(manager.getSnapshot(), {
+    phase: 'checking',
+    userEmail: 'account-b@aurum.local',
+  });
+
+  pendingA.resolve({
+    accessToken: 'access-a-rotated',
+    refreshToken: 'refresh-a-rotated',
+  });
+  await staleARefresh;
+  assert.equal(manager.getAccessToken(), null);
+  assert.deepEqual(persistence.read(), {
+    refreshToken: 'refresh-b',
+    userEmail: 'account-b@aurum.local',
+  });
+
+  pendingB.resolve({
+    accessToken: 'access-b',
+    refreshToken: 'refresh-b-rotated',
+  });
+
+  assert.deepEqual(await manager.hydrate(), {
+    phase: 'authenticated',
+    userEmail: 'account-b@aurum.local',
+  });
+  assert.equal(manager.getAccessToken(), 'access-b');
+  assert.deepEqual(persistence.read(), {
+    refreshToken: 'refresh-b-rotated',
+    userEmail: 'account-b@aurum.local',
   });
 });

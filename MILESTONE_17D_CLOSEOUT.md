@@ -213,7 +213,7 @@ lockfile.
 
 ## Automated tests
 
-The new web suite contains 14 deterministic tests:
+The web suite contains 15 deterministic tests:
 
 - six concurrent protected 401s share exactly one refresh and all retry with
   the same new access token;
@@ -226,7 +226,10 @@ The new web suite contains 14 deterministic tests:
 - five failed waiters share one refresh and one invalidation;
 - hydration covers absent, valid, invalid/revoked, and temporary-failure cases;
 - refresh-in-flight plus logout cannot resurrect a session;
-- an old refresh cannot overwrite a newer login.
+- an old refresh cannot overwrite a newer login;
+- an A-to-B persisted-account change clears A's in-memory access token,
+  supersedes A's in-flight refresh, and rehydrates only from B's refresh
+  session.
 
 The new API auth e2e suite contains five high-value lifecycle tests covering
 login response shape, valid rotation and old-token reuse, revoked/invalid/
@@ -239,7 +242,7 @@ Final results:
 | `pnpm install --frozen-lockfile` | Pass |
 | `pnpm lint` | Pass, 3 lint tasks |
 | `pnpm typecheck` | Pass, 4 workspace tasks |
-| `pnpm --filter web test` | Pass, 14/14 |
+| `pnpm --filter web test` | Pass, 15/15 |
 | `pnpm --filter api test -- --runInBand` | Pass, 22 suites / 113 tests |
 | `pnpm --filter api test:e2e` | Pass, 3 suites / 10 tests |
 | `pnpm --filter mobile-shell test` | Pass, 18/18 |

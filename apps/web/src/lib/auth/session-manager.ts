@@ -200,16 +200,17 @@ export class AuthSessionManager {
       return;
     }
 
-    if (this.snapshot.phase === 'unauthenticated') {
+    if (
+      this.snapshot.phase === 'unauthenticated' ||
+      persisted.userEmail !== this.snapshot.userEmail
+    ) {
       this.epoch += 1;
+      this.inFlightRefresh = null;
+      this.hydrationPromise = null;
       this.accessToken = null;
       this.publish({ phase: 'checking', userEmail: persisted.userEmail });
       void this.hydrate();
       return;
-    }
-
-    if (persisted.userEmail !== this.snapshot.userEmail) {
-      this.publish({ ...this.snapshot, userEmail: persisted.userEmail });
     }
   }
 
