@@ -231,6 +231,34 @@ Until the real-data authentication gate is satisfied, Model B is limited to synt
 
 ## Authentication Decision
 
+### 17D owner-only implementation decision
+
+Milestone 17D completed the functional session-lifecycle work and refined the
+scope of the original strict credential gate. For the current owner-only,
+direct-installed private beta, Aurum retains the refresh credential in browser
+localStorage behind one explicit persistence adapter. The access token is
+memory-only; unused JavaScript-readable auth cookies and the legacy persisted
+access-token copy are removed. Startup validation, single-flight refresh,
+bounded retry, transaction-safe server rotation, revocation, and epoch-guarded
+logout/new-login races are implemented and browser/device tested.
+
+This selection intentionally does **not** prove that remotely served trusted-
+origin JavaScript cannot retrieve the refresh credential. It is accepted only
+for owner dogfood with synthetic or later low-to-medium-sensitivity numeric
+data after the independent hosting/data-safety gates pass. It is not approved
+for broader distribution, provider/bank/broker credentials, OAuth tokens,
+SSNs, card numbers, tax documents, raw statements, or other high-sensitivity
+data.
+
+The native-broker, same-origin HttpOnly-cookie, and Model A analysis below is
+retained as the stricter architectural upper bound. Before broader distribution
+or high-sensitivity credentials, Aurum must revisit that boundary and prove the
+selected design prevents page JavaScript from retrieving/exfiltrating the
+long-lived credential. A generic native token getter remains prohibited.
+
+See `MILESTONE_17D_CLOSEOUT.md` for the implemented flow, tests, accepted debt,
+and physical-device evidence.
+
 ### Storage abstraction
 
 Introduce explicit asynchronous authentication boundaries so session and API code no longer read `localStorage`, cookies, or native storage directly.
@@ -243,13 +271,13 @@ Introduce explicit asynchronous authentication boundaries so session and API cod
 
 The page is remotely deployable code from the trusted Aurum origin. If that deployment, build pipeline, dependency graph, or served JavaScript is compromised, the malicious code runs with the same origin and bridge permissions as legitimate code. Origin pinning prevents an unrelated origin from using the bridge, and CSP can reduce some injection paths, but neither prevents trusted-origin code from calling an exposed `getRefreshToken()`-style API and exfiltrating its result.
 
-Before real personal financial data, 17D must select, implement, and device-test one of:
+The original strict gate evaluated the following before real personal financial data. After the scoped 17D owner-only decision above, one of these remains required before broader distribution or high-sensitivity credentials:
 
 1. **Native authentication broker:** native code owns login, refresh, logout, logout-all, Keychain persistence, and rotation; it never returns the raw refresh token to page JavaScript.
 2. **Same-origin HttpOnly cookie:** the hosted Next.js/auth path keeps the refresh credential in an `HttpOnly`, `Secure`, appropriately `SameSite` cookie that JavaScript cannot read.
 3. **Model A before real data:** move the native client to signed bundled assets, then evaluate a minimal Keychain adapter within that signed-code threat model.
 
-The 17D validation must actively prove that Aurum application JavaScript cannot retrieve or exfiltrate the long-lived credential. Storage-at-rest encryption, origin checks, and a successful login are not sufficient evidence.
+The future broader-distribution/high-sensitivity validation must actively prove that Aurum application JavaScript cannot retrieve or exfiltrate the long-lived credential. Storage-at-rest encryption, origin checks, and a successful login are not sufficient evidence. The owner-only 17D implementation explicitly does not claim this proof.
 
 ### Token placement
 
@@ -435,7 +463,9 @@ Capacitor and a future SwiftUI client may coexist during migration because both 
 - no TestFlight or App Store readiness claim;
 - hard dependency on network, hosted web, API, and database availability;
 - provider hostname embedded in the shell until stable domain work is justified;
-- browser localStorage session behavior retained only as a non-sensitive development/demo compatibility baseline until the 17D credential decision;
+- browser localStorage refresh persistence selected behind the 17D credential
+  adapter for owner-only private-beta compatibility; trusted-origin JavaScript
+  readability remains accepted scoped debt;
 - access tokens remain valid until short expiry after logout;
 - one region, basic observability, and manual operational response;
 - no meaningful offline finance workflow;
@@ -446,7 +476,11 @@ Capacitor and a future SwiftUI client may coexist during migration because both 
 
 This debt is accepted only for a controlled owner beta. It must be reviewed before expanding users or distribution.
 
-The unresolved remote-runtime credential boundary is a real-data blocker, not accepted security debt. Hosting Model B with real personal financial data is prohibited until the 17D gate is implemented and proven.
+The remote-runtime credential boundary remains a blocker before broader
+distribution or high-sensitivity credentials. Milestone 17D accepts the
+JavaScript-readable refresh credential only for owner-only dogfood and does not
+claim the strict non-exfiltration proof described above. Independent 17E/17G
+hosting and data-safety gates still prohibit current real-data use.
 
 ## Rejected Complexity
 
@@ -525,6 +559,13 @@ Exit: app identity and origin policy are stable, reviewable, and environment-spe
 - run an adversarial trusted-origin test build that enumerates the page bridge and attempts to retrieve or exfiltrate the long-lived credential, then document why the attempt cannot obtain it.
 
 Exit: the selected authentication design is implemented and tested, and the credential non-exfiltration proof passes. Real data remains prohibited until every other data-safety gate also passes.
+
+17D implementation outcome: the owner-only scope selected the documented
+browser-persistence compatibility option rather than claiming the strict
+non-exfiltration exit above. Functional session correctness and device testing
+passed; JavaScript readability is accepted scoped debt. The strict exit remains
+a prerequisite before broader distribution or high-sensitivity credentials,
+as detailed in `MILESTONE_17D_CLOSEOUT.md`.
 
 ### 17E – Private hosting, migrations, and database recovery
 
