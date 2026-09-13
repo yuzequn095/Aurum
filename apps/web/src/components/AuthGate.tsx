@@ -11,11 +11,11 @@ export function AuthGate({ children }: PropsWithChildren) {
   const { isHydrated, isAuthenticated, isUnavailable, retryHydration } = useAuthSession();
 
   useEffect(() => {
-    if (isHydrated && !isAuthenticated) {
+    if (isHydrated && !isAuthenticated && !isUnavailable) {
       const next = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
       router.replace(`/login${next}`);
     }
-  }, [isAuthenticated, isHydrated, pathname, router]);
+  }, [isAuthenticated, isHydrated, isUnavailable, pathname, router]);
 
   if (!isHydrated) {
     return (
