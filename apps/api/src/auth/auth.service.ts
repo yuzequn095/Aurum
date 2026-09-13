@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -44,6 +45,7 @@ export class AuthService {
     meta?: ClientMeta,
   ): Promise<AuthResponse> {
     const normalizedEmail = this.normalizeEmail(email);
+    this.assertRegistrationAllowed(normalizedEmail);
     const existing = await this.prisma.authIdentity.findUnique({
       where: {
         provider_identifier: {
@@ -81,6 +83,19 @@ export class AuthService {
       },
       ...tokens,
     };
+  }
+
+  private assertRegistrationAllowed(email: string): void {
+    const mode = this.configService.get<string>('AURUM_REGISTRATION_MODE') ?? 'open';
+    if (mode !== 'owner-only') return;
+
+    const allowed = (this.configService.get<string>('AURUM_ALLOWED_REGISTRATION_EMAILS') ?? '')
+      .split(',')
+      .map((item) => this.normalizeEmail(item))
+      .filter(Boolean);
+    if (!allowed.includes(email)) {
+      throw new ForbiddenException('Registration is closed for this private beta');
+    }
   }
 
   async login(

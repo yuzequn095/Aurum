@@ -39,6 +39,8 @@ export async function fetchWithFallback(
   init: RequestInit = {},
 ): Promise<Response> {
   const bases = buildApiBases();
+  const method = (init.method ?? 'GET').toUpperCase();
+  const allowsFallback = ['GET', 'HEAD', 'OPTIONS'].includes(method);
   let lastError: unknown;
   let lastResponse: Response | null = null;
 
@@ -48,10 +50,12 @@ export async function fetchWithFallback(
 
     try {
       const response = await fetch(`${base}${path}`, init);
-      if (isLast || response.status < 500) return response;
+      // Never replay a mutation against another origin: a 5xx may be returned
+      // after the server has already applied the write.
+      if (isLast || !allowsFallback || response.status < 500) return response;
       lastResponse = response;
     } catch (error) {
-      if (isLast) throw error;
+      if (isLast || !allowsFallback) throw error;
       lastError = error;
     }
   }
