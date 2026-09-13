@@ -1,95 +1,8 @@
-import {
-  clearTokens,
-  getAccessToken,
-  getRefreshToken,
-  setAccessToken,
-  setRefreshToken,
-} from '@/lib/auth/tokens';
+import { authenticatedFetch } from '@/lib/auth/authenticated-fetch';
+import { getAuthSessionManager } from '@/lib/auth/session';
+import { fetchWithFallback } from '@/lib/api-transport';
 
-function isLoopbackHost(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1';
-}
-
-function resolveDirectApiBase(): string | null {
-  const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
-  if (!configured) {
-    return null;
-  }
-
-  if (typeof window === 'undefined') {
-    return configured.replace(/\/$/, '');
-  }
-
-  try {
-    const url = new URL(configured);
-    if (isLoopbackHost(url.hostname) && isLoopbackHost(window.location.hostname)) {
-      url.hostname = window.location.hostname;
-    }
-    return url.toString().replace(/\/$/, '');
-  } catch {
-    return configured.replace(/\/$/, '');
-  }
-}
-
-function resolveApiBase(): string {
-  const directOverride = process.env.NEXT_PUBLIC_DIRECT_API_BASE_URL?.trim();
-  if (directOverride) {
-    return directOverride.replace(/\/$/, '');
-  }
-
-  // Default to same-origin proxy route to avoid browser CORS/network mismatch.
-  return '/api';
-}
-
-export const API_BASE = resolveApiBase();
-const DIRECT_API_BASE = resolveDirectApiBase();
-
-function buildApiBases(): string[] {
-  if (!DIRECT_API_BASE || DIRECT_API_BASE === API_BASE) {
-    return [API_BASE];
-  }
-  return [API_BASE, DIRECT_API_BASE];
-}
-
-function shouldRetryWithFallback(error: unknown, response?: Response): boolean {
-  if (error) {
-    return true;
-  }
-  if (!response) {
-    return false;
-  }
-  return response.status >= 500;
-}
-
-async function fetchWithFallback(path: string, init: RequestInit = {}): Promise<Response> {
-  const bases = buildApiBases();
-  let lastError: unknown;
-  let lastResponse: Response | null = null;
-
-  for (let index = 0; index < bases.length; index += 1) {
-    const base = bases[index];
-    const isLast = index === bases.length - 1;
-
-    try {
-      const response = await fetch(`${base}${path}`, init);
-      if (isLast || !shouldRetryWithFallback(undefined, response)) {
-        return response;
-      }
-      lastResponse = response;
-    } catch (error) {
-      if (isLast || !shouldRetryWithFallback(error)) {
-        throw error;
-      }
-      lastError = error;
-    }
-  }
-
-  if (lastResponse) {
-    return lastResponse;
-  }
-
-  throw lastError instanceof Error ? lastError : new Error('Network request failed');
-}
+export { API_BASE } from '@/lib/api-transport';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -175,11 +88,6 @@ export type AccountOption = {
   currency: string;
 };
 
-type RefreshResponse = {
-  accessToken: string;
-  refreshToken: string;
-};
-
 function isBrowser() {
   return typeof window !== 'undefined';
 }
@@ -240,62 +148,17 @@ async function readErrorResponse(res: Response): Promise<{ parsed: unknown; text
   }
 }
 
-async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return null;
-
-  const res = await fetchWithFallback('/v1/auth/refresh', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ refreshToken }),
-  });
-
-  if (!res.ok) return null;
-
-  const payload = (await res.json()) as RefreshResponse;
-  if (!payload.accessToken || !payload.refreshToken) return null;
-  setAccessToken(payload.accessToken);
-  setRefreshToken(payload.refreshToken);
-  return payload.accessToken;
-}
-
 async function authFetch(
   path: string,
   init: RequestInit = {},
-  retryOnUnauthorized = true,
 ): Promise<Response> {
-  const headers = new Headers(init.headers);
-  const accessToken = getAccessToken();
-  if (accessToken) {
-    headers.set('Authorization', `Bearer ${accessToken}`);
-  }
-
-  const response = await fetchWithFallback(path, {
-    ...init,
-    headers,
-    credentials: 'include',
-  });
-
-  if (response.status !== 401 || !retryOnUnauthorized) {
-    return response;
-  }
-
-  const newAccessToken = await refreshAccessToken();
-  if (!newAccessToken) {
-    clearTokens();
-    redirectToLogin();
-    return response;
-  }
-
-  const retryHeaders = new Headers(init.headers);
-  retryHeaders.set('Authorization', `Bearer ${newAccessToken}`);
-
-  return fetchWithFallback(path, {
-    ...init,
-    headers: retryHeaders,
-    credentials: 'include',
-  });
+  return authenticatedFetch(
+    fetchWithFallback,
+    getAuthSessionManager(),
+    path,
+    init,
+    redirectToLogin,
+  );
 }
 
 async function parseJsonOrThrow<T>(res: Response): Promise<T> {
