@@ -1,26 +1,38 @@
 'use client';
 
-import { API_BASE } from '@/lib/api';
-import { clearTokens, getRefreshToken } from '@/lib/auth/tokens';
+import { API_BASE } from '@/lib/api-transport';
+import { getAuthSessionManager } from '@/lib/auth/session';
 
-export async function logout(): Promise<void> {
-  const refreshToken = getRefreshToken();
+async function endSession(allDevices: boolean): Promise<void> {
+  const session = getAuthSessionManager();
+  const credentials = session.beginLogout();
 
   try {
-    if (refreshToken) {
+    if (allDevices && credentials.accessToken) {
+      await fetch(`${API_BASE}/v1/auth/logout-all`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${credentials.accessToken}` },
+        credentials: 'include',
+      });
+    } else if (!allDevices && credentials.refreshToken) {
       await fetch(`${API_BASE}/v1/auth/logout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ refreshToken }),
+        body: JSON.stringify({ refreshToken: credentials.refreshToken }),
       });
     }
   } catch {
-    // Ignore network/API failures; local logout must still succeed.
+    // Local logout is authoritative when the network is unavailable.
   } finally {
-    clearTokens();
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
-    }
+    if (typeof window !== 'undefined') window.location.href = '/login';
   }
+}
+
+export function logout(): Promise<void> {
+  return endSession(false);
+}
+
+export function logoutAll(): Promise<void> {
+  return endSession(true);
 }

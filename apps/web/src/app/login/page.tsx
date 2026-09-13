@@ -7,9 +7,8 @@ import { AuthShell } from '@/components/auth/AuthShell';
 import { AuthSpinner } from '@/components/auth/AuthSpinner';
 import { PrimaryButton } from '@/components/auth/PrimaryButton';
 import { useToast } from '@/components/toast/ToastProvider';
-import { useAuthSession } from '@/lib/auth/session';
+import { establishAuthSession, useAuthSession } from '@/lib/auth/session';
 import { apiPublicPost } from '@/lib/api';
-import { setAuthSessionTokens } from '@/lib/auth/tokens';
 
 type AuthResponse = {
   user: { id: string; email: string };
@@ -70,7 +69,7 @@ function LoginPageContent() {
         email,
         password,
       });
-      setAuthSessionTokens({
+      establishAuthSession({
         accessToken: payload.accessToken,
         refreshToken: payload.refreshToken,
         userEmail: payload.user.email,

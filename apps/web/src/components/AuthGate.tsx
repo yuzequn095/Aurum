@@ -8,14 +8,14 @@ import { useAuthSession } from '@/lib/auth/session';
 export function AuthGate({ children }: PropsWithChildren) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isHydrated, isAuthenticated } = useAuthSession();
+  const { isHydrated, isAuthenticated, isUnavailable, retryHydration } = useAuthSession();
 
   useEffect(() => {
-    if (isHydrated && !isAuthenticated) {
+    if (isHydrated && !isAuthenticated && !isUnavailable) {
       const next = pathname ? `?next=${encodeURIComponent(pathname)}` : '';
       router.replace(`/login${next}`);
     }
-  }, [isAuthenticated, isHydrated, pathname, router]);
+  }, [isAuthenticated, isHydrated, isUnavailable, pathname, router]);
 
   if (!isHydrated) {
     return (
@@ -29,6 +29,27 @@ export function AuthGate({ children }: PropsWithChildren) {
   }
 
   if (!isAuthenticated) {
+    if (isUnavailable) {
+      return (
+        <div className='relative flex min-h-screen items-center justify-center overflow-hidden bg-aurum-bg px-5'>
+          <div className='absolute inset-0 aurum-app-bg' />
+          <div className='relative max-w-md rounded-aurum border border-aurum-border bg-white/90 p-6 text-center shadow-aurum'>
+            <h1 className='text-lg font-semibold text-aurum-text'>Session check unavailable</h1>
+            <p className='mt-2 text-sm leading-6 text-aurum-muted'>
+              Aurum kept your saved session. Check your connection and try again.
+            </p>
+            <button
+              type='button'
+              className='mt-5 rounded-full bg-aurum-text px-5 py-2 text-sm font-medium text-white'
+              onClick={() => void retryHydration()}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className='relative flex min-h-screen items-center justify-center overflow-hidden bg-aurum-bg'>
         <div className='absolute inset-0 aurum-app-bg' />

@@ -30,6 +30,7 @@ This document serves as both a product overview and developer reference for Auru
 - [What Milestone 15 Changed](#what-milestone-15-changed)
 - [What Milestone 16 Changed](#what-milestone-16-changed)
 - [What Milestone 17C Changed](#what-milestone-17c-changed)
+- [What Milestone 17D Changed](#what-milestone-17d-changed)
 - [Current Architecture](#current-architecture)
 - [Long-term Vision](#long-term-vision)
 - [Architecture Documents](#architecture-documents)
@@ -226,7 +227,7 @@ Mobile is intentionally not a separate route tree. The same product surfaces ada
 
 ## Current Status
 
-Milestones 1-16 are complete at the foundation-plus-productization level. Milestone 17 is in progress: 17A is accepted, 17B is complete with documented debt, and 17C establishes the durable iOS identity and trusted native configuration contract. The 17C shell builds, signs with a Personal Team, installs on the owner's iPhone, and has passed physical-device acceptance. Milestone 17D has not begun.
+Milestones 1-16 are complete at the foundation-plus-productization level. Milestone 17 is in progress: 17A is accepted, 17B and 17C are complete with documented debt, and 17D establishes the authentication/session lifecycle for browsers and the remote iOS runtime. The shell builds, signs with a Personal Team, installs on the owner's iPhone, and has passed physical-device login, hydration, refresh, network-interruption, logout, revocation, and recovery acceptance.
 
 - Platform status:
   monorepo, API, web, auth, ledger, taxonomy, analytics, import/export, and dashboard foundations are stable.
@@ -239,7 +240,7 @@ Milestones 1-16 are complete at the foundation-plus-productization level. Milest
 - Experience status:
   Home, Portfolio, Transactions, AI Insights, Settings, Login/Register, desktop shell, mobile bottom nav, and command menu have been productized into a coherent day-to-day web experience with connected-finance status and portfolio depth visible where relevant.
 - Current execution focus:
-  continue the gated Milestone 17 sequence with the 17D authentication boundary, without mixing in 17E hosting or 17F UX hardening.
+  continue the gated Milestone 17 sequence with 17E private hosting and recovery, without reopening 17D authentication or mixing in 17F UX hardening.
 
 ## Milestone Summary
 
@@ -257,7 +258,7 @@ Milestones 1-16 are complete at the foundation-plus-productization level. Milest
 | 14 | Experience Layer / Productization | Done | Product structure cleanup, desktop polish, mobile page-level productization, command menu refinement, visual polish, and final cross-surface acceptance review. |
 | 15 | Connected Finance Expansion / Portfolio Depth | Done | Institution-aware manual presets, connected-finance overview health, snapshot lineage/delta APIs, deterministic portfolio diagnostics, demo data, and validation docs. |
 | 16 | Portfolio History & Proactive Context | Done | Scoped snapshot history, deterministic change explanations, structured best-effort AI context, Portfolio Market Lens, and computed in-app attention items. |
-| 17 | Private iOS Beta Architecture & Foundation | In progress | 17A accepted the remote-runtime architecture; 17B proved the disposable shell on a physical iPhone; 17C established durable identity, fail-closed trusted configuration, native presentation policy, and least-privilege metadata. 17D is next. |
+| 17 | Private iOS Beta Architecture & Foundation | In progress | 17A accepted the remote-runtime architecture; 17B proved the disposable shell on a physical iPhone; 17C established durable native identity/configuration; 17D delivered explicit session boundaries, startup validation, single-flight refresh, bounded retry, race-safe logout, and browser/device evidence. 17E is next. |
 
 **Milestone 11 delivered:**
 
@@ -457,6 +458,34 @@ reviewable native shell without moving product or financial logic into iOS.
 See [`MILESTONE_17C_CLOSEOUT.md`](./MILESTONE_17C_CLOSEOUT.md) for the exact
 Mac, Xcode, signed-install, and physical-device evidence.
 
+## What Milestone 17D Changed
+
+Milestone 17D makes authenticated sessions deterministic across ordinary
+browsers and the Capacitor remote WKWebView without adding a native auth stack.
+
+- Access tokens now live only in memory. One browser persistence adapter owns
+  a single localStorage record containing the refresh credential and user
+  email; unused JavaScript-readable auth cookies and the legacy persisted
+  access-token copy are removed.
+- Startup uses explicit `checking`, `authenticated`, `unauthenticated`, and
+  retryable `unavailable` states. A stored credential is validated and rotated
+  before protected UI renders.
+- Concurrent 401s share one refresh promise, refresh cannot recurse, and each
+  original request retries at most once. Web Locks serialize cross-tab token
+  rotation where supported.
+- Session epochs prevent a late refresh from resurrecting logout or overwriting
+  a newer login. Normal logout and logout-all clear the current device before
+  best-effort server revocation.
+- Browser, API, and physical-iPhone tests cover rotation, reuse detection,
+  expiry, revocation, temporary network loss, relaunch hydration, logout, and
+  concurrent protected requests.
+
+For the owner-only phase, trusted-origin JavaScript can still read the persisted
+refresh credential. This is explicit private-beta debt, not approval for broad
+distribution or high-sensitivity/provider credentials. See
+[`MILESTONE_17D_CLOSEOUT.md`](./MILESTONE_17D_CLOSEOUT.md) for the decision,
+tests, device evidence, and future security gate.
+
 ## Current Architecture
 
 **Backend stack:**
@@ -482,7 +511,8 @@ Mac, Xcode, signed-install, and physical-device evidence.
 - The shell uses durable identity `io.github.yuzequn095.aurum`, displays as `Aurum`, and loads one build-time-validated remote Next.js HTTPS origin.
 - Debug and Release configuration are separately enforced at Capacitor sync and Xcode build time; `allowNavigation` remains absent.
 - The shell contains no financial-domain logic, local financial database, authentication implementation, or credential bridge.
-- Personal Team signing, installation, and the 17C identity/configuration contract are physically validated on the owner's iPhone 13 Pro.
+- Browser-owned session lifecycle is shared by web and the remote WKWebView; access is memory-only, refresh is single-flight, and persisted refresh state remains an explicit owner-only debt.
+- Personal Team signing, installation, the 17C identity/configuration contract, and the 17D session lifecycle are physically validated on the owner's iPhone 13 Pro.
 
 **Key platform surfaces:**
 
@@ -561,6 +591,7 @@ All within one unified platform.
 - [MILESTONE_17_ARCHITECTURE_DECISION.md](./MILESTONE_17_ARCHITECTURE_DECISION.md) - accepted-with-debt private iOS beta architecture decision, security gates, and phased implementation handoff.
 - [MILESTONE_17B_CLOSEOUT.md](./MILESTONE_17B_CLOSEOUT.md) - completed disposable-shell foundation with Mac, Xcode, Personal Team, and physical-device evidence.
 - [MILESTONE_17C_CLOSEOUT.md](./MILESTONE_17C_CLOSEOUT.md) - durable iOS identity, trusted configuration, least-privilege native policy, and physical-device acceptance.
+- [MILESTONE_17D_CLOSEOUT.md](./MILESTONE_17D_CLOSEOUT.md) - explicit session boundaries, single-flight refresh, lifecycle race protection, and browser/physical-device acceptance.
 - [FINANCIAL_DOMAIN_MODEL.md](./FINANCIAL_DOMAIN_MODEL.md) - financial entities, relationships, domain concepts.
 - [ROADMAP.md](./ROADMAP.md) - long-term product and platform evolution.
 
@@ -889,14 +920,30 @@ pnpm --filter api restore -- --file ./backup.json --mode append --userId <target
 ## Auth and Session Notes
 
 - Protected web routes use client-side `AuthGate`.
-- Current dev storage is `localStorage` for access/refresh tokens.
-- Refresh rotation and reuse detection are enforced server-side.
+- Access tokens are short-lived and held in memory only.
+- One browser persistence adapter stores the refresh credential and user email
+  in `localStorage`; the same path runs in an ordinary browser and the remote
+  iOS WKWebView.
+- Startup validates and rotates persisted state before admitting protected UI.
+  Temporary transport failures preserve the credential and present a retryable
+  session-check state; invalid/revoked credentials clear the session.
+- Concurrent protected 401s share one refresh promise, each request retries at
+  most once, and refresh itself cannot recursively refresh. Session epochs
+  prevent late refresh responses from undoing logout or a newer login.
+- Refresh hashing, transactional rotation, reuse detection, logout, and
+  logout-all revocation are enforced server-side.
+- Unused JavaScript-readable auth cookies and the legacy persisted access-token
+  copy are removed. The remaining localStorage refresh credential is accepted
+  owner-only private-beta debt and must be revisited before broader
+  distribution or high-sensitivity/provider credentials.
 - For local development, `pnpm --filter api exec prisma db seed` guarantees a reusable demo login:
   `demo@aurum.local` / `password123`.
 - For an existing local email identity, you can reset the password with:
   `pnpm --filter api run reset-password -- <email> <new-password>`.
 - Newly registered local users start without AI entitlements unless you seed or grant them separately.
-- Future production hardening target: `httpOnly` secure cookie-based session flow.
+- Future broader-distribution hardening must reevaluate same-origin HttpOnly
+  cookies, a non-secret-returning native broker, or Model A against the actual
+  hosting and distribution threat model.
 
 ## Conventions
 

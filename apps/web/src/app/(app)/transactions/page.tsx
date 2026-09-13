@@ -8,7 +8,6 @@ import { useToast } from '@/components/toast/ToastProvider';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Section } from '@/components/ui/layout';
-import { clearTokens } from '@/lib/auth/tokens';
 import {
   ApiError,
   apiDelete,
@@ -485,10 +484,6 @@ export default function TransactionsPage() {
     if (error instanceof ApiError) {
       setFieldError(error.message);
       toast.error(error.message);
-      if (error.status === 401) {
-        clearTokens();
-        router.replace('/login');
-      }
       return;
     }
 

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { useAuthSession } from '@/lib/auth/session';
-import { logout } from '@/lib/auth/logout';
+import { logout, logoutAll } from '@/lib/auth/logout';
 import { getConnectedFinanceOverview } from '@/lib/api/connected-finance';
 
 export default function SettingsPage() {
@@ -25,6 +25,11 @@ export default function SettingsPage() {
   const onLogout = async () => {
     setLoggingOut(true);
     await logout();
+  };
+
+  const onLogoutAll = async () => {
+    setLoggingOut(true);
+    await logoutAll();
   };
 
   return (
@@ -121,7 +126,16 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            <div className="flex items-center justify-end">
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={onLogoutAll}
+                disabled={loggingOut}
+                aria-label="Log out of Aurum on all devices"
+              >
+                Log out all devices
+              </Button>
               <Button
                 variant="danger"
                 size="md"
